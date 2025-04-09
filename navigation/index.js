@@ -76,6 +76,12 @@ export default [
         "path": "/devtool/code-playground",
         "icon": "mdi:code-braces",
         "child": []
+      },
+      {
+        "title": "Form Builder",
+        "path": "/form-builder/manage",
+        "icon": "mdi:form-select",
+        "child": []
       }
     ],
     "meta": {
