@@ -1,5 +1,5 @@
 <template>
-  <div class="component-preview">
+  <div class="component-preview" :style="componentStyle">
     <!-- Basic Input Types -->
     <FormKit 
       v-if="isInputType"
@@ -75,6 +75,23 @@ const isInputType = computed(() => {
   ];
   
   return inputTypes.includes(props.component.type);
+});
+
+// Compute style based on grid properties
+const componentStyle = computed(() => {
+  // Only apply grid styles in the non-preview mode (actual form)
+  if (props.isPreview) {
+    return {}; // Styling is handled by parent in canvas mode
+  }
+  
+  // Apply grid column in preview mode
+  const gridColumn = props.component.props.gridColumn || 'span 12';
+  
+  return {
+    gridColumn: gridColumn,
+    width: '100%', // Always use 100% within the grid cell
+    boxSizing: 'border-box'
+  };
 });
 </script>
 

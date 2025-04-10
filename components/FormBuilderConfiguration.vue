@@ -24,6 +24,34 @@
         <div class="custom-tab-content p-4 border border-gray-200 rounded-b bg-white">
           <!-- Basic Tab -->
           <div v-if="activeTab === 'basic'" class="space-y-3">
+            <!-- Width Configuration -->
+            <div v-if="showField('width')">
+              <label class="text-sm font-medium mb-1 block">Component Width</label>
+              <div class="grid grid-cols-4 gap-2 mt-2">
+                <button 
+                  v-for="width in [25, 33, 50, 66, 75, 100]" 
+                  :key="width"
+                  @click="setComponentWidth(width)"
+                  class="py-1 px-2 border rounded text-xs"
+                  :class="{
+                    'bg-blue-50 border-blue-200 text-blue-600': getComponentWidthPercent() === width,
+                    'bg-white border-gray-200 text-gray-700 hover:bg-gray-50': getComponentWidthPercent() !== width
+                  }"
+                >
+                  {{ width }}%
+                </button>
+              </div>
+              <div class="flex items-center mt-2">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    class="bg-blue-600 h-2.5 rounded-full" 
+                    :style="{ width: configModel.width || '100%' }"
+                  ></div>
+                </div>
+                <span class="ml-2 text-xs text-gray-500">{{ configModel.width || '100%' }}</span>
+              </div>
+            </div>
+
             <!-- Standard Fields For All Components -->
             <FormKit
               v-if="showField('label')"
@@ -350,6 +378,8 @@ const showField = (fieldName) => {
       return componentType === 'repeater';
     case 'id':
       return true; // Always show component ID in advanced tab
+    case 'width':
+      return true; // Always show width in basic tab
     default:
       return false;
   }
@@ -370,6 +400,76 @@ const addOption = () => {
 // Remove an option from select/radio/checkbox
 const removeOption = (index) => {
   configModel.value.options.splice(index, 1);
+};
+
+// Inside the <script setup> section
+// Add width to fieldsToShow
+const fieldsToShow = {
+  // Basic input types
+  text: ['label', 'name', 'placeholder', 'help', 'width'],
+  textarea: ['label', 'name', 'placeholder', 'help', 'width'],
+  number: ['label', 'name', 'placeholder', 'help', 'width'],
+  email: ['label', 'name', 'placeholder', 'help', 'width'],
+  password: ['label', 'name', 'placeholder', 'help', 'width'],
+  
+  // Selection types
+  select: ['label', 'name', 'placeholder', 'help', 'options', 'width'],
+  checkbox: ['label', 'name', 'help', 'options', 'width'],
+  radio: ['label', 'name', 'help', 'options', 'width'],
+  
+  // Date and time
+  date: ['label', 'name', 'placeholder', 'help', 'width'],
+  time: ['label', 'name', 'placeholder', 'help', 'width'],
+  'datetime-local': ['label', 'name', 'placeholder', 'help', 'width'],
+  
+  // Advanced
+  file: ['label', 'name', 'help', 'accept', 'width'],
+  repeater: ['label', 'name', 'help', 'max', 'width'],
+  group: ['label', 'name', 'help', 'width'],
+  
+  // Layout elements
+  heading: ['value', 'level', 'width'],
+  paragraph: ['value', 'width'],
+  divider: ['width']
+};
+
+// Add these methods
+const getComponentWidthPercent = () => {
+  if (!configModel.value.width) return 100;
+  
+  // Parse the width from percentage string
+  const widthStr = configModel.value.width.toString();
+  const match = widthStr.match(/(\d+)%/);
+  return match ? parseInt(match[1]) : 100;
+};
+
+const setComponentWidth = (widthPercent) => {
+  // Convert precise percentages to exact grid column spans
+  // This ensures the visual appearance matches the percentage
+  let gridColumns;
+  switch (widthPercent) {
+    case 25: gridColumns = 3; break;  // 3/12 = 25%
+    case 33: gridColumns = 4; break;  // 4/12 = 33.33%
+    case 50: gridColumns = 6; break;  // 6/12 = 50%
+    case 66: gridColumns = 8; break;  // 8/12 = 66.67%
+    case 75: gridColumns = 9; break;  // 9/12 = 75%
+    case 100: gridColumns = 12; break; // 12/12 = 100%
+    default: gridColumns = Math.round((widthPercent / 100) * 12);
+  }
+  
+  // Update the configModel
+  configModel.value = {
+    ...configModel.value,
+    width: `${widthPercent}%`,
+    gridColumn: `span ${gridColumns}`
+  };
+  
+  // Emit update event
+  emit('update-component', {
+    id: props.component.id,
+    ...props.component,
+    props: configModel.value
+  });
 };
 </script>
 

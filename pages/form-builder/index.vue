@@ -95,6 +95,8 @@
               @select-component="handleSelectComponent"
               @move-component="handleMoveComponent"
               @delete-component="handleDeleteComponent"
+              @update-component="handleUpdateComponent"
+              @optimize-layout="handleOptimizeLayout"
             />
           </div>
         </div>
@@ -135,16 +137,19 @@
     <!-- Preview Modal -->
     <RsModal v-model="showPreview" title="Form Preview" size="xl">
       <div class="max-h-[70vh] overflow-y-auto p-4">
-        <FormKit type="form" @submit="handlePreviewSubmit">
-          <template
-            v-for="(component, index) in formStore.formComponents"
-            :key="index"
-          >
-            <component-preview :component="component" :is-preview="false" />
-          </template>
+        <FormKit type="form" @submit="handlePreviewSubmit" :actions="false">
+          <div class="grid-preview-container">
+            <template
+              v-for="(component, index) in formStore.formComponents"
+              :key="index"
+            >
+              <component-preview :component="component" :is-preview="false" />
+            </template>
+          </div>
           <FormKit type="submit" label="Submit" />
         </FormKit>
       </div>
+      <template #footer> </template>
     </RsModal>
   </div>
 </template>
@@ -239,6 +244,10 @@ const handlePreviewSubmit = (formData) => {
 const navigateToManage = () => {
   router.push("/form-builder/manage");
 };
+
+const handleOptimizeLayout = () => {
+  // Implementation of handleOptimizeLayout method
+};
 </script>
 
 <style scoped>
@@ -262,5 +271,15 @@ const navigateToManage = () => {
   color: rgba(255, 200, 200, 0.9);
   font-size: 0.7rem;
   position: absolute;
+}
+
+.grid-preview-container {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-flow: row dense;
+  column-gap: 16px;
+  row-gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 </style>

@@ -363,9 +363,20 @@ const matchesSearch = (component) => {
 
 // Handle drag start event
 const onDragStart = (event, component) => {
+  // Just set the basic component data, the optimal grid placement
+  // will be calculated in the store when adding the component
+  const componentWithGrid = {
+    ...component,
+    defaultProps: {
+      ...component.defaultProps,
+      width: '100%'
+      // Note: gridColumn is now determined by the store's findOptimalGridPlacement method
+    }
+  };
+  
   // Set the drag data
   event.dataTransfer.effectAllowed = 'copy';
-  event.dataTransfer.setData('component', JSON.stringify(component));
+  event.dataTransfer.setData('component', JSON.stringify(componentWithGrid));
 };
 
 // Add a component directly via click
