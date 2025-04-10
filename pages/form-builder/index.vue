@@ -58,22 +58,14 @@
         <div
           class="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center"
         >
-          <h2 class="text-sm font-medium text-gray-700">
-            Available Components
-          </h2>
+          <h2 class="text-sm font-medium text-gray-700">Components</h2>
           <div class="relative">
-            <input
-              type="text"
-              placeholder="Search..."
-              class="px-2 py-1 pr-7 border border-gray-300 rounded text-xs w-24"
-            />
-            <Icon
-              name="material-symbols:search"
-              class="absolute right-2 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
-            />
+            <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
+              <Icon name="material-symbols:refresh" class="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
-        <div class="overflow-y-auto flex-1 p-2">
+        <div class="overflow-y-auto flex-1">
           <FormBuilderComponents @add-component="handleAddComponent" />
         </div>
       </div>
@@ -81,16 +73,18 @@
       <!-- Middle Panel - Form Canvas -->
       <div class="flex-1 flex flex-col overflow-hidden">
         <div
-          class="py-2 px-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center h-16"
+          class="py-2 px-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center h-12"
         >
           <h2 class="text-sm font-medium text-gray-700">Form Canvas</h2>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500">Drag components to build your form</span>
+            <span class="text-xs text-gray-500"
+              >Drag components to build your form</span
+            >
           </div>
         </div>
         <div class="flex-1 overflow-auto p-6">
           <div
-            class="border-2 border-dashed border-gray-300 bg-white rounded-md min-h-[calc(100vh-200px)] p-4"
+            class="border-2 border-dashed border-gray-300 bg-white rounded-md min-h-[calc(100vh-170px)] p-4"
             :class="{ 'border-blue-400 bg-blue-50': formStore.isDraggingOver }"
             @dragover.prevent="handleDragOver"
             @dragleave.prevent="handleDragLeave"
@@ -111,7 +105,7 @@
         class="w-72 bg-white border-l border-gray-200 flex flex-col overflow-hidden"
       >
         <div
-          class="p-3 border-b border-gray-200 bg-gray-50 h-16 flex items-center"
+          class="p-3 border-b border-gray-200 bg-gray-50 h-12 flex items-center"
         >
           <h2 class="text-sm font-medium text-gray-700">Configuration</h2>
         </div>

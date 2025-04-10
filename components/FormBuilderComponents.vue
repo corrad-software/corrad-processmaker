@@ -1,33 +1,114 @@
 <template>
   <div class="form-components">
-    <div v-for="group in groupedComponents" :key="group.category" class="mb-2">
-      <RsCollapse>
-        <RsCollapseItem 
-          :title="group.category" 
-          :open="group.category === 'Basic Inputs'"
-          class="text-sm font-medium"
+    <!-- Search Bar -->
+    <div class="search-container p-3 mb-2">
+      <div class="relative">
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="Search..."
+          class="w-full px-3 py-2 pl-9 bg-white border border-gray-300 rounded text-gray-700 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+        <Icon
+          name="material-symbols:search"
+          class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+        />
+      </div>
+    </div>
+
+    <!-- Basic Inputs Category -->
+    <div class="component-category mb-6">
+      <h3 class="text-gray-700 text-sm font-medium px-3 mb-2">Basic Inputs</h3>
+      <div class="grid grid-cols-2 gap-1 px-2">
+        <div
+          v-for="component in getComponentsByCategory('Basic Inputs')"
+          :key="component.type"
+          class="component-item rounded p-2 flex flex-col items-center justify-center cursor-grab hover:bg-gray-100 transition-colors border border-gray-200"
+          :class="{ 'hidden': !matchesSearch(component) }"
+          draggable="true"
+          @dragstart="onDragStart($event, component)"
+          @click="addComponent(component)"
         >
-          <div class="grid grid-cols-1 gap-1.5 mt-2">
-            <div 
-              v-for="component in group.components" 
-              :key="component.type"
-              class="component-item border border-gray-200 rounded p-2 flex items-center cursor-grab hover:bg-gray-50 transition-colors"
-              :class="{ 'hidden': !matchesSearch(component) }"
-              draggable="true"
-              @dragstart="onDragStart($event, component)"
-              @click="addComponent(component)"
-            >
-              <div class="bg-gray-100 p-1.5 rounded mr-2 flex items-center justify-center w-8 h-8 flex-shrink-0">
-                <Icon :name="component.icon" class="w-4 h-4 text-gray-600" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="font-medium text-sm truncate">{{ component.name }}</div>
-                <div class="text-xs text-gray-500 truncate">{{ component.description }}</div>
-              </div>
-            </div>
-          </div>
-        </RsCollapseItem>
-      </RsCollapse>
+          <Icon :name="component.icon" class="mb-1 w-5 h-5 text-gray-600" />
+          <span class="text-xs text-gray-600 text-center">{{ component.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selection Inputs Category -->
+    <div class="component-category mb-6">
+      <h3 class="text-gray-700 text-sm font-medium px-3 mb-2">Selection Inputs</h3>
+      <div class="grid grid-cols-2 gap-1 px-2">
+        <div
+          v-for="component in getComponentsByCategory('Selection Inputs')"
+          :key="component.type"
+          class="component-item rounded p-2 flex flex-col items-center justify-center cursor-grab hover:bg-gray-100 transition-colors border border-gray-200"
+          :class="{ 'hidden': !matchesSearch(component) }"
+          draggable="true"
+          @dragstart="onDragStart($event, component)"
+          @click="addComponent(component)"
+        >
+          <Icon :name="component.icon" class="mb-1 w-5 h-5 text-gray-600" />
+          <span class="text-xs text-gray-600 text-center">{{ component.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Date and Time Category -->
+    <div class="component-category mb-6">
+      <h3 class="text-gray-700 text-sm font-medium px-3 mb-2">Date and Time</h3>
+      <div class="grid grid-cols-2 gap-1 px-2">
+        <div
+          v-for="component in getComponentsByCategory('Date and Time')"
+          :key="component.type"
+          class="component-item rounded p-2 flex flex-col items-center justify-center cursor-grab hover:bg-gray-100 transition-colors border border-gray-200"
+          :class="{ 'hidden': !matchesSearch(component) }"
+          draggable="true"
+          @dragstart="onDragStart($event, component)"
+          @click="addComponent(component)"
+        >
+          <Icon :name="component.icon" class="mb-1 w-5 h-5 text-gray-600" />
+          <span class="text-xs text-gray-600 text-center">{{ component.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Category -->
+    <div class="component-category mb-6">
+      <h3 class="text-gray-700 text-sm font-medium px-3 mb-2">Advanced</h3>
+      <div class="grid grid-cols-2 gap-1 px-2">
+        <div
+          v-for="component in getComponentsByCategory('Advanced')"
+          :key="component.type"
+          class="component-item rounded p-2 flex flex-col items-center justify-center cursor-grab hover:bg-gray-100 transition-colors border border-gray-200"
+          :class="{ 'hidden': !matchesSearch(component) }"
+          draggable="true"
+          @dragstart="onDragStart($event, component)"
+          @click="addComponent(component)"
+        >
+          <Icon :name="component.icon" class="mb-1 w-5 h-5 text-gray-600" />
+          <span class="text-xs text-gray-600 text-center">{{ component.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layout Category -->
+    <div class="component-category mb-6">
+      <h3 class="text-gray-700 text-sm font-medium px-3 mb-2">Layout</h3>
+      <div class="grid grid-cols-2 gap-1 px-2">
+        <div
+          v-for="component in getComponentsByCategory('Layout')"
+          :key="component.type"
+          class="component-item rounded p-2 flex flex-col items-center justify-center cursor-grab hover:bg-gray-100 transition-colors border border-gray-200"
+          :class="{ 'hidden': !matchesSearch(component) }"
+          draggable="true"
+          @dragstart="onDragStart($event, component)"
+          @click="addComponent(component)"
+        >
+          <Icon :name="component.icon" class="mb-1 w-5 h-5 text-gray-600" />
+          <span class="text-xs text-gray-600 text-center">{{ component.name }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -262,23 +343,10 @@ const availableComponents = [
   }
 ];
 
-// Group components by category
-const groupedComponents = computed(() => {
-  const grouped = {};
-  
-  availableComponents.forEach(component => {
-    if (!grouped[component.category]) {
-      grouped[component.category] = {
-        category: component.category,
-        components: []
-      };
-    }
-    
-    grouped[component.category].components.push(component);
-  });
-  
-  return Object.values(grouped);
-});
+// Get components by category for rendering in sections
+const getComponentsByCategory = (category) => {
+  return availableComponents.filter(component => component.category === category);
+};
 
 // Check if component matches search query
 const matchesSearch = (component) => {
@@ -298,32 +366,29 @@ const onDragStart = (event, component) => {
   // Set the drag data
   event.dataTransfer.effectAllowed = 'copy';
   event.dataTransfer.setData('component', JSON.stringify(component));
-  
-  // Let browser handle the drag image naturally
-  // Don't call emit here to avoid double component creation
 };
 
-// Add a click handler for adding components directly
+// Add a component directly via click
 const addComponent = (component) => {
   emit('add-component', component);
 };
 </script>
 
 <style scoped>
+.form-components {
+  @apply bg-white h-full;
+}
+
 .component-item {
-  transition: transform 0.1s ease-in-out;
+  @apply h-20;
+  transition: all 0.15s ease-in-out;
+}
+
+.component-item:hover {
+  transform: translateY(-2px);
 }
 
 .component-item:active {
   transform: scale(0.97);
-}
-
-:deep(.collapse-title) {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-}
-
-:deep(.collapse-content) {
-  padding: 0.5rem;
 }
 </style> 
