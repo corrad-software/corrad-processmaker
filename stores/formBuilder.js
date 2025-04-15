@@ -8,7 +8,8 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     formName: 'New Form',
     formDescription: '',
     isDraggingOver: false,
-    savedForms: []
+    savedForms: [],
+    hasUnsavedChanges: false
   }),
   
   getters: {
@@ -51,6 +52,7 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       
       this.formComponents.push(newComponent);
       this.selectComponent(newComponent.id);
+      this.hasUnsavedChanges = true;
     },
     
     // Find optimal placement for a new component in the grid
@@ -142,6 +144,7 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       const index = this.formComponents.findIndex(c => c.id === updatedComponent.id);
       if (index !== -1) {
         this.formComponents[index] = JSON.parse(JSON.stringify(updatedComponent));
+        this.hasUnsavedChanges = true;
       }
     },
     
@@ -152,6 +155,7 @@ export const useFormBuilderStore = defineStore('formBuilder', {
         
         // Optimize layout after reordering
         this.optimizeGridLayout();
+        this.hasUnsavedChanges = true;
       }
     },
     
@@ -172,6 +176,7 @@ export const useFormBuilderStore = defineStore('formBuilder', {
         
         // Optimize layout after deletion
         this.optimizeGridLayout();
+        this.hasUnsavedChanges = true;
       }
     },
     
@@ -193,6 +198,8 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       // Save to localStorage for persistence
       localStorage.setItem('savedForms', JSON.stringify(this.savedForms));
       
+      this.hasUnsavedChanges = false;
+      
       return formData;
     },
     
@@ -211,11 +218,30 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       }
     },
     
+    setFormName(name) {
+      if (this.formName !== name) {
+        this.formName = name;
+        this.hasUnsavedChanges = true;
+      }
+    },
+    
+    setFormDescription(description) {
+      if (this.formDescription !== description) {
+        this.formDescription = description;
+        this.hasUnsavedChanges = true;
+      }
+    },
+    
+    resetUnsavedChanges() {
+      this.hasUnsavedChanges = false;
+    },
+    
     clearForm() {
       this.formComponents = [];
       this.selectedComponentId = null;
       this.formName = 'New Form';
       this.formDescription = '';
+      this.hasUnsavedChanges = false;
     },
     
     loadSavedForms() {

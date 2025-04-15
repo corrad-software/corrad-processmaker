@@ -22,7 +22,7 @@
           type="text"
           name="formName"
           placeholder="Form Name"
-          v-model="formStore.formName"
+          v-model="formName"
           validation="required"
           validation-visibility="live"
           :validation-messages="{ required: 'Please enter a form name' }"
@@ -151,6 +151,29 @@
       </div>
       <template #footer> </template>
     </RsModal>
+
+    <!-- Unsaved Changes Modal -->
+    <RsModal v-model="showUnsavedChangesModal" title="Unsaved Changes" size="md" position="center">
+      <div class="p-4">
+        <div class="flex items-center mb-4">
+          <Icon name="material-symbols:warning-outline" class="text-yellow-500 w-8 h-8 mr-3" />
+          <div>
+            <h3 class="font-medium text-lg">You have unsaved changes</h3>
+            <p class="text-gray-600">Are you sure you want to leave? Your changes will be lost.</p>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <RsButton @click="cancelNavigation" variant="tertiary">
+            Stay
+          </RsButton>
+          <RsButton @click="confirmNavigation" variant="danger">
+            Leave
+          </RsButton>
+        </div>
+      </template>
+    </RsModal>
   </div>
 </template>
 
@@ -169,12 +192,80 @@ const router = useRouter();
 const formStore = useFormBuilderStore();
 const toast = useToast();
 
+const showPreview = ref(false);
+const showUnsavedChangesModal = ref(false);
+const pendingNavigation = ref(null);
+const navigationTarget = ref(null);
+const navigationConfirmed = ref(false);
+
+// Computed property for form name with getter and setter
+const formName = computed({
+  get: () => formStore.formName,
+  set: (value) => {
+    if (value !== formStore.formName) {
+      formStore.setFormName(value);
+    }
+  }
+});
+
 // Initialize the form builder
 onMounted(() => {
   formStore.loadSavedForms();
+  
+  // Add the beforeunload event listener
+  window.addEventListener('beforeunload', handleBeforeUnload);
 });
 
-const showPreview = ref(false);
+onUnmounted(() => {
+  // Remove the beforeunload event listener
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+});
+
+// Show warning if there are unsaved changes
+const handleBeforeUnload = (event) => {
+  if (formStore.hasUnsavedChanges) {
+    event.preventDefault();
+    event.returnValue = '';
+    return '';
+  }
+};
+
+// Navigation guards
+// Add navigation guard
+onBeforeRouteLeave((to, from, next) => {
+  // If navigation was already confirmed or there are no unsaved changes, proceed
+  if (navigationConfirmed.value || !formStore.hasUnsavedChanges) {
+    next();
+    return;
+  }
+  
+  // Otherwise show the confirmation modal
+  showUnsavedChangesModal.value = true;
+  pendingNavigation.value = () => {
+    navigationConfirmed.value = true;
+    next();
+  };
+  next(false);
+});
+
+// Navigation handlers
+const cancelNavigation = () => {
+  showUnsavedChangesModal.value = false;
+  pendingNavigation.value = null;
+  navigationTarget.value = null;
+  navigationConfirmed.value = false;
+};
+
+const confirmNavigation = () => {
+  showUnsavedChangesModal.value = false;
+  
+  if (pendingNavigation.value) {
+    pendingNavigation.value();
+  } else if (navigationTarget.value) {
+    navigationConfirmed.value = true; // Mark as confirmed before navigating
+    router.push(navigationTarget.value);
+  }
+};
 
 // Handler methods
 const handleAddComponent = (component) => {
@@ -242,11 +333,19 @@ const handlePreviewSubmit = (formData) => {
 };
 
 const navigateToManage = () => {
-  router.push("/form-builder/manage");
+  // If already confirmed or no unsaved changes, navigate directly
+  if (navigationConfirmed.value || !formStore.hasUnsavedChanges) {
+    router.push("/form-builder/manage");
+    return;
+  }
+  
+  // Otherwise show confirmation modal
+  showUnsavedChangesModal.value = true;
+  navigationTarget.value = "/form-builder/manage";
 };
 
 const handleOptimizeLayout = () => {
-  // Implementation of handleOptimizeLayout method
+  formStore.optimizeGridLayout();
 };
 </script>
 
