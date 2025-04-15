@@ -207,13 +207,20 @@ const availableComponents = [
   },
   {
     type: 'checkbox',
-    name: 'Checkbox',
+    name: 'Checkbox Group',
     category: 'Selection Inputs',
     icon: 'material-symbols:check-box-outline',
-    description: 'Single checkbox input',
+    description: 'Multiple checkbox options',
     defaultProps: {
       type: 'checkbox',
-      help: '',
+      label: 'Checkbox Group',
+      name: 'checkbox',
+      help: 'Select all that apply',
+      options: [
+        { label: 'Option 1', value: 'option_1' },
+        { label: 'Option 2', value: 'option_2' },
+        { label: 'Option 3', value: 'option_3' }
+      ],
       validation: ''
     }
   },
@@ -295,7 +302,9 @@ const availableComponents = [
     description: 'Repeatable group of fields',
     defaultProps: {
       type: 'repeater',
-      help: '',
+      label: 'Repeater Section',
+      name: 'repeater',
+      help: 'Add multiple items',
       max: 5
     }
   },
@@ -307,7 +316,9 @@ const availableComponents = [
     description: 'Group of related fields',
     defaultProps: {
       type: 'group',
-      help: ''
+      label: 'Field Group',
+      name: 'group',
+      help: 'Group of related fields'
     }
   },
   

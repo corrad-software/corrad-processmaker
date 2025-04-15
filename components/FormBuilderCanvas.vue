@@ -117,10 +117,15 @@ const componentList = computed({
 
 // Handle component selection
 const selectComponent = (component) => {
+  if (!component || !component.id) return;
+  
   selectedComponentId.value = component.id;
   
   // Use a copy of the component to prevent reactivity issues
+  // But make sure to keep the original ID
   const componentCopy = JSON.parse(JSON.stringify(component));
+  componentCopy.id = component.id; // Ensure ID preservation
+  
   emit('select-component', componentCopy);
 };
 

@@ -55,18 +55,78 @@
       <div
         class="w-64 bg-white border-r border-gray-200 flex flex-col overflow-hidden"
       >
-        <div
-          class="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center"
-        >
-          <h2 class="text-sm font-medium text-gray-700">Components</h2>
-          <div class="relative">
-            <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
-              <Icon name="material-symbols:refresh" class="w-3.5 h-3.5" />
+        <div class="border-b border-gray-200">
+          <div class="flex">
+            <button
+              @click="leftSidebarTab = 'components'"
+              class="px-4 py-3 text-sm font-medium flex-1"
+              :class="{
+                'text-blue-600 border-b-2 border-blue-600': leftSidebarTab === 'components',
+                'text-gray-500 hover:text-gray-700': leftSidebarTab !== 'components'
+              }"
+            >
+              <div class="flex items-center justify-center">
+                <Icon name="material-symbols:category" class="w-4 h-4 mr-1.5" />
+                Components
+              </div>
+            </button>
+            <button
+              @click="leftSidebarTab = 'history'"
+              class="px-4 py-3 text-sm font-medium flex-1"
+              :class="{
+                'text-blue-600 border-b-2 border-blue-600': leftSidebarTab === 'history',
+                'text-gray-500 hover:text-gray-700': leftSidebarTab !== 'history'
+              }"
+            >
+              <div class="flex items-center justify-center">
+                <Icon name="material-symbols:history" class="w-4 h-4 mr-1.5" />
+                History
+              </div>
             </button>
           </div>
         </div>
-        <div class="overflow-y-auto flex-1">
+        
+        <!-- Components Tab Content -->
+        <div v-if="leftSidebarTab === 'components'" class="overflow-y-auto flex-1">
+          <div
+            class="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center"
+          >
+            <h2 class="text-sm font-medium text-gray-700">Components</h2>
+            <div class="relative">
+              <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
+                <Icon name="material-symbols:refresh" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
           <FormBuilderComponents @add-component="handleAddComponent" />
+        </div>
+        
+        <!-- History Tab Content -->
+        <div v-else-if="leftSidebarTab === 'history'" class="overflow-y-auto flex-1">
+          <div
+            class="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center"
+          >
+            <h2 class="text-sm font-medium text-gray-700">History</h2>
+            <div class="flex items-center space-x-1">
+              <button 
+                @click="formStore.undo()" 
+                class="p-1 text-xs rounded text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                :disabled="!formStore.canUndo"
+                title="Undo"
+              >
+                <Icon name="material-symbols:undo" class="w-3.5 h-3.5" />
+              </button>
+              <button 
+                @click="formStore.redo()" 
+                class="p-1 text-xs rounded text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                :disabled="formStore.currentHistoryIndex >= formStore.actionHistory.length - 1"
+                title="Redo"
+              >
+                <Icon name="material-symbols:redo" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <FormBuilderHistory />
         </div>
       </div>
 
@@ -179,6 +239,7 @@
 
 <script setup>
 import { useFormBuilderStore } from "~/stores/formBuilder";
+import FormBuilderHistory from "~/components/FormBuilderHistory.vue";
 
 definePageMeta({
   title: "Form Builder",
@@ -197,6 +258,7 @@ const showUnsavedChangesModal = ref(false);
 const pendingNavigation = ref(null);
 const navigationTarget = ref(null);
 const navigationConfirmed = ref(false);
+const leftSidebarTab = ref('components');
 
 // Computed property for form name with getter and setter
 const formName = computed({
@@ -214,11 +276,15 @@ onMounted(() => {
   
   // Add the beforeunload event listener
   window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  // Setup keyboard shortcuts
+  window.addEventListener('keydown', handleKeyboardShortcuts);
 });
 
 onUnmounted(() => {
-  // Remove the beforeunload event listener
+  // Remove event listeners
   window.removeEventListener('beforeunload', handleBeforeUnload);
+  window.removeEventListener('keydown', handleKeyboardShortcuts);
 });
 
 // Show warning if there are unsaved changes
@@ -227,6 +293,26 @@ const handleBeforeUnload = (event) => {
     event.preventDefault();
     event.returnValue = '';
     return '';
+  }
+};
+
+// Handle keyboard shortcuts
+const handleKeyboardShortcuts = (event) => {
+  // Undo: Ctrl+Z
+  if (event.ctrlKey && event.key === 'z' && !event.shiftKey) {
+    event.preventDefault();
+    if (formStore.canUndo) {
+      formStore.undo();
+    }
+  }
+  
+  // Redo: Ctrl+Y or Ctrl+Shift+Z
+  if ((event.ctrlKey && event.key === 'y') || 
+      (event.ctrlKey && event.shiftKey && event.key === 'z')) {
+    event.preventDefault();
+    if (formStore.currentHistoryIndex < formStore.actionHistory.length - 1) {
+      formStore.redo();
+    }
   }
 };
 
@@ -273,10 +359,12 @@ const handleAddComponent = (component) => {
 };
 
 const handleSelectComponent = (component) => {
+  if (!component || !component.id) return;
   formStore.selectComponent(component.id);
 };
 
 const handleUpdateComponent = (updatedComponent) => {
+  if (!updatedComponent || !updatedComponent.id) return;
   formStore.updateComponent(updatedComponent);
 };
 
@@ -285,6 +373,7 @@ const handleMoveComponent = ({ oldIndex, newIndex }) => {
 };
 
 const handleDeleteComponent = (id) => {
+  if (!id) return;
   formStore.deleteComponent(id);
 };
 

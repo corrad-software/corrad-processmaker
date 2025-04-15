@@ -10,7 +10,7 @@
         <!-- Tab Navigation -->
         <div class="custom-tab-nav">
           <button 
-            v-for="tab in tabs" 
+            v-for="tab in availableTabs" 
             :key="tab.id"
             @click="activeTab = tab.id"
             class="custom-tab-button"
@@ -187,52 +187,101 @@
           </div>
           
           <!-- Validation Tab -->
-          <div v-if="activeTab === 'validation'" class="space-y-3">
-            <div class="mb-3">
-              <div class="flex justify-between items-center mb-1">
-                <label class="text-sm font-medium">Available Validations</label>
+          <div v-if="activeTab === 'validation'" class="space-y-4">
+            <!-- Validation tab -->
+            <FormKit v-if="showValidationTab" type="group" id="validation-section">
+              <div class="flex flex-col mt-4 border p-4 rounded-md">
+                <h3 class="font-medium text-gray-700 mb-4">Common Validations</h3>
+                
+                <!-- Required field -->
+                <div class="mb-3 flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="validation-required" 
+                    v-model="isRequired" 
+                    class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  >
+                  <label for="validation-required" class="text-sm text-gray-700">Required Field</label>
+                </div>
+                
+                <!-- Email format validation -->
+                <div class="mb-3 flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="validation-email" 
+                    v-model="isEmail" 
+                    class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  >
+                  <label for="validation-email" class="text-sm text-gray-700">Email Format</label>
+                </div>
+                
+                <!-- URL format validation -->
+                <div class="mb-3 flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="validation-url" 
+                    v-model="isUrl" 
+                    class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  >
+                  <label for="validation-url" class="text-sm text-gray-700">URL Format</label>
+                </div>
+                
+                <!-- Numbers only validation -->
+                <div class="mb-3 flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="validation-number" 
+                    v-model="isNumber" 
+                    class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  >
+                  <label for="validation-number" class="text-sm text-gray-700">Numbers Only</label>
+                </div>
+                
+                <!-- Min/Max validations -->
+                <div class="grid grid-cols-2 gap-4 mt-2">
+                  <!-- Min value/length -->
+                  <div class="mb-3">
+                    <label for="validation-min" class="block text-sm text-gray-700 mb-1">Minimum Value/Length</label>
+                    <input 
+                      type="number" 
+                      id="validation-min" 
+                      v-model="minValue" 
+                      class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter minimum"
+                    >
+                  </div>
+                  
+                  <!-- Max value/length -->
+                  <div class="mb-3">
+                    <label for="validation-max" class="block text-sm text-gray-700 mb-1">Maximum Value/Length</label>
+                    <input 
+                      type="number" 
+                      id="validation-max" 
+                      v-model="maxValue" 
+                      class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter maximum"
+                    >
+                  </div>
+                </div>
               </div>
-              <div class="flex flex-wrap gap-1">
-                <button 
-                  v-for="validator in availableValidators" 
-                  :key="validator.name"
-                  @click="addValidator(validator.name)"
-                  class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded flex items-center"
-                >
-                  <Icon name="material-symbols:add-circle-outline" class="w-3 h-3 mr-0.5 text-blue-600" />
-                  {{ validator.label }}
-                </button>
+              
+              <!-- Current validation rules (read-only) -->
+              <div class="mt-4">
+                <label for="current-validation-rules" class="block text-sm font-medium text-gray-700 mb-1">
+                  Current Validation Rules
+                </label>
+                <textarea 
+                  id="current-validation-rules" 
+                  v-model="configModel.validation" 
+                  readonly
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50"
+                  rows="3"
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-1">
+                  These are the validation rules that will be applied to this field.
+                </p>
               </div>
-            </div>
-            
-            <FormKit
-              type="textarea"
-              label="Validation Rules"
-              name="validation"
-              v-model="configModel.validation"
-              help="Comma-separated validation rules"
-              placeholder="e.g., required,email,min:5"
-            />
-            
-            <div class="text-xs text-gray-600 mt-2 bg-gray-50 p-2 rounded-md">
-              <div class="font-medium mb-1 text-gray-700">Common Validations:</div>
-              <div class="grid grid-cols-2 gap-x-2 gap-y-1">
-                <div><code>required</code> - Required field</div>
-                <div><code>email</code> - Valid email</div>
-                <div><code>min:8</code> - Min length</div>
-                <div><code>max:100</code> - Max length</div>
-                <div><code>url</code> - Valid URL</div>
-                <div><code>date</code> - Valid date</div>
-              </div>
-            </div>
-            
-            <FormKit
-              type="checkbox"
-              label="Required Field"
-              name="isRequired"
-              v-model="isRequired"
-              help="Make this field required for form submission"
-            />
+            </FormKit>
           </div>
           
           <!-- Advanced Tab -->
@@ -278,30 +327,38 @@ const tabs = [
   { id: 'advanced', label: 'Advanced' }
 ];
 
-// Set active tab
+// State variables
 const activeTab = ref('basic');
 
 // Create a deep copy of props to prevent direct mutation
-const configModel = ref(JSON.parse(JSON.stringify(props.component.props || {})));
+const configModel = ref(JSON.parse(JSON.stringify(props.component?.props || {})));
 
-// Watch for component changes from parent, but with a deep equality check to avoid loops
+// Watch for component changes from parent, with a better approach to handle updates
 watch(() => props.component, (newComponent) => {
-  // Deep compare objects before updating to prevent unnecessary reactivity
-  if (JSON.stringify(configModel.value) !== JSON.stringify(newComponent.props)) {
-    configModel.value = JSON.parse(JSON.stringify(newComponent.props || {}));
-  }
-}, { deep: true });
+  if (!newComponent) return;
+  
+  // Make a fresh copy to ensure reactivity
+  configModel.value = JSON.parse(JSON.stringify(newComponent.props || {}));
+}, { immediate: true, deep: true });
 
 // Watch for changes in the configuration and emit updates using a debounce
 const debouncedEmit = useDebounceFn(() => {
+  if (!props.component) return;
+  
+  // Create a new component object with updated props
   const updatedComponent = {
     ...props.component,
+    id: props.component.id, // Ensure ID is preserved
     props: JSON.parse(JSON.stringify(configModel.value))
   };
-  emit('update-component', updatedComponent);
+  
+  // Only emit if there are actual changes
+  if (JSON.stringify(updatedComponent.props) !== JSON.stringify(props.component.props)) {
+    emit('update-component', updatedComponent);
+  }
 }, 100);
 
-// Use debounced emit to avoid feedback loops
+// Watch for changes to configModel and emit updates
 watch(configModel, () => {
   debouncedEmit();
 }, { deep: true });
@@ -313,21 +370,104 @@ const isRequired = computed({
     return validation.includes('required');
   },
   set: (value) => {
-    let validation = configModel.value.validation || '';
-    
-    // Remove existing required validation if present
-    validation = validation.split(',')
-      .filter(rule => rule.trim() !== 'required')
-      .join(',');
-    
-    // Add required validation if checked
-    if (value) {
-      validation = 'required' + (validation ? ',' + validation : '');
-    }
-    
-    configModel.value.validation = validation;
+    updateValidation('required', value);
   }
 });
+
+// Email validation
+const isEmail = computed({
+  get: () => {
+    const validation = configModel.value.validation || '';
+    return validation.includes('email');
+  },
+  set: (value) => {
+    updateValidation('email', value);
+  }
+});
+
+// URL validation
+const isUrl = computed({
+  get: () => {
+    const validation = configModel.value.validation || '';
+    return validation.includes('url');
+  },
+  set: (value) => {
+    updateValidation('url', value);
+  }
+});
+
+// Number validation
+const isNumber = computed({
+  get: () => {
+    const validation = configModel.value.validation || '';
+    return validation.includes('number');
+  },
+  set: (value) => {
+    updateValidation('number', value);
+  }
+});
+
+// Min value/length
+const minValue = computed({
+  get: () => {
+    const validation = configModel.value.validation || '';
+    const minMatch = validation.match(/min:(\d+)/);
+    return minMatch ? parseInt(minMatch[1]) : null;
+  },
+  set: (value) => {
+    if (value === null || value === '') {
+      // Remove min validation if empty
+      updateValidation('min', false);
+    } else {
+      // Update with new value
+      updateValidation('min', true, value);
+    }
+  }
+});
+
+// Max value/length
+const maxValue = computed({
+  get: () => {
+    const validation = configModel.value.validation || '';
+    const maxMatch = validation.match(/max:(\d+)/);
+    return maxMatch ? parseInt(maxMatch[1]) : null;
+  },
+  set: (value) => {
+    if (value === null || value === '') {
+      // Remove max validation if empty
+      updateValidation('max', false);
+    } else {
+      // Update with new value
+      updateValidation('max', true, value);
+    }
+  }
+});
+
+// Helper function to update validation string
+const updateValidation = (rule, isActive, value = null) => {
+  // Parse current validation into array
+  let validationRules = (configModel.value.validation || '')
+    .split(',')
+    .map(r => r.trim())
+    .filter(r => r !== '');
+  
+  // Remove existing instance of the rule (including any with parameters)
+  validationRules = validationRules.filter(r => !r.startsWith(`${rule}:`) && r !== rule);
+  
+  // Add rule if it should be active
+  if (isActive) {
+    if (value !== null) {
+      // For rules with parameters like min:5
+      validationRules.push(`${rule}:${value}`);
+    } else {
+      // For simple rules like required
+      validationRules.push(rule);
+    }
+  }
+  
+  // Update the validation string
+  configModel.value.validation = validationRules.join(',');
+};
 
 // Define available validators that can be added
 const availableValidators = [
@@ -442,6 +582,28 @@ const getComponentWidthPercent = () => {
   const match = widthStr.match(/(\d+)%/);
   return match ? parseInt(match[1]) : 100;
 };
+
+// Computed property to determine if validation tab should be shown
+const showValidationTab = computed(() => {
+  const nonValidationComponents = ['section', 'page', 'wizard', 'checkbox', 'repeater', 'group'];
+  return !nonValidationComponents.includes(props.component.type);
+});
+
+const availableTabs = computed(() => {
+  return [
+    { id: 'basic', label: 'Basic' },
+    ...(showValidationTab.value ? [{ id: 'validation', label: 'Validation' }] : []),
+    { id: 'advanced', label: 'Advanced' }
+  ];
+});
+
+// If activeTab is set to 'validation' but component type doesn't support validation,
+// automatically switch to 'basic' tab
+watch(showValidationTab, (showValidation) => {
+  if (!showValidation && activeTab.value === 'validation') {
+    activeTab.value = 'basic';
+  }
+}, { immediate: true });
 
 const setComponentWidth = (widthPercent) => {
   // Convert precise percentages to exact grid column spans

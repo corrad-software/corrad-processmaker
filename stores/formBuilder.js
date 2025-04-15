@@ -9,7 +9,10 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     formDescription: '',
     isDraggingOver: false,
     savedForms: [],
-    hasUnsavedChanges: false
+    hasUnsavedChanges: false,
+    actionHistory: [],
+    currentHistoryIndex: -1,
+    maxHistoryLength: 30 // Maximum number of history entries to keep
   }),
   
   getters: {
@@ -30,17 +33,134 @@ export const useFormBuilderStore = defineStore('formBuilder', {
         })),
         createdAt: new Date().toISOString()
       };
+    },
+    
+    canUndo: (state) => {
+      return state.currentHistoryIndex > 0;
+    },
+    
+    historyEntries: (state) => {
+      return state.actionHistory.map((entry, index) => ({
+        ...entry,
+        isCurrent: index === state.currentHistoryIndex
+      }));
     }
   },
   
   actions: {
+    // History Management
+    recordHistory(action, details = {}) {
+      // Remove any future history entries if we're not at the end
+      if (this.currentHistoryIndex < this.actionHistory.length - 1) {
+        this.actionHistory = this.actionHistory.slice(0, this.currentHistoryIndex + 1);
+      }
+      
+      // Ensure we have a deep clone of the current state
+      // Make sure to preserve the exact component IDs
+      const currentComponents = this.formComponents.map(component => {
+        const copy = JSON.parse(JSON.stringify(component));
+        
+        // Ensure the ID is preserved exactly
+        if (component.id) {
+          copy.id = component.id;
+        }
+        
+        return copy;
+      });
+      
+      // Create a new history entry
+      const historyEntry = {
+        id: uuidv4(),
+        action,
+        details,
+        formState: {
+          components: currentComponents,
+          name: this.formName,
+          description: this.formDescription,
+          selectedComponentId: this.selectedComponentId
+        },
+        timestamp: new Date()
+      };
+      
+      // Add to history and update index
+      this.actionHistory.push(historyEntry);
+      this.currentHistoryIndex = this.actionHistory.length - 1;
+      
+      // Limit history length
+      if (this.actionHistory.length > this.maxHistoryLength) {
+        this.actionHistory = this.actionHistory.slice(this.actionHistory.length - this.maxHistoryLength);
+        this.currentHistoryIndex = this.actionHistory.length - 1;
+      }
+    },
+    
+    // Helper method to restore state from a history entry
+    restoreStateFromHistory(historyState) {
+      // Completely replace components with deep clone
+      if (Array.isArray(historyState.components)) {
+        // Make a deep clone to ensure we break all references
+        this.formComponents = historyState.components.map(component => ({
+          ...JSON.parse(JSON.stringify(component)),
+          id: component.id // Preserve the exact ID
+        }));
+      } else {
+        this.formComponents = [];
+      }
+      
+      // Update other state properties
+      this.formName = historyState.name || 'New Form';
+      this.formDescription = historyState.description || '';
+      
+      // Make sure the selectedComponentId references a valid component
+      this.selectedComponentId = historyState.selectedComponentId || null;
+      if (this.selectedComponentId) {
+        // Verify the selected component exists in the restored state
+        const selectedExists = this.formComponents.some(c => c.id === this.selectedComponentId);
+        if (!selectedExists) {
+          this.selectedComponentId = this.formComponents.length > 0 ? this.formComponents[0].id : null;
+        }
+      }
+    },
+    
+    undo() {
+      if (!this.canUndo) return;
+      
+      // Get current and previous entries
+      const currentEntry = this.actionHistory[this.currentHistoryIndex];
+      this.currentHistoryIndex--;
+      const previousEntry = this.actionHistory[this.currentHistoryIndex];
+      
+      // Restore the state from previous entry
+      this.restoreStateFromHistory(previousEntry.formState);
+      
+      // Mark as having unsaved changes
+      this.hasUnsavedChanges = true;
+    },
+    
+    redo() {
+      if (this.currentHistoryIndex >= this.actionHistory.length - 1) return;
+      
+      // Move forward one step in history
+      this.currentHistoryIndex++;
+      const nextEntry = this.actionHistory[this.currentHistoryIndex];
+      
+      // Restore the state from next entry
+      this.restoreStateFromHistory(nextEntry.formState);
+      
+      // Mark as having unsaved changes
+      this.hasUnsavedChanges = true;
+    },
+    
     addComponent(component) {
+      // Store the state before the change for history
+      const beforeComponents = [...this.formComponents];
+      
       // Find optimal grid placement for the new component
       const { gridColumn, rowIndex, width } = this.findOptimalGridPlacement();
       
+      const newComponentId = uuidv4();
       const newComponent = {
         ...component,
-        id: uuidv4(),
+        id: newComponentId,
         props: {
           ...component.defaultProps,
           name: `${component.type}_${this.formComponents.length + 1}`,
@@ -51,8 +171,21 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       };
       
       this.formComponents.push(newComponent);
-      this.selectComponent(newComponent.id);
+      // Explicitly select the new component
+      this.selectedComponentId = newComponentId;
       this.hasUnsavedChanges = true;
+      
+      // Record the action in history
+      this.recordHistory('add_component', {
+        componentType: component.type,
+        componentId: newComponentId,
+        componentName: newComponent.props.label,
+        beforeState: {
+          components: beforeComponents,
+          selectedComponentId: null // Was null before adding
+        },
+        newComponent: newComponent
+      });
     },
     
     // Find optimal placement for a new component in the grid
@@ -137,32 +270,82 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     },
     
     selectComponent(id) {
+      // Don't record history for selection changes
       this.selectedComponentId = id;
     },
     
     updateComponent(updatedComponent) {
       const index = this.formComponents.findIndex(c => c.id === updatedComponent.id);
+      
       if (index !== -1) {
+        // Store old component for history
+        const oldComponent = { ...this.formComponents[index] };
+        const beforeComponents = [...this.formComponents];
+        
+        // Update the component
         this.formComponents[index] = JSON.parse(JSON.stringify(updatedComponent));
         this.hasUnsavedChanges = true;
+        
+        // Record in history
+        this.recordHistory('update_component', {
+          componentId: updatedComponent.id,
+          componentType: updatedComponent.type,
+          componentName: updatedComponent.props.label,
+          oldComponent: oldComponent,
+          newComponent: this.formComponents[index],
+          beforeState: {
+            components: beforeComponents,
+            selectedComponentId: this.selectedComponentId
+          }
+        });
       }
     },
     
     moveComponent({ oldIndex, newIndex }) {
       if (oldIndex !== newIndex) {
-        const component = this.formComponents.splice(oldIndex, 1)[0];
-        this.formComponents.splice(newIndex, 0, component);
+        // Record before state
+        const beforeComponents = [...this.formComponents];
+        const componentToMove = { ...this.formComponents[oldIndex] };
+        const beforeOrder = this.formComponents.map(c => c.id);
+        
+        // Perform the move
+        this.formComponents.splice(oldIndex, 1);
+        this.formComponents.splice(newIndex, 0, componentToMove);
         
         // Optimize layout after reordering
         this.optimizeGridLayout();
         this.hasUnsavedChanges = true;
+        
+        // Record in history
+        this.recordHistory('move_component', {
+          componentId: componentToMove.id,
+          componentName: componentToMove.props.label,
+          oldIndex,
+          newIndex,
+          beforeOrder,
+          afterOrder: this.formComponents.map(c => c.id),
+          beforeState: {
+            components: beforeComponents,
+            selectedComponentId: this.selectedComponentId
+          }
+        });
       }
     },
     
     deleteComponent(id) {
       const index = this.formComponents.findIndex(c => c.id === id);
+      
       if (index !== -1) {
+        // Store the component for history
+        const deletedComponent = { ...this.formComponents[index] };
+        
+        // Store the current state before deletion for history
+        const beforeComponents = [...this.formComponents];
+        
+        // Remove the component
         this.formComponents.splice(index, 1);
+        
+        // Update selection if the deleted component was selected
         if (this.selectedComponentId === id) {
           this.selectedComponentId = null;
           
@@ -177,11 +360,58 @@ export const useFormBuilderStore = defineStore('formBuilder', {
         // Optimize layout after deletion
         this.optimizeGridLayout();
         this.hasUnsavedChanges = true;
+        
+        // Record in history
+        this.recordHistory('delete_component', {
+          componentId: id,
+          componentType: deletedComponent.type,
+          componentName: deletedComponent.props.label,
+          componentIndex: index,
+          deletedComponent: deletedComponent,
+          beforeState: {
+            components: beforeComponents,
+            selectedComponentId: this.selectedComponentId
+          }
+        });
       }
     },
     
     setDraggingOver(isDragging) {
       this.isDraggingOver = isDragging;
+    },
+    
+    setFormName(name) {
+      const oldName = this.formName;
+      
+      if (this.formName !== name) {
+        this.formName = name;
+        this.hasUnsavedChanges = true;
+        
+        // Record in history
+        this.recordHistory('change_form_name', {
+          oldName,
+          newName: name
+        });
+      }
+    },
+    
+    setFormDescription(description) {
+      const oldDescription = this.formDescription;
+      
+      if (this.formDescription !== description) {
+        this.formDescription = description;
+        this.hasUnsavedChanges = true;
+        
+        // Record in history
+        this.recordHistory('change_form_description', {
+          oldDescription,
+          newDescription: description
+        });
+      }
+    },
+    
+    resetUnsavedChanges() {
+      this.hasUnsavedChanges = false;
     },
     
     saveForm() {
@@ -200,7 +430,37 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       
       this.hasUnsavedChanges = false;
       
+      // Record in history
+      this.recordHistory('save_form', {
+        formName: this.formName,
+        formDescription: this.formDescription,
+        componentCount: this.formComponents.length
+      });
+      
       return formData;
+    },
+    
+    clearForm() {
+      // Capture the current state before clearing
+      const oldComponents = [...this.formComponents];
+      const oldName = this.formName;
+      const oldDescription = this.formDescription;
+      
+      // Clear form data
+      this.formComponents = [];
+      this.selectedComponentId = null;
+      this.formName = 'New Form';
+      this.formDescription = '';
+      this.hasUnsavedChanges = false;
+      
+      // Clear history when starting a new form and add initial state
+      this.actionHistory = [];
+      this.currentHistoryIndex = -1;
+      
+      // Record the initial empty state
+      this.recordHistory('new_form', {
+        message: 'Created a new empty form'
+      });
     },
     
     loadForm(formId) {
@@ -208,40 +468,28 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       const form = savedForms.find(f => f.id === formId);
       
       if (form) {
+        // Clear existing data
+        this.formComponents = [];
+        this.selectedComponentId = null;
+        
+        // Set form data
         this.formName = form.name;
         this.formDescription = form.description;
         this.formComponents = form.components.map(c => ({
           ...c,
           id: uuidv4()
         }));
-        this.selectedComponentId = null;
+        
+        // Clear and initialize history when loading a form
+        this.actionHistory = [];
+        this.currentHistoryIndex = -1;
+        
+        // Record initial state in history
+        this.recordHistory('load_form', {
+          formName: form.name,
+          formId: formId
+        });
       }
-    },
-    
-    setFormName(name) {
-      if (this.formName !== name) {
-        this.formName = name;
-        this.hasUnsavedChanges = true;
-      }
-    },
-    
-    setFormDescription(description) {
-      if (this.formDescription !== description) {
-        this.formDescription = description;
-        this.hasUnsavedChanges = true;
-      }
-    },
-    
-    resetUnsavedChanges() {
-      this.hasUnsavedChanges = false;
-    },
-    
-    clearForm() {
-      this.formComponents = [];
-      this.selectedComponentId = null;
-      this.formName = 'New Form';
-      this.formDescription = '';
-      this.hasUnsavedChanges = false;
     },
     
     loadSavedForms() {
