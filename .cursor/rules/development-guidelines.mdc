@@ -1,6 +1,6 @@
 ---
 description: 
-globs: *.vue,*.js
+globs: *.vue,server/**/*.js
 alwaysApply: false
 ---
 # Development Guidelines

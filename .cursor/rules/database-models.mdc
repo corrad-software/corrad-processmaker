@@ -1,6 +1,6 @@
 ---
 description: 
-globs: 
+globs: server/**/*.js
 alwaysApply: false
 ---
 # Database Models
