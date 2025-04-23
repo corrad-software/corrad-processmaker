@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Overview
+
+This project is a Nuxt 3 application called "Corrad" that integrates with ProcessMaker.
+
+## Core Technologies
+- **Nuxt 3**: Vue.js framework for server-side rendering and static site generation
+- **Vue 3**: Progressive JavaScript framework for building user interfaces
+- **NitroJS**: Server engine that powers Nuxt 3
+- **Prisma**: Next-generation ORM for Node.js and TypeScript
+- **FormKit**: Form building library for Vue.js
+- **Pinia**: State management for Vue.js applications
+
+## Main Entry Points
+- [app.vue](mdc:app.vue) - The main application component
+- [nuxt.config.js](mdc:nuxt.config.js) - Nuxt configuration
+- [formkit.config.js](mdc:formkit.config.js) - FormKit configuration
+

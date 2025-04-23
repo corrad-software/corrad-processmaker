@@ -1,0 +1,30 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Database Models
+
+The project uses Prisma ORM with the following key models defined in [schema.prisma](mdc:prisma/schema.prisma):
+
+## Core Models
+- **User**: User management with authentication
+  - Fields: userID, userUsername, userPassword, userFullName, userEmail, userPhone, userStatus
+  - Relationships: audit (one-to-many), userrole (one-to-many)
+
+- **Role**: Role-based access control
+  - Fields: roleID, roleName, roleDescription, roleStatus
+  - Relationships: userrole (one-to-many)
+
+- **UserRole**: Join table connecting users and roles
+  - Fields: userRoleID, userRoleUserID, userRoleRoleID, userRoleCreatedDate
+  - Relationships: user (many-to-one), role (many-to-one)
+
+## Supporting Models
+- **Audit**: System for tracking user actions
+  - Fields: auditID, auditIP, auditURL, auditURLMethod, auditURLPayload, auditAction, auditDetails, auditUserID, auditUsername
+  - Relationships: user (many-to-one)
+
+- **Lookup**: Reference data for dropdown options
+  - Fields: lookupID, lookupOrder, lookupTitle, lookupRefCode, lookupValue, lookupType, lookupStatus
+

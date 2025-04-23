@@ -1,0 +1,37 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Routing
+
+The project uses Nuxt 3's file-based routing system.
+
+## Main Routes
+
+- **[/pages/index.vue](mdc:pages/index.vue)**: Homepage
+- **Authentication**:
+  - **[/pages/login](mdc:pages/login)**: User login
+  - **[/pages/register](mdc:pages/register)**: New user registration
+  - **[/pages/forgot-password](mdc:pages/forgot-password)**: Password reset request
+  - **[/pages/reset-password](mdc:pages/reset-password)**: Password reset
+  - **[/pages/logout](mdc:pages/logout)**: User logout
+- **Application**:
+  - **[/pages/dashboard](mdc:pages/dashboard)**: User dashboard
+  - **[/pages/form-builder](mdc:pages/form-builder)**: Form building interface
+  - **[/pages/devtool](mdc:pages/devtool)**: Developer tools
+
+## Route Guards
+
+Authentication is managed through middleware:
+- Check the [middleware](mdc:middleware) directory for route protection
+- Authenticated routes are guarded from unauthorized access
+- User roles determine access to specific features
+
+## Layouts
+
+Routes can use different layouts:
+- Default layout with navigation sidebar
+- Empty layout for authentication pages
+- Custom layouts for specific features
+

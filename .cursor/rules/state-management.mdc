@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# State Management
+
+The project uses Pinia for state management. Key stores include:
+
+## Stores
+
+- **[formBuilder.js](mdc:stores/formBuilder.js)**: Manages state for the form builder feature
+  - Handles form components, properties, and history
+  - Controls drag-and-drop operations
+  - Manages form validation and submission
+
+- **[user.js](mdc:stores/user.js)**: Manages user authentication and profile
+  - Stores user information
+  - Handles login/logout operations
+  - Manages user permissions
+
+- **[theme.js](mdc:stores/theme.js)**: Controls application theming
+  - Manages light/dark mode
+  - Stores user theme preferences
+
+- **[layout.js](mdc:stores/layout.js)**: Controls application layout
+  - Manages sidebar state
+  - Controls responsive layout changes
+
+## Usage Guidelines
+- Use Pinia stores for shared state that needs to be accessed across components
+- Keep component-specific state within components using Vue's Composition API
+- For form state, prefer FormKit's built-in state management
+- Use persisted state (localStorage) for user preferences
+

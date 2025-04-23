@@ -1,0 +1,23 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Structure
+
+## Directory Organization
+- **[/components](mdc:components)**: Contains all Rose UI components (prefixed with `rs-`) and FormKit custom components
+- **[/layouts](mdc:layouts)**: Page layouts (default and empty)
+- **[/pages](mdc:pages)**: Application routes following Nuxt's file-based routing
+- **[/server](mdc:server)**: Backend API endpoints and middleware
+- **[/prisma](mdc:prisma)**: Database schema and migrations
+- **[/stores](mdc:stores)**: Pinia stores for state management
+- **[/assets](mdc:assets)**: Static assets like SCSS and images
+- **[/plugins](mdc:plugins)**: Vue plugins and Nuxt modules
+
+## Key Configuration Files
+- **[nuxt.config.js](mdc:nuxt.config.js)**: Main Nuxt configuration
+- **[formkit.config.js](mdc:formkit.config.js)**: FormKit configuration
+- **[tailwind.config.js](mdc:tailwind.config.js)**: Tailwind CSS configuration
+- **[package.json](mdc:package.json)**: Project dependencies
+

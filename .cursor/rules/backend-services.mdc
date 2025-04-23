@@ -1,0 +1,40 @@
+---
+description: 
+globs: *.js
+alwaysApply: false
+---
+# Backend Services
+
+The project uses Nuxt's server directory for backend API endpoints and services.
+
+## API Endpoints
+
+Check the [server](mdc:server) directory for API routes:
+- Authentication routes (login, register, password reset)
+- User management
+- Form builder APIs
+- Data access endpoints
+
+## Database Access
+
+The application uses Prisma ORM to interact with the database:
+- Models defined in [schema.prisma](mdc:prisma/schema.prisma)
+- Database operations through Prisma Client
+- Migrations managed through Prisma Migration
+
+## Authentication
+
+The authentication system includes:
+- JWT-based authentication
+- Password hashing and verification
+- Role-based access control
+- Session management
+
+## Middleware
+
+Server middleware handles:
+- Request validation
+- Authentication verification
+- Error handling
+- Response formatting
+

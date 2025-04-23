@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Form Handling
+
+## FormKit Integration
+The project uses FormKit for form handling with configuration in [formkit.config.js](mdc:formkit.config.js).
+
+### FormKit Plugins
+- **Floating Labels**: Creates floating labels for form inputs
+- **Multi-Step**: Supports multi-step form workflows
+- **Auto Animate**: Adds animations to form elements
+- **Auto Height Textarea**: Automatically adjusts textarea height
+- **Local Storage**: Persists form state in localStorage
+
+### Custom FormKit Components
+- **[OneTimePassword.vue](mdc:components/formkit/OneTimePassword.vue)**: For OTP verification
+- **[TextMask.vue](mdc:components/formkit/TextMask.vue)**: For input masking
+- **[DateTimePicker.vue](mdc:components/formkit/DateTimePicker.vue)**: Date and time selection
+- **[FileDropzone.vue](mdc:components/formkit/FileDropzone.vue)**: File uploads
+
+## Form Builder
+The project includes a form builder feature for creating dynamic forms:
+
+- **[FormBuilderCanvas.vue](mdc:components/FormBuilderCanvas.vue)**: The canvas for form building
+- **[FormBuilderComponents.vue](mdc:components/FormBuilderComponents.vue)**: Component palette
+- **[FormBuilderConfiguration.vue](mdc:components/FormBuilderConfiguration.vue)**: Form properties
+- **[formBuilder.js](mdc:stores/formBuilder.js)**: Form builder state management
+

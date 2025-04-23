@@ -1,0 +1,41 @@
+---
+description: 
+globs: *.vue
+alwaysApply: false
+---
+# Components
+
+## Rose UI Components
+The project uses a custom UI library with components prefixed with `rs-`:
+
+- **[RsAlert.vue](mdc:components/RsAlert.vue)**: Alert messages
+- **[RsBadge.vue](mdc:components/RsBadge.vue)**: Badge indicators
+- **[RsButton.vue](mdc:components/RsButton.vue)**: Button component
+- **[RsCard.vue](mdc:components/RsCard.vue)**: Card container
+- **[RsCollapse.vue](mdc:components/RsCollapse.vue)**: Collapsible elements
+- **[RsDropdown.vue](mdc:components/RsDropdown.vue)**: Dropdown menus
+- **[RsFieldset.vue](mdc:components/RsFieldset.vue)**: Form fieldsets
+- **[RsModal.vue](mdc:components/RsModal.vue)**: Modal dialogs
+- **[RsProgressBar.vue](mdc:components/RsProgressBar.vue)**: Progress indicators
+- **[RsTab.vue](mdc:components/RsTab.vue)**: Tab navigation
+- **[RsTable.vue](mdc:components/RsTable.vue)**: Data tables
+- **[RsWizard.vue](mdc:components/RsWizard.vue)**: Step-by-step wizards
+- **[RSCalendar.vue](mdc:components/RSCalendar.vue)**: Calendar component
+- **[RsCodeMirror.vue](mdc:components/RsCodeMirror.vue)**: Code editor
+
+## FormKit Components
+Custom FormKit components for enhanced form functionality:
+
+- **[OneTimePassword.vue](mdc:components/formkit/OneTimePassword.vue)**: OTP input
+- **[TextMask.vue](mdc:components/formkit/TextMask.vue)**: Masked text input
+- **[DateTimePicker.vue](mdc:components/formkit/DateTimePicker.vue)**: Date and time picker
+- **[FileDropzone.vue](mdc:components/formkit/FileDropzone.vue)**: File upload dropzone
+
+## Form Builder Components
+Components used for the Form Builder feature:
+
+- **[FormBuilderCanvas.vue](mdc:components/FormBuilderCanvas.vue)**: Canvas for drag-and-drop form building
+- **[FormBuilderComponents.vue](mdc:components/FormBuilderComponents.vue)**: Available form components
+- **[FormBuilderConfiguration.vue](mdc:components/FormBuilderConfiguration.vue)**: Form configuration panel
+- **[FormBuilderHistory.vue](mdc:components/FormBuilderHistory.vue)**: Form edit history
+
