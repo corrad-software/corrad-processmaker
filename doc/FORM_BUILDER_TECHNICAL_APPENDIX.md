@@ -1,46 +1,140 @@
 # Form Builder Technical Appendix
 
-This document provides technical details and code snippets for the form builder implementation.
+This document provides technical implementation details for developers working with the Form Builder system.
 
-## Table of Contents
+> For user documentation and usage guidelines, please refer to [Form Builder Documentation](FORM_BUILDER_DOCUMENTATION.md)
 
-1. [Component Structure](#component-structure)
-2. [State Management](#state-management)
-3. [Drag and Drop Implementation](#drag-and-drop-implementation)
-4. [FormKit Integration](#formkit-integration)
-5. [Validation System](#validation-system)
-6. [Icons and UI Elements](#icons-and-ui-elements)
-7. [Responsive Design](#responsive-design)
+## Architecture Overview
 
-## Component Structure
+### Technology Stack
+- **Frontend Framework**: Nuxt 3 / Vue 3
+- **State Management**: Pinia
+- **Form Library**: FormKit
+- **UI Framework**: Tailwind CSS
+- **Icons**: Material Design Icons
+- **Drag & Drop**: vuedraggable
 
-The form builder is built with a modular component structure:
+### Key Dependencies
+```json
+{
+  "@formkit/nuxt": "^1.0.0",
+  "@pinia/nuxt": "^0.4.11",
+  "vuedraggable": "^4.1.0",
+  "@vueuse/core": "^10.1.2",
+  "tailwindcss": "^3.3.2"
+}
+```
+
+## Project Structure
 
 ```
 pages/
 ├── form-builder/
-│   ├── index.vue          # Main form builder page
-│   └── manage.vue         # Form management page
+│   ├── index.vue          # Main builder interface
+│   └── manage.vue         # Form management
 components/
-├── FormBuilderComponents.vue  # Left panel components
-├── FormBuilderCanvas.vue      # Middle panel canvas
-├── FormBuilderConfiguration.vue # Right panel configuration
-└── ComponentPreview.vue       # Component rendering
+├── FormBuilderComponents.vue  # Component library
+├── FormBuilderCanvas.vue      # Form canvas
+├── FormBuilderConfiguration.vue # Component config
+└── ComponentPreview.vue       # Preview renderer
 stores/
 └── formBuilder.js        # State management
 composables/
 └── useToast.js          # Toast notifications
+types/
+└── form-builder.d.ts    # TypeScript definitions
+```
+
+## Component Architecture
+
+### Core Components
+
+1. **FormBuilderComponents.vue**
+```vue
+<script setup>
+const emit = defineEmits(['add-component']);
+const searchQuery = ref('');
+
+// Component categories and definitions
+const availableComponents = [
+  {
+    type: 'text',
+    name: 'Text Field',
+    category: 'Basic Inputs',
+    icon: 'material-symbols:text-fields',
+    defaultProps: {
+      type: 'text',
+      placeholder: '',
+      validation: ''
+    }
+  },
+  // ... other components
+];
+
+// Search and filtering logic
+const filteredComponents = computed(() => {
+  if (!searchQuery.value) return availableComponents;
+  return availableComponents.filter(component => 
+    component.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
+// Drag handlers
+const onDragStart = (event, component) => {
+  event.dataTransfer.effectAllowed = 'copy';
+  event.dataTransfer.setData('component', JSON.stringify(component));
+};
+</script>
+```
+
+2. **FormBuilderCanvas.vue**
+```vue
+<script setup>
+const props = defineProps({
+  components: {
+    type: Array,
+    required: true
+  }
+});
+
+// Drag and drop configuration
+const dragOptions = {
+  animation: 300,
+  group: 'form-components',
+  ghostClass: 'ghost',
+  handle: '.drag-handle'
+};
+
+// Component selection
+const selectComponent = (id) => {
+  formStore.selectComponent(id);
+};
+
+// Grid system implementation
+const calculateGridPosition = (index) => {
+  return {
+    gridColumn: `span ${component.width || 12} / span ${component.width || 12}`,
+    order: index
+  };
+};
+</script>
 ```
 
 ## State Management
 
-### Pinia Store (stores/formBuilder.js)
+### Pinia Store Structure
+```typescript
+interface FormState {
+  formComponents: FormComponent[];
+  selectedComponentId: string | null;
+  formName: string;
+  formDescription: string;
+  isDraggingOver: boolean;
+  savedForms: SavedForm[];
+}
 
-The form builder uses Pinia for state management:
-
-```javascript
 export const useFormBuilderStore = defineStore('formBuilder', {
-  state: () => ({
+  state: (): FormState => ({
     formComponents: [],
     selectedComponentId: null,
     formName: 'New Form',
@@ -50,297 +144,215 @@ export const useFormBuilderStore = defineStore('formBuilder', {
   }),
   
   getters: {
-    selectedComponent: (state) => {
-      return state.selectedComponentId 
-        ? state.formComponents.find(c => c.id === state.selectedComponentId)
-        : null;
-    },
-    
-    formConfig: (state) => {
-      return {
-        id: uuidv4(),
-        name: state.formName,
-        description: state.formDescription,
-        components: state.formComponents.map(c => ({
-          type: c.type,
-          props: c.props
-        })),
-        createdAt: new Date().toISOString()
-      };
-    }
+    selectedComponent: (state) => // Implementation
+    formConfig: (state) => // Implementation
   },
   
   actions: {
-    addComponent(component) {
-      const newComponent = {
-        ...component,
-        id: uuidv4(),
-        props: {
-          ...component.defaultProps,
-          name: `${component.type}_${this.formComponents.length + 1}`,
-          label: `${component.name} ${this.formComponents.length + 1}`
-        }
-      };
-      
-      this.formComponents.push(newComponent);
-      this.selectComponent(newComponent.id);
-    },
-    
-    // ... other actions
-  },
-  
-  persist: {
-    paths: ['savedForms']
+    addComponent(component: FormComponent) // Implementation
+    updateComponent(id: string, updates: Partial<FormComponent>) // Implementation
+    deleteComponent(id: string) // Implementation
+    moveComponent(oldIndex: number, newIndex: number) // Implementation
   }
 });
 ```
 
-## Drag and Drop Implementation
+## Form Component Types
 
-### Draggable Components
+### Type Definitions
+```typescript
+interface BaseComponent {
+  id: string;
+  type: string;
+  name: string;
+  category: ComponentCategory;
+  icon: string;
+  props: BaseComponentProps;
+}
 
-The form builder uses `vuedraggable` for drag-and-drop functionality:
+interface BaseComponentProps {
+  name: string;
+  label: string;
+  help?: string;
+  validation?: string;
+  width?: number;
+}
 
-```vue
-<!-- FormBuilderCanvas.vue -->
-<draggable
-  v-model="componentList"
-  group="form-components"
-  item-key="id"
-  handle=".drag-handle"
-  ghost-class="ghost"
-  animation="300"
-  @end="onDragEnd"
->
-  <template #item="{ element, index }">
-    <div class="form-component relative mb-4 border rounded-md overflow-hidden">
-      <!-- Component content -->
-    </div>
-  </template>
-</draggable>
-```
+interface InputComponent extends BaseComponent {
+  props: InputComponentProps;
+}
 
-### Drag Start Handler
+interface SelectComponent extends BaseComponent {
+  props: SelectComponentProps;
+}
 
-```javascript
-// FormBuilderComponents.vue
-const onDragStart = (event, component) => {
-  event.dataTransfer.effectAllowed = 'copy';
-  event.dataTransfer.setData('component', JSON.stringify(component));
-  emit('add-component', component);
-};
-```
-
-### Drop Handler
-
-```javascript
-// pages/form-builder/index.vue
-const handleDrop = (event) => {
-  formStore.setDraggingOver(false);
-  const componentData = JSON.parse(event.dataTransfer.getData('component'));
-  formStore.addComponent(componentData);
-};
-```
-
-## FormKit Integration
-
-### Component Preview
-
-The form builder uses FormKit to render form components:
-
-```vue
-<!-- ComponentPreview.vue -->
-<FormKit 
-  v-if="isInputType"
-  :id="`preview-${component.id}`"
-  :type="component.props.type"
-  :name="component.props.name"
-  :label="component.props.label"
-  :help="component.props.help"
-  :placeholder="component.props.placeholder"
-  :validation="component.props.validation"
-  :validation-visibility="isPreview ? 'live' : 'blur'"
-  :disabled="isPreview"
-  :options="component.props.options || undefined"
-  :value="component.props.value || undefined"
-  :accept="component.props.accept || undefined"
-  :max="component.props.max || undefined"
-/>
+// Additional type definitions...
 ```
 
 ## Validation System
 
-### Validation Configuration
+### Implementation
+```typescript
+const validationRules = {
+  required: 'Value is required',
+  email: 'Invalid email format',
+  min: (min: number) => `Minimum value is ${min}`,
+  max: (max: number) => `Maximum value is ${max}`,
+  between: (min: number, max: number) => 
+    `Value must be between ${min} and ${max}`,
+  pattern: (pattern: string) => 
+    `Value must match pattern: ${pattern}`
+};
 
-The configuration panel provides validation options:
-
-```vue
-<!-- FormBuilderConfiguration.vue -->
-<RsTabItem title="Validation">
-  <div class="space-y-4 pt-2">
-    <div class="mb-4">
-      <h4 class="text-sm font-medium mb-2">Available Validations</h4>
-      <div class="grid grid-cols-2 gap-2">
-        <RsButton 
-          v-for="validator in availableValidators" 
-          :key="validator.name"
-          size="sm"
-          variant="tertiary"
-          class="text-left justify-start"
-          @click="addValidator(validator.name)"
-        >
-          {{ validator.label }}
-        </RsButton>
-      </div>
-    </div>
-    
-    <FormKit
-      type="textarea"
-      label="Validation Rules"
-      name="validation"
-      v-model="configModel.validation"
-      help="Comma-separated validation rules (e.g., required,email,length:5,15)"
-    />
-    
-    <!-- Validation help -->
-  </div>
-</RsTabItem>
+const validateField = (value: any, rules: string) => {
+  // Validation implementation
+};
 ```
 
-### Available Validators
+## Grid System
 
-```javascript
-const availableValidators = [
-  { name: 'required', label: 'Required' },
-  { name: 'email', label: 'Email' },
-  { name: 'url', label: 'URL' },
-  { name: 'number', label: 'Number' },
-  { name: 'min:5', label: 'Min Length/Value' },
-  { name: 'max:100', label: 'Max Length/Value' },
-  { name: 'between:5,10', label: 'Between Range' },
-  { name: 'date', label: 'Date' },
-  { name: 'matches:/pattern/', label: 'Pattern Match' }
-];
-```
-
-## Icons and UI Elements
-
-### Material Design Icons
-
-The form builder uses Material Design icons:
-
-```vue
-<Icon name="material-symbols:layers-outline" class="w-16 h-16 mb-4" />
-```
-
-### Component Icons
-
-```javascript
-// FormBuilderComponents.vue
-const availableComponents = [
-  {
-    type: 'text',
-    name: 'Text Field',
-    category: 'Basic Inputs',
-    icon: 'material-symbols:text-fields',
-    // ...
+### Implementation
+```typescript
+const gridSystem = {
+  columns: 12,
+  breakpoints: {
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    xl: 1280
   },
-  // ...
-];
+  calculateSpan: (width: number) => 
+    Math.min(Math.max(1, Math.round(width * 12)), 12)
+};
 ```
 
-## Responsive Design
+## Event Handling
 
-### Responsive Layout
-
-The form builder uses a responsive layout that adapts to different screen sizes:
-
-```vue
-<!-- pages/form-builder/index.vue -->
-<div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-  <!-- Left Panel -->
-  <div class="lg:w-1/4 border-r border-gray-200 bg-white overflow-hidden flex flex-col">
-    <!-- Left panel content -->
-  </div>
-  
-  <!-- Middle Panel -->
-  <div class="lg:w-2/4 bg-white overflow-hidden flex flex-col border-t lg:border-t-0 lg:border-r border-gray-200">
-    <!-- Middle panel content -->
-  </div>
-  
-  <!-- Right Panel -->
-  <div class="lg:w-1/4 bg-white overflow-hidden flex flex-col border-t lg:border-t-0">
-    <!-- Right panel content -->
-  </div>
-</div>
+### Component Events
+```typescript
+const componentEvents = {
+  onAdd: (event: DragEvent) => void;
+  onUpdate: (event: UpdateEvent) => void;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onValidate: (component: FormComponent) => ValidationResult;
+};
 ```
 
-### Responsive Header
+## Performance Optimization
 
-```vue
-<header class="bg-gray-800 p-2 flex flex-wrap items-center justify-between text-white">
-  <div class="flex items-center mb-2 sm:mb-0 gap-4">
-    <!-- Logo and back button -->
-  </div>
-  <div class="flex flex-wrap items-center space-x-2">
-    <!-- Actions -->
-  </div>
-</header>
+### Implementation Details
+1. **Component Lazy Loading**
+```typescript
+const ComponentPreview = defineAsyncComponent(() => 
+  import('./ComponentPreview.vue')
+);
 ```
 
-## Component Data Structure
+2. **Virtual Scrolling**
+```typescript
+const virtualScroller = {
+  itemSize: 50,
+  minItemsPerPage: 10,
+  maxBufferPx: 200
+};
+```
 
-### Form Component Structure
+3. **Debounced Updates**
+```typescript
+const debouncedSave = useDebounceFn(() => {
+  saveFormToStorage();
+}, 500);
+```
 
-```javascript
-// Example of a form component object
-{
-  id: "550e8400-e29b-41d4-a716-446655440000", // UUID
-  type: "text",
-  name: "Text Field",
-  category: "Basic Inputs",
-  icon: "material-symbols:text-fields",
-  props: {
-    type: "text",
-    name: "text_1",
-    label: "Text Field 1",
-    placeholder: "Enter text...",
-    help: "",
-    validation: "required"
+## Development Guidelines
+
+### Component Development
+1. Follow Vue 3 Composition API patterns
+2. Implement proper TypeScript types
+3. Use props validation
+4. Emit typed events
+5. Document component API
+
+### State Management
+1. Use Pinia for global state
+2. Implement proper actions and getters
+3. Use computed properties for derived state
+4. Handle side effects in actions
+
+### Styling
+1. Use Tailwind utility classes
+2. Follow BEM for custom CSS
+3. Implement responsive design
+4. Use CSS variables for theming
+
+### Testing
+1. Write unit tests for components
+2. Test store actions and mutations
+3. Implement E2E tests for critical paths
+4. Test responsive behavior
+
+## Error Handling
+
+### Implementation
+```typescript
+const errorHandler = {
+  handleValidationError: (error: ValidationError) => {
+    // Handle validation errors
+  },
+  handleDragError: (error: DragError) => {
+    // Handle drag and drop errors
+  },
+  handleStateError: (error: StateError) => {
+    // Handle state management errors
   }
-}
+};
 ```
 
-### Form Configuration Structure
+## Security Considerations
 
+1. **Input Sanitization**
+```typescript
+const sanitizeInput = (input: string): string => {
+  // Sanitization implementation
+};
+```
+
+2. **Form Validation**
+```typescript
+const validateForm = async (form: FormData): Promise<ValidationResult> => {
+  // Validation implementation
+};
+```
+
+## Build and Deployment
+
+### Build Configuration
 ```javascript
-// Example of a saved form
-{
-  id: "550e8400-e29b-41d4-a716-446655440000", // UUID
-  name: "Contact Form",
-  description: "",
-  components: [
-    {
-      type: "text",
-      props: {
-        type: "text",
-        name: "name",
-        label: "Name",
-        placeholder: "Enter your name",
-        validation: "required"
-      }
-    },
-    {
-      type: "email",
-      props: {
-        type: "email",
-        name: "email",
-        label: "Email",
-        placeholder: "Enter your email",
-        validation: "required,email"
-      }
-    }
-  ],
-  createdAt: "2025-04-09T03:30:00.000Z"
-}
-``` 
+// nuxt.config.ts
+export default defineNuxtConfig({
+  // Configuration details
+});
+```
+
+### Development Setup
+```bash
+# Installation
+npm install
+
+# Development
+npm run dev
+
+# Build
+npm run build
+
+# Preview
+npm run preview
+```
+
+---
+
+For user documentation and usage guidelines, please refer to [Form Builder Documentation](FORM_BUILDER_DOCUMENTATION.md).
+
+Last updated: April 9, 2025 

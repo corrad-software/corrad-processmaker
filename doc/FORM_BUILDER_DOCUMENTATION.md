@@ -2,166 +2,208 @@
 
 ## Overview
 
-The Form Builder is a drag-and-drop interface for creating dynamic forms. It allows users to build forms by selecting input components, configuring them, and arranging them in the desired order. The form builder follows the design pattern of the code playground with a full-screen empty layout.
+The Form Builder is a powerful drag-and-drop interface for creating dynamic forms. It provides an intuitive, visual way to build forms by selecting components, configuring their properties, and arranging them in your desired layout. Perfect for creating everything from simple contact forms to complex multi-step surveys.
 
-## Files Structure
+> For technical implementation details, please refer to [Form Builder Technical Appendix](FORM_BUILDER_TECHNICAL_APPENDIX.md)
 
-### Pages
+## Getting Started
 
-1. **`pages/form-builder/index.vue`**
-   - Main form builder interface with three-panel layout
-   - Drag and drop interface for building forms
-   - Uses empty layout for fullscreen experience
-   - Contains form name input and save/preview actions
-   - [View File](pages/form-builder/index.vue)
+### Accessing the Form Builder
+1. Navigate to `/form-builder` in your browser
+2. You'll see a three-panel interface:
+   - Left: Component Library
+   - Middle: Form Canvas
+   - Right: Configuration Panel
 
-2. **`pages/form-builder/manage.vue`**
-   - Form management interface
-   - Lists saved forms with search functionality
-   - Provides edit and delete actions for each form
-   - Uses empty layout and matches design of main page
-   - [View File](pages/form-builder/manage.vue)
+### Quick Start Guide
+1. **Create a New Form**
+   - Click "New Form" in the header
+   - Enter a form name and description
+   - Start adding components
 
-### Components
+2. **Add Components**
+   - Drag components from the left panel
+   - Or click components to add them to the end
+   - Components are organized by category for easy finding
 
-3. **`components/FormBuilderComponents.vue`**
-   - Left panel component that displays available form elements
-   - Categorizes components into groups (Basic Inputs, Selection Inputs, etc.)
-   - Provides search functionality for finding components
-   - Components can be dragged to the canvas
-   - Uses Material Design icons
-   - [View File](components/FormBuilderComponents.vue)
+3. **Configure Components**
+   - Click any component in the canvas to select it
+   - Use the right panel to configure its properties
+   - Changes are previewed in real-time
 
-4. **`components/FormBuilderCanvas.vue`**
-   - Middle panel component that displays the form being built
-   - Handles drag-and-drop reordering of components
-   - Renders form elements with preview mode
-   - Provides selection, deletion, and reordering capabilities
-   - Uses vuedraggable for drag-and-drop functionality
-   - [View File](components/FormBuilderCanvas.vue)
+4. **Save and Preview**
+   - Click "Save" to store your form
+   - Use "Preview" to test the form
+   - Access saved forms via "Manage Forms"
 
-5. **`components/FormBuilderConfiguration.vue`**
-   - Right panel component for configuring selected form elements
-   - Tabbed interface with Basic, Validation, and Advanced sections
-   - Dynamically shows/hides fields based on component type
-   - Provides rich validation options
-   - [View File](components/FormBuilderConfiguration.vue)
+## Available Components
 
-6. **`components/ComponentPreview.vue`**
-   - Renders a preview of form components
-   - Handles different component types (inputs, headings, paragraphs, etc.)
-   - Uses FormKit for rendering form inputs
-   - Provides formatting for non-input elements (headings, paragraphs, dividers)
-   - [View File](components/ComponentPreview.vue)
+### Basic Inputs
+Perfect for collecting simple text and numeric data:
+- **Text Field**: Single line text input
+  - Use for: Names, titles, short answers
+  - Features: Placeholder text, help text, validation
 
-### State Management
+- **Text Area**: Multi-line text input
+  - Use for: Comments, descriptions, long answers
+  - Features: Resizable, character count option
 
-7. **`stores/formBuilder.js`**
-   - Pinia store for managing form builder state
-   - Handles form components, selected component, dragging state
-   - Provides actions for adding, updating, moving, and deleting components
-   - Handles form saving and loading with localStorage
-   - Persists saved forms
-   - [View File](stores/formBuilder.js)
+- **Number**: Numeric input field
+  - Use for: Age, quantity, numeric values
+  - Features: Min/max limits, step values
 
-### Utilities
+- **Email**: Email address input
+  - Use for: Contact forms, user registration
+  - Features: Built-in email validation
 
-8. **`composables/useToast.js`**
-   - Toast notification composable for consistent toast messages
-   - Wraps Vue Toastification with standardized configurations
-   - Provides success, error, warning, and info methods
-   - [View File](composables/useToast.js)
+- **Password**: Secure password input
+  - Use for: Login forms, security inputs
+  - Features: Password masking, strength indicators
 
-## Key Features
+### Selection Inputs
+For choosing from predefined options:
+- **Select Dropdown**: Single selection menu
+  - Use for: Country selection, categories
+  - Features: Search, option groups, custom values
 
-### Form Building
-- Drag-and-drop interface for adding components to the form
-- Reordering components via drag-and-drop
-- Configuring component properties (labels, placeholders, validation, etc.)
-- Real-time preview of the form being built
+- **Checkbox Group**: Multiple choice selection
+  - Use for: Multiple selections, preferences
+  - Features: Select all, option layout control
 
-### Component Types
-- **Basic Inputs**: Text, Textarea, Number, Email, Password
-- **Selection Inputs**: Select, Checkbox, Radio
-- **Date and Time**: Date Picker, Time Picker, Date & Time
-- **Advanced**: File Upload, Repeater, Group
-- **Layout**: Heading, Paragraph, Divider
+- **Radio Group**: Single choice selection
+  - Use for: Exclusive choices, yes/no questions
+  - Features: Button or traditional style
 
-### Form Management
-- Save forms to localStorage
-- List all saved forms
-- Search for forms by name
-- Edit existing forms
-- Delete forms
+### Date and Time
+Temporal input components:
+- **Date Picker**: Date selection
+  - Use for: Birthdays, scheduling
+  - Features: Date range limits, format options
+
+- **Time Picker**: Time selection
+  - Use for: Scheduling, time slots
+  - Features: 12/24 hour format, minute steps
+
+- **Date & Time**: Combined selection
+  - Use for: Event scheduling, appointments
+  - Features: Single field for date and time
+
+### Advanced Components
+Specialized input types:
+- **File Upload**: File input field
+  - Use for: Document upload, image submission
+  - Features: File type restrictions, size limits
+
+- **Repeater**: Repeatable field groups
+  - Use for: Multiple entries, dynamic lists
+  - Features: Add/remove controls, ordering
+
+- **Group**: Field organization
+  - Use for: Related fields, form sections
+  - Features: Collapsible, conditional display
+
+### Layout Components
+Form structure and organization:
+- **Heading**: Section titles
+  - Use for: Form sections, categories
+  - Features: Multiple heading levels
+
+- **Paragraph**: Descriptive text
+  - Use for: Instructions, help text
+  - Features: Rich text formatting
+
+- **Divider**: Visual separator
+  - Use for: Section breaks
+  - Features: Various styles
+
+## Form Configuration
+
+### Basic Settings
+- Form name and description
+- Success/error messages
+- Submit button text
+- Form layout options
+
+### Validation Options
+- Required fields
+- Input patterns
+- Custom error messages
+- Cross-field validation
+
+### Advanced Settings
+- Form submission behavior
+- Success/failure redirects
+- Custom CSS classes
+- Event handlers
+
+## Best Practices
+
+### Form Design
+1. Group related fields together
+2. Use clear, concise labels
+3. Provide help text for complex fields
+4. Maintain consistent styling
+5. Consider mobile users
 
 ### Validation
-- Built-in validation options (required, email, min, max, etc.)
-- Quick validation buttons
-- Validation rule syntax help
-- Required field checkbox
+1. Validate on the appropriate event
+2. Provide clear error messages
+3. Show validation status clearly
+4. Use appropriate validation rules
 
-## UI/UX Design
+### User Experience
+1. Keep forms as short as possible
+2. Use appropriate field types
+3. Provide clear instructions
+4. Show progress in multi-step forms
+5. Ensure keyboard navigation
 
-- Professional dark header with logo and main actions
-- Three-panel layout for Components, Canvas, and Configuration
-- Material Design icons throughout
-- Empty layout for fullscreen experience
-- Responsive design that works on mobile and desktop
-- Consistent styling with the Code Playground
+## Managing Forms
 
-## Implementation Details
+### Saved Forms
+- View all forms in the management interface
+- Search and filter forms
+- Duplicate existing forms
+- Archive unused forms
 
-### Layout Structure
-- Header with navigation and primary actions
-- Form name input section
-- Three-panel main content area
-- Preview modal for testing the form
+### Form Actions
+- Preview: Test the form
+- Edit: Modify form structure
+- Delete: Remove unused forms
+- Export: Save form configuration
 
-### State Management
-- Centralized Pinia store for form state
-- Computed properties for derived state
-- Watchers for reactivity
-- Local storage for persistence
+### Form Analytics
+- View submission statistics
+- Track completion rates
+- Identify problem fields
+- Monitor usage patterns
 
-### Component Communication
-- Props for parent-to-child data flow
-- Events for child-to-parent communication
-- Store actions for cross-component communication
+## Troubleshooting
 
-### Styling
-- Tailwind CSS for utility-first styling
-- Custom transitions and animations
-- Responsive breakpoints
-- Consistent color scheme
+### Common Issues
+1. **Form Not Saving**
+   - Check your connection
+   - Ensure form has a name
+   - Verify all components are valid
 
-## Usage Instructions
+2. **Components Not Dragging**
+   - Clear browser cache
+   - Check for JavaScript errors
+   - Ensure proper mouse/touch interaction
 
-1. Navigate to `/form-builder` to access the form builder
-2. Add components by dragging them from the left panel to the canvas
-3. Select a component on the canvas to configure it in the right panel
-4. Save the form using the Save button in the header
-5. Preview the form by clicking the Preview button
-6. Manage saved forms by clicking the Manage Forms button
-7. Search, edit, or delete forms in the management interface
+3. **Validation Not Working**
+   - Verify validation rules syntax
+   - Check field names are unique
+   - Ensure validation is enabled
 
-## Development Notes
-
-- The form builder uses vuedraggable for drag-and-drop functionality
-- FormKit is used for all form inputs
-- Material Design icons are used throughout
-- The form builder follows the design patterns established in the code playground
-- All components are responsive and work on mobile devices
-
-## Future Enhancements
-
-- Backend integration for saving forms to a database
-- Form publishing and sharing functionality
-- Form versioning
-- Form templates
-- More advanced validation options
-- Conditional display of form fields
-- Multi-page forms
+### Getting Help
+- Check the technical documentation
+- Contact support team
+- Submit bug reports
+- Request features
 
 ---
 
-This documentation was generated on April 9, 2025. 
+For technical details about implementation, component structure, and development guidelines, please refer to the [Technical Appendix](FORM_BUILDER_TECHNICAL_APPENDIX.md).
+
+Last updated: April 9, 2025 
