@@ -174,11 +174,25 @@ const nodeDefaultPath = computed({
 
 // Computed for gateway available variables
 const gatewayAvailableVariables = computed(() => {
-  return variableStore.getAllVariables.process.map(v => ({
-    name: v.name,
-    label: v.name, // or v.description || v.name
-    type: v.type
+  const processVars = variableStore.getAllVariables.process.map(v => ({
+    name: v.name || 'unnamed',
+    label: v?.description
+      ? `${v.description} (${v.name || 'unnamed'}, process)`
+      : `${v.name || 'unnamed'} (process)` ,
+    type: v.type || 'string',
+    scope: 'process'
   }));
+  const globalVars = variableStore.getAllVariables.global.map(v => ({
+    name: v.name || 'unnamed',
+    label: v?.description
+      ? `${v.description} (${v.name || 'unnamed'}, global)`
+      : `${v.name || 'unnamed'} (global)` ,
+    type: v.type || 'string',
+    scope: 'global'
+  }));
+  const allVars = [...processVars, ...globalVars];
+  console.log('Gateway available variables:', allVars);
+  return allVars;
 });
 
 // Handle node selection
@@ -622,7 +636,7 @@ const onConditionsUpdated = (conditions) => {
               <GatewayConditionManager
                 :conditions="selectedNodeData.data.conditions"
                 @update="onConditionsUpdated"
-                :available-variables="gatewayAvailableVariables"
+                :availableVariables="gatewayAvailableVariables"
               />
             </div>
           </div>

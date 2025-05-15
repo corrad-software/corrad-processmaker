@@ -8,14 +8,7 @@ const props = defineProps({
   },
   availableVariables: {
     type: Array,
-    default: () => [
-      { name: 'amount', label: 'Amount', type: 'number' },
-      { name: 'status', label: 'Status', type: 'string' },
-      { name: 'priority', label: 'Priority', type: 'string' },
-      { name: 'requestType', label: 'Request Type', type: 'string' },
-      { name: 'dueDate', label: 'Due Date', type: 'date' },
-      { name: 'isUrgent', label: 'Is Urgent', type: 'boolean' }
-    ]
+    default: () => []
   }
 });
 
@@ -83,13 +76,23 @@ const getInputTypeForVarType = (type) => {
 
 // Add new condition
 const addCondition = () => {
+  if (!props.availableVariables || !props.availableVariables.length) {
+    alert('No variables available. Please add a variable before creating a condition.');
+    return;
+  }
+  
   const defaultVar = props.availableVariables[0];
+  if (!defaultVar || !defaultVar.name) {
+    alert('Invalid variable format. Please make sure variables have proper name and type.');
+    return;
+  }
+  
   const newCondition = {
     id: `condition-${Date.now()}`,
     variable: defaultVar.name,
-    operator: getOperatorsForType(defaultVar.type)[0].value,
+    operator: getOperatorsForType(defaultVar.type || 'string')[0].value,
     value: '',
-    valueType: defaultVar.type,
+    valueType: defaultVar.type || 'string',
     output: '', // Output path label (e.g., "Yes" or "No")
   };
   
@@ -126,10 +129,13 @@ const updateCondition = (index, field, value) => {
 const conditionText = (condition) => {
   if (!condition.variable || !condition.operator) return '';
   
-  const variable = props.availableVariables.find(v => v.name === condition.variable);
+  const variable = props.availableVariables?.find(v => v.name === condition.variable);
   const operator = getOperatorsForType(variable?.type || 'string').find(op => op.value === condition.operator);
   
-  return `${variable?.label || condition.variable} ${operator?.label.split(' ')[0] || condition.operator} ${condition.value}`;
+  const variableName = variable?.label || variable?.name || condition.variable || 'Unknown variable';
+  const operatorText = operator?.label?.split(' ')[0] || condition.operator || '=';
+  
+  return `${variableName} ${operatorText} ${condition.value}`;
 };
 </script>
 
@@ -177,7 +183,7 @@ const conditionText = (condition) => {
                   :key="variable.name" 
                   :value="variable.name"
                 >
-                  {{ variable.label }}
+                  {{ variable.label || variable.name || 'Unnamed variable' }}
                 </option>
               </select>
               

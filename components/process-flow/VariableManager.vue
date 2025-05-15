@@ -102,6 +102,7 @@
         class="space-y-4"
       >
         <FormKit
+          name="name"
           v-model="variableForm.name"
           type="text"
           label="Name"
@@ -115,6 +116,7 @@
         />
 
         <FormKit
+          name="type"
           v-model="variableForm.type"
           type="select"
           label="Type"
@@ -134,6 +136,7 @@
         />
 
         <FormKit
+          name="scope"
           v-model="variableForm.scope"
           type="select"
           label="Scope"
@@ -148,6 +151,7 @@
         />
 
         <FormKit
+          name="description"
           v-model="variableForm.description"
           type="textarea"
           label="Description"
@@ -156,6 +160,7 @@
         />
 
         <FormKit
+          name="isRequired"
           v-model="variableForm.isRequired"
           type="checkbox"
           label="Required"
@@ -201,7 +206,12 @@ const variableForm = ref({
 
 // Computed
 const variables = computed(() => {
-  return variableStore.getAllVariables.process;
+  // This was only returning process variables, let's fix it to return both process and global variables
+  const allVars = [
+    ...variableStore.getAllVariables.process,
+    ...variableStore.getAllVariables.global
+  ];
+  return allVars;
 });
 
 // Methods
