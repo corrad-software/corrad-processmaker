@@ -269,10 +269,11 @@ const onDeleteKeyPress = () => {
 // Handle drop event
 const onDrop = (event) => {
   event.preventDefault();
+  event.stopPropagation();
 
   try {
     // Get the dragged component data
-    const componentData = JSON.parse(event.dataTransfer.getData('application/json'));
+    const componentData = JSON.parse(event.dataTransfer.getData('text/plain'));
     if (!componentData) return;
 
     // Get the Vue Flow wrapper element
@@ -296,7 +297,6 @@ const onDrop = (event) => {
       }
     };
 
-    // console.log('Adding new node:', newNode);
     addNodes([newNode]);
   } catch (error) {
     console.error('Error handling drop:', error);
@@ -306,7 +306,8 @@ const onDrop = (event) => {
 // Handle drag over
 const onDragOver = (event) => {
   event.preventDefault();
-  event.dataTransfer.dropEffect = 'move';
+  event.stopPropagation();
+  event.dataTransfer.dropEffect = 'copy';
 };
 </script>
 

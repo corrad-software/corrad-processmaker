@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted, computed, shallowRef, onUnmounted } from 'vue';
 import { useProcessBuilderStore } from '~/stores/processBuilder';
+import { useVariableStore } from '~/stores/variableStore';
 import { useRouter } from 'vue-router';
 import ProcessFlowCanvas from '~/components/process-flow/ProcessFlowCanvas.vue';
 import ProcessBuilderComponents from '~/components/process-flow/ProcessBuilderComponents.vue';
 import FormSelector from '~/components/process-flow/FormSelector.vue';
 import GatewayConditionManager from '~/components/process-flow/GatewayConditionManager.vue';
+import VariableManager from '~/components/process-flow/VariableManager.vue';
 import { onBeforeRouteLeave } from 'vue-router';
 
 // Define page meta
@@ -20,6 +22,7 @@ definePageMeta({
 // Initialize the store and router
 const processStore = useProcessBuilderStore();
 const router = useRouter();
+const variableStore = useVariableStore();
 
 // Track selected node local state (syncs with store)
 // Using shallowRef to avoid making Vue components reactive
@@ -167,6 +170,15 @@ const nodeDefaultPath = computed({
       updateNodeInStore();
     }
   }
+});
+
+// Computed for gateway available variables
+const gatewayAvailableVariables = computed(() => {
+  return variableStore.getAllVariables.process.map(v => ({
+    name: v.name,
+    label: v.name, // or v.description || v.name
+    type: v.type
+  }));
 });
 
 // Handle node selection
@@ -560,135 +572,58 @@ const onConditionsUpdated = (conditions) => {
       </div>
 
       <!-- Right Panel - Properties -->
-      <div class="w-72 border-l border-gray-200 flex flex-col overflow-hidden">
+      <div class="w-80 border-l border-gray-200 flex flex-col overflow-hidden">
         <div class="bg-gray-100 p-3 flex items-center justify-between border-b border-gray-200">
           <h2 class="text-sm font-medium text-gray-700">Properties</h2>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 bg-white">
-          <!-- No selection state -->
-          <div v-if="!selectedNodeData && !selectedEdgeData" class="text-gray-500 text-center py-8">
-            <Icon name="material-symbols:touch-app" class="w-12 h-12 mx-auto mb-2" />
-            <p>Select a node or connection to edit its properties</p>
-          </div>
-
-          <!-- Node properties -->
-          <div v-else-if="selectedNodeData" class="space-y-4">
-            <h3 class="text-sm font-medium text-gray-700 mb-2">{{ selectedNodeData.type.charAt(0).toUpperCase() + selectedNodeData.type.slice(1) }} Node Properties</h3>
-            
-            <!-- Common properties for all nodes -->
-            <div class="space-y-3">
-              <FormKit
+        <div class="flex-1 overflow-y-auto">
+          <!-- Show variable manager when no node is selected -->
+          <VariableManager v-if="!selectedNodeData" />
+          
+          <!-- Show node properties when a node is selected -->
+          <div v-else class="p-4 space-y-4">
+            <!-- Node Label -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Label</label>
+              <input
                 v-model="nodeLabel"
                 type="text"
-                label="Label"
-                placeholder="Node label"
-              />
-              
-              <FormKit
-                v-model="nodeDescription"
-                type="textarea"
-                label="Description"
-                placeholder="Enter description"
-                :rows="3"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            
-            <!-- Task specific properties -->
-            <div v-if="selectedNodeData.type === 'task'" class="space-y-3">
-              <FormKit
+
+            <!-- Node Description -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                v-model="nodeDescription"
+                rows="2"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <!-- Node Type Specific Properties -->
+            <div v-if="selectedNodeData.type === 'task'">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+              <input
                 v-model="nodeAssignee"
                 type="text"
-                label="Assignee"
-                placeholder="Enter assignee"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            
-            <!-- Form specific properties -->
-            <div v-if="selectedNodeData.type === 'form'" class="space-y-3">
-              <FormSelector
-                v-model="selectedNodeData.data.formId" 
-                @select="onFormSelected"
-              />
+
+            <!-- Form Selection for Form Nodes -->
+            <div v-if="selectedNodeData.type === 'form'">
+              <FormSelector @select="onFormSelected" />
             </div>
-            
-            <!-- Script specific properties -->
-            <div v-if="selectedNodeData.type === 'script'" class="space-y-3">
-              <FormKit
-                v-model="nodeLanguage"
-                type="select"
-                label="Language"
-                :options="['JavaScript', 'Python', 'PHP']"
-              />
-              
-              <FormKit
-                v-if="selectedNodeData.data.script !== undefined"
-                v-model="selectedNodeData.data.script"
-                type="textarea"
-                label="Script"
-                placeholder="Enter script code"
-                :rows="5"
-              />
-            </div>
-            
-            <!-- Gateway specific properties -->
-            <div v-if="selectedNodeData.type === 'gateway'" class="space-y-3">
-              <FormKit
-                v-model="nodeDefaultPath"
-                type="text"
-                label="Default Path Label"
-                placeholder="Default"
-              />
-              
+
+            <!-- Gateway Conditions -->
+            <div v-if="selectedNodeData.type === 'gateway'">
               <GatewayConditionManager
-                v-model="nodeConditions"
-                :gateway-id="selectedNodeData.id"
-                @update:modelValue="handleConditionUpdate"
+                :conditions="selectedNodeData.data.conditions"
+                @update="onConditionsUpdated"
+                :available-variables="gatewayAvailableVariables"
               />
-            </div>
-            
-            <!-- Delete button -->
-            <div class="pt-4 border-t border-gray-200 mt-4">
-              <RsButton @click="deleteNode" variant="danger" size="sm" class="w-full">
-                <Icon name="material-symbols:delete" class="mr-1" />
-                Delete Node
-              </RsButton>
-            </div>
-          </div>
-          
-          <!-- Edge properties -->
-          <div v-else-if="selectedEdgeData" class="space-y-4">
-            <h3 class="text-sm font-medium text-gray-700 mb-2">Connection Properties</h3>
-            
-            <div class="space-y-3">
-              <FormKit
-                :model-value="selectedEdgeData.label"
-                @input="updateEdgeLabel"
-                type="text"
-                label="Label"
-                placeholder="Connection label"
-              />
-              
-              <div class="pt-4">
-                <div class="mb-2 text-sm text-gray-500">Connection Details</div>
-                <div class="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm">
-                  <div class="mb-1">
-                    <span class="font-medium">From:</span> 
-                    {{ selectedEdgeData.sourceNode?.label || selectedEdgeData.source }}
-                  </div>
-                  <div>
-                    <span class="font-medium">To:</span> 
-                    {{ selectedEdgeData.targetNode?.label || selectedEdgeData.target }}
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Delete button -->
-              <div class="pt-4 border-t border-gray-200 mt-4">
-                <RsButton @click="deleteEdge" variant="danger" size="sm" class="w-full">
-                  <Icon name="material-symbols:delete" class="mr-1" />
-                  Delete Connection
-                </RsButton>
-              </div>
             </div>
           </div>
         </div>

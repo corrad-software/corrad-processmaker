@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
+import { useVariableStore } from './variableStore';
 
 export const useProcessBuilderStore = defineStore('processBuilder', {
   state: () => ({
@@ -63,35 +64,52 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
      * Create a new process
      */
     createProcess(name, description = '') {
-      const newProcess = {
-        id: uuidv4(),
+      const process = {
+        id: crypto.randomUUID(),
         name,
         description,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         nodes: [],
-        edges: []
+        edges: [],
+        variables: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      this.processes.push(newProcess);
-      this.setCurrentProcess(newProcess.id);
-      this.saveToHistory('Create process');
+      this.processes.push(process);
+      this.currentProcess = process;
       this.unsavedChanges = true;
 
-      return newProcess;
+      // Clear any existing variables
+      useVariableStore().clearProcessVariables();
+
+      return process;
     },
 
     /**
      * Load a process
      */
-    loadProcess(processId) {
-      const process = this.processes.find(p => p.id === processId);
-      if (process) {
-        this.currentProcess = JSON.parse(JSON.stringify(process)); // Deep clone
-        this.selectedNodeId = null;
-        this.selectedEdgeId = null;
-        this.clearHistory();
-        this.unsavedChanges = false;
+    async loadProcess(processId) {
+      try {
+        // TODO: Implement API call to load process
+        // For now, just load from local state
+        const process = this.processes.find(p => p.id === processId);
+        if (process) {
+          this.currentProcess = process;
+          
+          // Load variables into variable store
+          if (process.variables) {
+            const variableStore = useVariableStore();
+            Object.entries(process.variables).forEach(([name, variable]) => {
+              variableStore.addVariable(variable);
+            });
+          }
+          
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Error loading process:', error);
+        return false;
       }
     },
 
@@ -112,14 +130,30 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     /**
      * Save the current process
      */
-    saveProcess() {
+    async saveProcess() {
       if (!this.currentProcess) return;
 
-      const index = this.processes.findIndex(p => p.id === this.currentProcess.id);
-      if (index !== -1) {
-        this.currentProcess.updatedAt = new Date().toISOString();
-        this.processes[index] = JSON.parse(JSON.stringify(this.currentProcess)); // Deep clone
+      try {
+        // Save process data
+        const processData = {
+          ...this.currentProcess,
+          variables: useVariableStore().getAllVariables.process
+        };
+
+        // TODO: Implement API call to save process
+        // For now, just update local state
+        const index = this.processes.findIndex(p => p.id === this.currentProcess.id);
+        if (index !== -1) {
+          this.processes[index] = processData;
+        } else {
+          this.processes.push(processData);
+        }
+
         this.unsavedChanges = false;
+        return true;
+      } catch (error) {
+        console.error('Error saving process:', error);
+        return false;
       }
     },
 

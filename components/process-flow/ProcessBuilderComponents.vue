@@ -142,9 +142,13 @@ const onDragStart = (event, component) => {
     data: component.defaultProps.data
   };
   
-  // Set the drag data
+  // Set the drag data with text/plain format for better Mac compatibility
   event.dataTransfer.effectAllowed = 'copy';
-  event.dataTransfer.setData('application/json', JSON.stringify(componentData));
+  event.dataTransfer.dropEffect = 'copy';
+  event.dataTransfer.setData('text/plain', JSON.stringify(componentData));
+  
+  // Add visual feedback
+  event.target.classList.add('dragging');
 };
 
 // Add a component directly via click

@@ -40,10 +40,10 @@ model user {
   userCreatedDate  DateTime?  @db.DateTime(0)
   userModifiedDate DateTime?  @db.DateTime(0)
   audit            audit[]
-  userrole         userrole[]
-  processes        process[]  @relation("ProcessCreator")
   forms            form[]     @relation("FormCreator")
+  processes        process[]  @relation("ProcessCreator")
   assignedTasks    task[]     @relation("TaskAssignee")
+  userrole         userrole[]
 }
 
 model role {
@@ -80,39 +80,33 @@ model userrole {
   @@index([userRoleUserID], map: "FK_userrole_user")
 }
 
-// New models for Form Builder
 model form {
   formID           Int       @id @default(autoincrement())
   formUUID         String    @unique @db.VarChar(36)
   formName         String    @db.VarChar(255)
   formDescription  String?   @db.Text
-  formComponents   Json      @db.Json
+  formComponents   Json
   formStatus       String    @default("active") @db.VarChar(50)
   formCreatedBy    Int?
   formCreatedDate  DateTime  @default(now()) @db.DateTime(0)
   formModifiedDate DateTime? @updatedAt @db.DateTime(0)
-  
-  // Relations
   creator          user?     @relation("FormCreator", fields: [formCreatedBy], references: [userID])
   formTasks        task[]    @relation("FormTask")
 
   @@index([formCreatedBy], map: "FK_form_creator")
 }
 
-// New models for Process Builder
 model process {
   processID           Int       @id @default(autoincrement())
   processUUID         String    @unique @db.VarChar(36)
   processName         String    @db.VarChar(255)
   processDescription  String?   @db.Text
-  processDefinition   Json      @db.Json
+  processDefinition   Json
   processVersion      Int       @default(1)
   processStatus       String    @default("draft") @db.VarChar(50)
   processCreatedBy    Int?
   processCreatedDate  DateTime  @default(now()) @db.DateTime(0)
   processModifiedDate DateTime? @updatedAt @db.DateTime(0)
-  
-  // Relations
   creator             user?     @relation("ProcessCreator", fields: [processCreatedBy], references: [userID])
   tasks               task[]
 
@@ -125,18 +119,16 @@ model task {
   taskNodeId       String    @db.VarChar(255)
   taskName         String    @db.VarChar(255)
   taskType         String    @db.VarChar(50)
-  taskData         Json?     @db.Json
+  taskData         Json?
   taskProcessId    Int
   taskFormId       Int?
   taskAssigneeId   Int?
   taskStatus       String    @default("pending") @db.VarChar(50)
   taskCreatedDate  DateTime  @default(now()) @db.DateTime(0)
   taskModifiedDate DateTime? @updatedAt @db.DateTime(0)
-  
-  // Relations
-  process          process   @relation(fields: [taskProcessId], references: [processID])
-  form             form?     @relation("FormTask", fields: [taskFormId], references: [formID])
   assignee         user?     @relation("TaskAssignee", fields: [taskAssigneeId], references: [userID])
+  form             form?     @relation("FormTask", fields: [taskFormId], references: [formID])
+  process          process   @relation(fields: [taskProcessId], references: [processID])
 
   @@index([taskProcessId], map: "FK_task_process")
   @@index([taskFormId], map: "FK_task_form")
