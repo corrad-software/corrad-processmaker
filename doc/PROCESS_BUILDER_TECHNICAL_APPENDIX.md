@@ -37,7 +37,9 @@ pages/
 components/
 ├── process-flow/
 │   ├── ProcessFlowCanvas.vue     # Flow canvas
-│   └── ProcessFlowNodes.js       # Custom node types
+│   ├── ProcessFlowNodes.js       # Custom node types
+│   ├── FormSelector.vue          # Form selection component
+│   └── GatewayConditionManager.vue # Gateway conditions UI
 stores/
 └── processBuilder.js       # State management
 composables/
@@ -121,6 +123,39 @@ const handleConnect = (connection) => {
 
   addEdges([newEdge]);
 };
+
+// Handle node deletion
+const onNodeDelete = (event) => {
+  if (event && event.node) {
+    removeNodes([event.node]);
+    emit('nodesChange', nodes.value);
+  }
+};
+
+// Handle edge deletion
+const onEdgeDelete = (event) => {
+  if (event && event.edge) {
+    removeEdges([event.edge]);
+    emit('edgesChange', edges.value);
+  }
+};
+
+// Handle delete key press
+const onDeleteKeyPress = () => {
+  const { getSelectedNodes, getSelectedEdges } = flowInstance.value;
+  const selectedNodes = getSelectedNodes();
+  const selectedEdges = getSelectedEdges();
+  
+  if (selectedNodes.length > 0) {
+    removeNodes(selectedNodes);
+    emit('nodesChange', nodes.value);
+  }
+  
+  if (selectedEdges.length > 0) {
+    removeEdges(selectedEdges);
+    emit('edgesChange', edges.value);
+  }
+};
 </script>
 ```
 
@@ -172,6 +207,62 @@ export const nodeTypes = markRaw({
 });
 ```
 
+3. **FormSelector.vue**
+```vue
+<script setup>
+import { ref, onMounted } from 'vue';
+
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: null
+  }
+});
+
+const emit = defineEmits(['update:modelValue', 'select']);
+
+const forms = ref([]);
+const loading = ref(false);
+const error = ref(null);
+
+// Load available forms from the API
+const loadForms = async () => {
+  loading.value = true;
+  error.value = null;
+  
+  try {
+    const response = await fetch('/api/forms');
+    if (!response.ok) throw new Error('Failed to load forms');
+    
+    const data = await response.json();
+    forms.value = data.forms || [];
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error loading forms:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Select a form
+const selectForm = (form) => {
+  emit('update:modelValue', form.formID);
+  emit('select', form);
+};
+
+// Clear form selection
+const clearSelection = () => {
+  emit('update:modelValue', null);
+  emit('select', null);
+};
+
+// Load forms on component mount
+onMounted(() => {
+  loadForms();
+});
+</script>
+```
+
 ## State Management
 
 ### Process Builder Store
@@ -182,8 +273,26 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     currentProcess: null,
     selectedNodeId: null,
     selectedEdgeId: null,
+    history: [],
+    historyIndex: -1,
     unsavedChanges: false
   }),
+  
+  getters: {
+    selectedNode: (state) => {
+      if (!state.currentProcess || !state.selectedNodeId) return null;
+      return state.currentProcess.nodes.find(node => node.id === state.selectedNodeId);
+    },
+    
+    selectedEdge: (state) => {
+      if (!state.currentProcess || !state.selectedEdgeId) return null;
+      return state.currentProcess.edges.find(edge => edge.id === state.selectedEdgeId);
+    },
+    
+    hasUnsavedChanges: (state) => {
+      return state.unsavedChanges;
+    }
+  },
   
   actions: {
     createProcess(name, description) {
@@ -196,26 +305,74 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
         createdAt: new Date().toISOString()
       };
       this.processes.push(process);
-      this.currentProcess = process;
+      this.currentProcess = JSON.parse(JSON.stringify(process)); // Deep clone
+      this.clearHistory();
+      this.unsavedChanges = false;
     },
     
-    updateNode(nodeData) {
-      if (!this.currentProcess || !nodeData.id) return;
-      
-      const nodeIndex = this.currentProcess.nodes.findIndex(
-        node => node.id === nodeData.id
-      );
-      
-      if (nodeIndex > -1) {
-        this.currentProcess.nodes[nodeIndex] = {
-          ...this.currentProcess.nodes[nodeIndex],
-          ...nodeData
-        };
+    addNode(node) {
+      if (!this.currentProcess) return;
+
+      const newNode = {
+        id: node.id || uuidv4(),
+        type: node.type,
+        label: node.label || 'New Node',
+        position: node.position || { x: 0, y: 0 },
+        data: node.data || {}
+      };
+
+      this.currentProcess.nodes.push(newNode);
+      this.selectedNodeId = newNode.id;
+      this.saveToHistory('Add node');
+      this.unsavedChanges = true;
+
+      return newNode;
+    },
+    
+    updateNode(nodeId, updates) {
+      if (!this.currentProcess) return;
+
+      const node = this.currentProcess.nodes.find(n => n.id === nodeId);
+      if (node) {
+        Object.assign(node, updates);
+        this.saveToHistory('Update node');
         this.unsavedChanges = true;
       }
     },
     
-    // Additional actions...
+    deleteNode(nodeId) {
+      if (!this.currentProcess) return;
+
+      const index = this.currentProcess.nodes.findIndex(n => n.id === nodeId);
+      if (index !== -1) {
+        // Remove the node
+        this.currentProcess.nodes.splice(index, 1);
+        
+        // Remove any edges connected to this node
+        const edgesToRemove = this.currentProcess.edges.filter(
+          edge => edge.source === nodeId || edge.target === nodeId
+        );
+        
+        edgesToRemove.forEach(edge => {
+          const edgeIndex = this.currentProcess.edges.findIndex(e => e.id === edge.id);
+          if (edgeIndex !== -1) {
+            this.currentProcess.edges.splice(edgeIndex, 1);
+          }
+        });
+
+        // Clear selection if the deleted node was selected
+        if (this.selectedNodeId === nodeId) {
+          this.selectedNodeId = null;
+        }
+
+        this.saveToHistory('Delete node');
+        this.unsavedChanges = true;
+        
+        return true;
+      }
+      
+      return false;
+    }
   }
 });
 ```
@@ -232,9 +389,11 @@ interface NodeConfig {
   data: {
     description?: string;
     assignee?: string;
+    formId?: string;
     formName?: string;
     language?: string;
-    conditions?: string[];
+    conditions?: Condition[];
+    defaultPath?: string;
   };
 }
 
@@ -252,6 +411,18 @@ const nodeConfigs: Record<string, NodeConfig> = {
     icon: 'assignment',
     iconColor: 'text-blue-500',
     data: { description: 'Task node', assignee: '' }
+  },
+  form: {
+    type: 'form',
+    label: 'Form Task',
+    icon: 'description',
+    iconColor: 'text-purple-500',
+    data: { 
+      description: 'Form submission task',
+      formId: null,
+      formName: null,
+      formUuid: null
+    }
   },
   // Additional node configurations...
 };
@@ -291,26 +462,154 @@ function createConnection(connection: Connection): Edge {
 }
 ```
 
+## Form Integration
+
+### Form Task Implementation
+```typescript
+// Form task node implementation
+const FormNode = markRaw({
+  props: ['id', 'type', 'label', 'selected', 'data'],
+  render() {
+    // Check if we have a form selected
+    const hasForm = this.data?.formId && this.data?.formName;
+    
+    // Create badge content based on form selection status
+    const badgeContent = hasForm ? 
+      h('span', { class: 'node-badge bg-purple-100 text-purple-600 px-1 text-xs rounded' }, 'Form') : 
+      null;
+    
+    return h(CustomNode, {
+      id: this.id,
+      type: 'form',
+      label: this.label || 'Form Task',
+      selected: this.selected,
+      data: this.data,
+      onClick: () => this.$emit('node-click', this.id)
+    }, {
+      icon: () => h('i', { class: 'material-icons text-purple-500' }, 'description'),
+      badge: () => badgeContent,
+      default: () => h('div', { class: 'node-details' }, [
+        h('p', { class: 'node-description' }, this.data?.description || 'Form submission task'),
+        h('div', { class: 'node-form-info' }, [
+          h('span', { class: 'node-form-label' }, 'Form:'),
+          h('span', { 
+            class: hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
+          }, hasForm ? this.data.formName : 'None selected')
+        ])
+      ])
+    });
+  }
+});
+```
+
+### Form Selection in Process Builder
+```vue
+<!-- Form selection in process properties panel -->
+<div v-if="selectedNodeData.type === 'form'" class="space-y-3">
+  <FormSelector
+    v-model="selectedNodeData.data.formId" 
+    @select="handleFormSelection"
+  />
+</div>
+
+<script setup>
+// Form selection handler
+const handleFormSelection = (form) => {
+  if (selectedNodeData.value && form) {
+    selectedNodeData.value.data.formId = form.formID;
+    selectedNodeData.value.data.formName = form.formName;
+    selectedNodeData.value.data.formUuid = form.formUUID;
+    updateNodeInStore();
+  }
+};
+
+// Clear form selection
+const clearFormSelection = () => {
+  if (selectedNodeData.value) {
+    selectedNodeData.value.data.formId = null;
+    selectedNodeData.value.data.formName = '';
+    selectedNodeData.value.data.formUuid = null;
+    updateNodeInStore();
+  }
+};
+</script>
+```
+
 ## Event Handling
 
 ### Node Events
 ```typescript
 // Node selection
-function onNodeClick(node: Node): void {
-  selectedNode.value = node;
-  emit('nodeSelected', node);
+function onNodeClick({ node }): void {
+  try {
+    // Create a plain object copy of the node to avoid reactivity issues
+    const nodeData = {
+      id: node.id,
+      type: node.type,
+      data: node.data ? JSON.parse(JSON.stringify(node.data)) : {},
+      position: node.dimensions ? { 
+        x: node.dimensions.x || 0, 
+        y: node.dimensions.y || 0 
+      } : { x: 0, y: 0 }
+    };
+
+    selectedNode.value = nodeData;
+    emit('nodeSelected', nodeData);
+  } catch (error) {
+    console.error('Error processing node data:', error);
+  }
 }
 
 // Node deletion
-function onNodeDelete(nodes: Node[]): void {
-  removeNodes(nodes);
-  emit('nodesChange', nodes.value);
+function onNodeDelete(event): void {
+  // Check if we have a node in the event
+  if (event && event.node) {
+    removeNodes([event.node]);
+    emit('nodesChange', nodes.value);
+  }
 }
 
-// Node dragging
-function onNodeDragStop(node: Node): void {
-  updateNodePosition(node);
-  emit('nodePositionChange', node);
+// Handle delete key press
+function onDeleteKeyPress(): void {
+  const { getSelectedNodes, getSelectedEdges } = flowInstance.value;
+  const selectedNodes = getSelectedNodes();
+  const selectedEdges = getSelectedEdges();
+  
+  if (selectedNodes.length > 0) {
+    removeNodes(selectedNodes);
+    emit('nodesChange', nodes.value);
+  }
+  
+  if (selectedEdges.length > 0) {
+    removeEdges(selectedEdges);
+    emit('edgesChange', edges.value);
+  }
+}
+```
+
+### Edge Events
+```typescript
+// Edge selection
+function onEdgeClick(event, edge): void {
+  // Create a simplified copy of the edge data
+  const edgeData = {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: edge.label || '',
+    sourceNode: nodes.value.find(node => node.id === edge.source),
+    targetNode: nodes.value.find(node => node.id === edge.target)
+  };
+  
+  emit('edgeSelected', edgeData);
+}
+
+// Edge deletion
+function onEdgeDelete(event): void {
+  if (event && event.edge) {
+    removeEdges([event.edge]);
+    emit('edgesChange', edges.value);
+  }
 }
 ```
 
@@ -341,4 +640,4 @@ function onNodeDragStop(node: Node): void {
 
 For user documentation and usage guidelines, please refer to [Process Builder Documentation](PROCESS_BUILDER_DOCUMENTATION.md).
 
-Last updated: May 15, 2024 
+Last updated: June 10, 2024 

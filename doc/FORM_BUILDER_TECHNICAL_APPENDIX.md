@@ -43,6 +43,11 @@ composables/
 └── useToast.js          # Toast notifications
 types/
 └── form-builder.d.ts    # TypeScript definitions
+server/
+└── api/
+    └── forms/
+        ├── index.js     # Form API endpoints
+        └── [id].js      # Form by ID endpoints
 ```
 
 ## Component Architecture
@@ -129,6 +134,8 @@ interface FormState {
   selectedComponentId: string | null;
   formName: string;
   formDescription: string;
+  formId: string | null;
+  formUUID: string | null;
   isDraggingOver: boolean;
   savedForms: SavedForm[];
 }
@@ -139,20 +146,89 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     selectedComponentId: null,
     formName: 'New Form',
     formDescription: '',
+    formId: null,
+    formUUID: null,
     isDraggingOver: false,
     savedForms: []
   }),
   
   getters: {
-    selectedComponent: (state) => // Implementation
-    formConfig: (state) => // Implementation
+    selectedComponent: (state) => {
+      if (!state.selectedComponentId) return null;
+      return state.formComponents.find(c => c.id === state.selectedComponentId);
+    },
+    
+    formConfig: (state) => {
+      return {
+        id: state.formId,
+        uuid: state.formUUID,
+        name: state.formName,
+        description: state.formDescription,
+        components: state.formComponents
+      };
+    }
   },
   
   actions: {
-    addComponent(component: FormComponent) // Implementation
-    updateComponent(id: string, updates: Partial<FormComponent>) // Implementation
-    deleteComponent(id: string) // Implementation
-    moveComponent(oldIndex: number, newIndex: number) // Implementation
+    addComponent(component: FormComponent) {
+      this.formComponents.push({
+        ...component,
+        id: component.id || uuidv4()
+      });
+    },
+    
+    updateComponent(id: string, updates: Partial<FormComponent>) {
+      const index = this.formComponents.findIndex(c => c.id === id);
+      if (index !== -1) {
+        this.formComponents[index] = {
+          ...this.formComponents[index],
+          ...updates
+        };
+      }
+    },
+    
+    deleteComponent(id: string) {
+      const index = this.formComponents.findIndex(c => c.id === id);
+      if (index !== -1) {
+        this.formComponents.splice(index, 1);
+        if (this.selectedComponentId === id) {
+          this.selectedComponentId = null;
+        }
+      }
+    },
+    
+    moveComponent(oldIndex: number, newIndex: number) {
+      if (oldIndex === newIndex) return;
+      const component = this.formComponents.splice(oldIndex, 1)[0];
+      this.formComponents.splice(newIndex, 0, component);
+    },
+    
+    saveForm() {
+      return fetch('/api/forms', {
+        method: this.formId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.formConfig)
+      })
+      .then(response => response.json())
+      .then(data => {
+        this.formId = data.formID;
+        this.formUUID = data.formUUID;
+        return data;
+      });
+    },
+    
+    loadForm(id: string) {
+      return fetch(`/api/forms/${id}`)
+        .then(response => response.json())
+        .then(data => {
+          this.formId = data.formID;
+          this.formUUID = data.formUUID;
+          this.formName = data.formName;
+          this.formDescription = data.formDescription;
+          this.formComponents = data.components;
+          return data;
+        });
+    }
   }
 });
 ```
@@ -224,6 +300,104 @@ const gridSystem = {
   calculateSpan: (width: number) => 
     Math.min(Math.max(1, Math.round(width * 12)), 12)
 };
+```
+
+## Process Builder Integration
+
+### API Endpoints for Form Selection
+```javascript
+// server/api/forms/index.js
+export default defineEventHandler(async (event) => {
+  try {
+    // Get all forms for selection in Process Builder
+    const forms = await prisma.form.findMany({
+      select: {
+        formID: true,
+        formUUID: true,
+        formName: true,
+        formDescription: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    });
+    
+    return { forms };
+  } catch (error) {
+    console.error('Error fetching forms:', error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Failed to fetch forms'
+    });
+  }
+});
+```
+
+### Form Loading by URL Parameter
+```javascript
+// pages/form-builder/index.vue
+const route = useRoute();
+const formStore = useFormBuilderStore();
+
+// Check for formId parameter to load a specific form
+onMounted(async () => {
+  const formId = route.query.formId;
+  if (formId) {
+    try {
+      await formStore.loadForm(formId);
+    } catch (error) {
+      console.error('Error loading form:', error);
+      useToast().error('Failed to load form');
+    }
+  }
+});
+```
+
+### Form Selection Component
+```vue
+<!-- components/process-flow/FormSelector.vue -->
+<template>
+  <div class="form-selector">
+    <h4 class="text-sm font-medium mb-2">Select Form</h4>
+    
+    <div v-if="loading" class="text-center py-4">
+      <span class="loading"></span>
+    </div>
+    
+    <div v-else-if="error" class="text-center py-4 text-red-500">
+      {{ error }}
+    </div>
+    
+    <div v-else-if="forms.length === 0" class="text-center py-4 text-gray-500">
+      No forms available
+    </div>
+    
+    <div v-else class="space-y-2">
+      <div
+        v-for="form in forms"
+        :key="form.formID"
+        class="form-item p-2 border rounded hover:bg-gray-50 cursor-pointer"
+        :class="{ 'border-blue-400 bg-blue-50': modelValue === form.formID }"
+        @click="selectForm(form)"
+      >
+        <div class="font-medium">{{ form.formName }}</div>
+        <div class="text-xs text-gray-500">{{ form.formDescription }}</div>
+      </div>
+    </div>
+    
+    <div class="mt-4">
+      <button
+        v-if="modelValue"
+        @click="clearSelection"
+        class="text-sm text-red-500 hover:underline"
+      >
+        Clear Selection
+      </button>
+    </div>
+  </div>
+</template>
 ```
 
 ## Event Handling
@@ -355,4 +529,4 @@ npm run preview
 
 For user documentation and usage guidelines, please refer to [Form Builder Documentation](FORM_BUILDER_DOCUMENTATION.md).
 
-Last updated: April 9, 2025 
+Last updated: June 10, 2024 

@@ -62,12 +62,13 @@ Activities represent work performed in a process:
 - **Form Task** (Purple Icon)
   - A task that requires form data
   - Has both input and output handles
-  - Properties: Form name, description
+  - Properties: Form selection, description
+  - Connects to forms created in the Form Builder
 
 - **Script Task** (Grey Icon)
   - Automated task that executes code
   - Has both input and output handles
-  - Properties: Language, description
+  - Properties: Language, description, script content
 
 ### Gateways
 Gateways control flow divergence and convergence:
@@ -75,7 +76,7 @@ Gateways control flow divergence and convergence:
 - **Gateway** (Orange Icon)
   - Creates alternative paths based on conditions
   - Has both input and output handles
-  - Properties: Conditions, description
+  - Properties: Conditions, default path, description
 
 ## Working with the Process Canvas
 
@@ -88,7 +89,7 @@ Gateways control flow divergence and convergence:
 - **Select**: Click on an element
 - **Multi-select**: Hold Shift while clicking elements
 - **Move**: Drag selected elements
-- **Delete**: Press Delete key or double-click element
+- **Delete**: Press Delete key, double-click element, or use the Delete button in the properties panel
 - **Connect**: Drag from one node's handle to another's
 
 ### Keyboard Shortcuts
@@ -123,6 +124,24 @@ Gateways control flow divergence and convergence:
 - Role-based assignments
 - Group assignments
 
+## Form Integration
+
+The Process Builder integrates with the Form Builder to allow forms to be attached to process tasks:
+
+1. **Adding a Form Task**
+   - Drag a Form Task component onto the canvas
+   - Select the task to open its properties
+
+2. **Selecting a Form**
+   - In the properties panel, use the Form Selector to choose a form
+   - Forms are listed from those created in the Form Builder
+   - Selected forms will be displayed to users when they reach this task
+
+3. **Form Data in Process**
+   - Form submissions become available as process variables
+   - Data can be referenced in gateway conditions
+   - Form fields can be pre-populated with process data
+
 ## Best Practices
 
 ### Process Design
@@ -155,12 +174,18 @@ Gateways control flow divergence and convergence:
 2. **Node Won't Delete**
    - Make sure the node is selected
    - Try using the Delete key
-   - Alternative: double-click the node
+   - Use the Delete button in the properties panel
+   - Double-click the node to remove it
 
 3. **Connection Looks Wrong**
    - Try repositioning nodes for better flow
    - Check that connections are made to correct handles
    - Consider using different connection types
+
+4. **Form Not Showing in Selector**
+   - Verify the form was saved in the Form Builder
+   - Check that you have permission to access the form
+   - Refresh the page to update the form list
 
 ### Getting Help
 - Use the control panel hints in top-right
@@ -171,4 +196,4 @@ Gateways control flow divergence and convergence:
 
 For technical details about implementation and integration, please refer to the [Process Builder Technical Documentation](PROCESS_BUILDER_TECHNICAL_APPENDIX.md).
 
-Last updated: May 15, 2024 
+Last updated: June 10, 2024 

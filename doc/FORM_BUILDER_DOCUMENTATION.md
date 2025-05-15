@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Form Builder is a powerful drag-and-drop interface for creating dynamic forms. It provides an intuitive, visual way to build forms by selecting components, configuring their properties, and arranging them in your desired layout. Perfect for creating everything from simple contact forms to complex multi-step surveys.
+The Form Builder is a powerful drag-and-drop interface for creating dynamic forms. It provides an intuitive, visual way to build forms by selecting components, configuring their properties, and arranging them in your desired layout. Perfect for creating everything from simple contact forms to complex multi-step surveys. Forms can be used independently or integrated with the Process Builder for workflow automation.
 
 > For technical implementation details, please refer to [Form Builder Technical Appendix](FORM_BUILDER_TECHNICAL_APPENDIX.md)
 
@@ -136,6 +136,31 @@ Form structure and organization:
 - Custom CSS classes
 - Event handlers
 
+## Process Builder Integration
+
+The Form Builder integrates with the Process Builder to create workflow-driven forms:
+
+### Connecting Forms to Processes
+1. **Create and Save Your Form**
+   - Design your form in the Form Builder
+   - Save the form with a clear name and description
+   - Forms must be saved before they can be used in processes
+
+2. **Using Forms in Process Builder**
+   - In Process Builder, add a Form Task to your process
+   - Select your form from the Form Selector dropdown
+   - The form will be presented to users when they reach this task in the workflow
+
+3. **Form Data in Processes**
+   - Data submitted through forms becomes available as process variables
+   - Use form data to drive process decisions in gateways
+   - Reference form fields in scripts and conditions
+
+### Form URL Parameters
+- Forms can accept URL parameters to pre-populate fields
+- Process variables can be passed to forms as parameters
+- Use the `formId` parameter to load a specific form
+
 ## Best Practices
 
 ### Form Design
@@ -196,6 +221,11 @@ Form structure and organization:
    - Check field names are unique
    - Ensure validation is enabled
 
+4. **Form Not Appearing in Process Builder**
+   - Verify the form was saved successfully
+   - Check user permissions
+   - Refresh the Process Builder page
+
 ### Getting Help
 - Check the technical documentation
 - Contact support team
@@ -206,4 +236,4 @@ Form structure and organization:
 
 For technical details about implementation, component structure, and development guidelines, please refer to the [Technical Appendix](FORM_BUILDER_TECHNICAL_APPENDIX.md).
 
-Last updated: April 9, 2025 
+Last updated: June 10, 2024 
