@@ -181,22 +181,36 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     deleteNode(nodeId) {
       if (!this.currentProcess) return;
 
+      // Find the node index
       const index = this.currentProcess.nodes.findIndex(n => n.id === nodeId);
       if (index !== -1) {
+        // Remove the node
         this.currentProcess.nodes.splice(index, 1);
         
         // Remove any edges connected to this node
-        this.currentProcess.edges = this.currentProcess.edges.filter(
-          edge => edge.source !== nodeId && edge.target !== nodeId
+        const edgesToRemove = this.currentProcess.edges.filter(
+          edge => edge.source === nodeId || edge.target === nodeId
         );
+        
+        edgesToRemove.forEach(edge => {
+          const edgeIndex = this.currentProcess.edges.findIndex(e => e.id === edge.id);
+          if (edgeIndex !== -1) {
+            this.currentProcess.edges.splice(edgeIndex, 1);
+          }
+        });
 
+        // Clear selection if the deleted node was selected
         if (this.selectedNodeId === nodeId) {
           this.selectedNodeId = null;
         }
 
         this.saveToHistory('Delete node');
         this.unsavedChanges = true;
+        
+        return true; // Return success
       }
+      
+      return false; // Return failure
     },
 
     /**
@@ -226,12 +240,35 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     /**
      * Update an edge in the current process
      */
-    updateEdge(edgeId, updates) {
+    updateEdge(edgeIdOrObject, updates) {
       if (!this.currentProcess) return;
+
+      // Handle different parameter formats
+      let edgeId, edgeUpdates;
+      
+      if (typeof edgeIdOrObject === 'string') {
+        // Called with (id, updates)
+        edgeId = edgeIdOrObject;
+        edgeUpdates = updates || {};
+      } else if (typeof edgeIdOrObject === 'object') {
+        // Called with an edge object
+        edgeId = edgeIdOrObject.id;
+        
+        if (updates) {
+          // Called with (edge, updates)
+          edgeUpdates = updates;
+        } else {
+          // Called with just the edge object containing updates
+          edgeUpdates = { ...edgeIdOrObject };
+          delete edgeUpdates.id; // Don't update the ID
+        }
+      } else {
+        return; // Invalid parameters
+      }
 
       const edge = this.currentProcess.edges.find(e => e.id === edgeId);
       if (edge) {
-        Object.assign(edge, updates);
+        Object.assign(edge, edgeUpdates);
         this.saveToHistory('Update edge');
         this.unsavedChanges = true;
       }

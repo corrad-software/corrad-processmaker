@@ -141,6 +141,24 @@
           "items": {
             "$ref": "#/definitions/userrole"
           }
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/process"
+          }
+        },
+        "forms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/form"
+          }
+        },
+        "assignedTasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/task"
+          }
         }
       }
     },
@@ -265,6 +283,200 @@
           "$ref": "#/definitions/user"
         }
       }
+    },
+    "form": {
+      "type": "object",
+      "properties": {
+        "formID": {
+          "type": "integer"
+        },
+        "formUUID": {
+          "type": "string"
+        },
+        "formName": {
+          "type": "string"
+        },
+        "formDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "formComponents": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "formStatus": {
+          "type": "string",
+          "default": "active"
+        },
+        "formCreatedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "formModifiedDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "creator": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/user"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "formTasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/task"
+          }
+        }
+      }
+    },
+    "process": {
+      "type": "object",
+      "properties": {
+        "processID": {
+          "type": "integer"
+        },
+        "processUUID": {
+          "type": "string"
+        },
+        "processName": {
+          "type": "string"
+        },
+        "processDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processDefinition": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "processVersion": {
+          "type": "integer",
+          "default": 1
+        },
+        "processStatus": {
+          "type": "string",
+          "default": "draft"
+        },
+        "processCreatedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "processModifiedDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "creator": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/user"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/task"
+          }
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "taskID": {
+          "type": "integer"
+        },
+        "taskUUID": {
+          "type": "string"
+        },
+        "taskNodeId": {
+          "type": "string"
+        },
+        "taskName": {
+          "type": "string"
+        },
+        "taskType": {
+          "type": "string"
+        },
+        "taskData": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "taskStatus": {
+          "type": "string",
+          "default": "pending"
+        },
+        "taskCreatedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "taskModifiedDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "process": {
+          "$ref": "#/definitions/process"
+        },
+        "form": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/form"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignee": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/user"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
     }
   },
   "type": "object",
@@ -283,6 +495,15 @@
     },
     "userrole": {
       "$ref": "#/definitions/userrole"
+    },
+    "form": {
+      "$ref": "#/definitions/form"
+    },
+    "process": {
+      "$ref": "#/definitions/process"
+    },
+    "task": {
+      "$ref": "#/definitions/task"
     }
   }
 }

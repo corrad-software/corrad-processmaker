@@ -12,7 +12,8 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     hasUnsavedChanges: false,
     actionHistory: [],
     currentHistoryIndex: -1,
-    maxHistoryLength: 30 // Maximum number of history entries to keep
+    maxHistoryLength: 30, // Maximum number of history entries to keep
+    currentFormId: null
   }),
   
   getters: {
@@ -414,32 +415,184 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       this.hasUnsavedChanges = false;
     },
     
-    saveForm() {
-      const formData = this.formConfig;
-      
-      // Add to saved forms array
-      const existingIndex = this.savedForms.findIndex(f => f.id === formData.id);
-      if (existingIndex !== -1) {
-        this.savedForms[existingIndex] = formData;
-      } else {
-        this.savedForms.push(formData);
+    // Get forms from the backend
+    async getForms() {
+      try {
+        // Use the API endpoint to fetch forms
+        const response = await fetch('/api/forms');
+        const result = await response.json();
+        
+        if (result.success && Array.isArray(result.forms)) {
+          return result.forms;
+        } else {
+          console.error('Error in API response:', result.error || 'Unknown error');
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching forms:', error);
+        return [];
       }
-      
-      // Save to localStorage for persistence
-      localStorage.setItem('savedForms', JSON.stringify(this.savedForms));
-      
-      this.hasUnsavedChanges = false;
-      
-      // Record in history
-      this.recordHistory('save_form', {
-        formName: this.formName,
-        formDescription: this.formDescription,
-        componentCount: this.formComponents.length
-      });
-      
-      return formData;
     },
     
+    // Load saved forms from the API
+    async loadSavedForms() {
+      try {
+        // Fetch forms from the API
+        const forms = await this.getForms();
+        
+        // Transform to the format expected by the UI
+        this.savedForms = forms.map(form => ({
+          id: form.formUUID,
+          name: form.formName,
+          description: form.formDescription || '',
+          components: form.formComponents || [],
+          createdAt: form.formCreatedDate,
+          updatedAt: form.formModifiedDate
+        }));
+        
+        return this.savedForms;
+      } catch (error) {
+        console.error('Error loading saved forms:', error);
+        this.savedForms = [];
+        return [];
+      }
+    },
+    
+    // Save form to the database
+    async saveForm() {
+      try {
+        const formData = {
+          formName: this.formName,
+          formDescription: this.formDescription,
+          components: this.formComponents.map(c => ({
+            type: c.type,
+            props: c.props
+          }))
+        };
+        
+        // Determine if this is a new form or an update
+        const isNewForm = !this.currentFormId;
+        let response;
+        
+        if (isNewForm) {
+          // Create a new form
+          response = await fetch('/api/forms/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          });
+        } else {
+          // Update existing form
+          response = await fetch(`/api/forms/${this.currentFormId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          });
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update store state with the saved form
+          this.currentFormId = result.form.formUUID;
+          this.hasUnsavedChanges = false;
+          
+          // Record in history
+          this.recordHistory('save_form', {
+            formName: this.formName,
+            formDescription: this.formDescription,
+            componentCount: this.formComponents.length
+          });
+          
+          return result.form;
+        } else {
+          throw new Error(result.error || 'Failed to save form');
+        }
+      } catch (error) {
+        console.error('Error saving form:', error);
+        throw error;
+      }
+    },
+    
+    // Load a form from the database
+    async loadForm(formId) {
+      if (!formId) {
+        throw new Error('Form ID is required');
+      }
+      
+      try {
+        const response = await fetch(`/api/forms/${formId}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.form) {
+          // Clear existing data
+          this.formComponents = [];
+          this.selectedComponentId = null;
+          
+          // Set form data
+          this.formName = result.form.formName;
+          this.formDescription = result.form.formDescription || '';
+          this.currentFormId = result.form.formUUID;
+          
+          // Transform components from DB format to store format
+          if (Array.isArray(result.form.formComponents)) {
+            this.formComponents = result.form.formComponents.map(c => ({
+              ...c,
+              id: uuidv4() // Assign a new UUID for each component
+            }));
+          }
+          
+          // Clear and initialize history when loading a form
+          this.actionHistory = [];
+          this.currentHistoryIndex = -1;
+          
+          // Record initial state in history
+          this.recordHistory('load_form', {
+            formName: result.form.formName,
+            formId: formId
+          });
+          
+          return result.form;
+        } else {
+          throw new Error(result.error || 'Failed to load form');
+        }
+      } catch (error) {
+        console.error(`Error loading form ${formId}:`, error);
+        throw error;
+      }
+    },
+    
+    // Delete a form from the database
+    async deleteForm(formId) {
+      try {
+        const response = await fetch(`/api/forms/${formId}`, {
+          method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          return true;
+        } else {
+          throw new Error(result.error || 'Failed to delete form');
+        }
+      } catch (error) {
+        console.error(`Error deleting form ${formId}:`, error);
+        throw error;
+      }
+    },
+    
+    // Clear the current form
     clearForm() {
       // Capture the current state before clearing
       const oldComponents = [...this.formComponents];
@@ -451,6 +604,7 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       this.selectedComponentId = null;
       this.formName = 'New Form';
       this.formDescription = '';
+      this.currentFormId = null;
       this.hasUnsavedChanges = false;
       
       // Clear history when starting a new form and add initial state
@@ -461,40 +615,6 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       this.recordHistory('new_form', {
         message: 'Created a new empty form'
       });
-    },
-    
-    loadForm(formId) {
-      const savedForms = JSON.parse(localStorage.getItem('savedForms') || '[]');
-      const form = savedForms.find(f => f.id === formId);
-      
-      if (form) {
-        // Clear existing data
-        this.formComponents = [];
-        this.selectedComponentId = null;
-        
-        // Set form data
-        this.formName = form.name;
-        this.formDescription = form.description;
-        this.formComponents = form.components.map(c => ({
-          ...c,
-          id: uuidv4()
-        }));
-        
-        // Clear and initialize history when loading a form
-        this.actionHistory = [];
-        this.currentHistoryIndex = -1;
-        
-        // Record initial state in history
-        this.recordHistory('load_form', {
-          formName: form.name,
-          formId: formId
-        });
-      }
-    },
-    
-    loadSavedForms() {
-      const savedForms = JSON.parse(localStorage.getItem('savedForms') || '[]');
-      this.savedForms = savedForms;
     },
     
     // Optimize the grid layout by analyzing the current components

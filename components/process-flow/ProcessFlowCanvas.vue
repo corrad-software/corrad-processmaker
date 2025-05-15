@@ -27,7 +27,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['nodeClick', 'edgeClick', 'paneClick', 'nodesChange', 'edgesChange', 'nodeSelected']);
+const emit = defineEmits(['nodeClick', 'edgeClick', 'paneClick', 'nodesChange', 'edgesChange', 'nodeSelected', 'edgeSelected']);
 
 // Get the flow instance
 const { flowInstance } = useVueFlow();
@@ -57,110 +57,10 @@ const {
 });
 
 // Default nodes if empty
-const defaultNodes = [
-  {
-    id: 'start',
-    type: 'start',
-    label: 'Start Process',
-    position: { x: 100, y: 100 },
-    data: {
-      description: 'Process starts here'
-    }
-  },
-  {
-    id: 'form1',
-    type: 'form',
-    label: 'Request Form',
-    position: { x: 100, y: 250 },
-    data: {
-      description: 'User fills out request form',
-      formName: 'Request Form'
-    }
-  },
-  {
-    id: 'gateway',
-    type: 'gateway',
-    label: 'Approval Required?',
-    position: { x: 100, y: 400 },
-    data: {
-      description: 'Check if approval is required',
-      conditions: ['Amount > 1000', 'Special Request']
-    }
-  },
-  {
-    id: 'task1',
-    type: 'task',
-    label: 'Manager Approval',
-    position: { x: 250, y: 550 },
-    data: {
-      description: 'Manager reviews the request',
-      assignee: 'Department Manager'
-    }
-  },
-  {
-    id: 'script1',
-    type: 'script',
-    label: 'Process Request',
-    position: { x: -50, y: 550 },
-    data: {
-      description: 'Automatically process the request',
-      language: 'JavaScript'
-    }
-  },
-  {
-    id: 'end',
-    type: 'end',
-    label: 'End Process',
-    position: { x: 100, y: 700 },
-    data: {
-      description: 'Process completes here'
-    }
-  }
-];
+const defaultNodes = [];
 
 // Default edges if empty
-const defaultEdges = [
-  {
-    id: 'start-form1',
-    source: 'start',
-    target: 'form1',
-    animated: true
-  },
-  {
-    id: 'form1-gateway',
-    source: 'form1',
-    target: 'gateway',
-    animated: true
-  },
-  {
-    id: 'gateway-task1',
-    source: 'gateway',
-    target: 'task1',
-    animated: true,
-    label: 'Yes',
-    type: 'smoothstep'
-  },
-  {
-    id: 'gateway-script1',
-    source: 'gateway',
-    target: 'script1',
-    animated: true,
-    label: 'No',
-    type: 'smoothstep'
-  },
-  {
-    id: 'task1-end',
-    source: 'task1',
-    target: 'end',
-    animated: true
-  },
-  {
-    id: 'script1-end',
-    source: 'script1',
-    target: 'end',
-    animated: true
-  }
-];
+const defaultEdges = [];
 
 // Flow configuration
 const flowOptions = ref({
@@ -219,7 +119,18 @@ const onNodeClick = ({ node }) => {
 };
 
 // Handle edge click
-const onEdgeClick = (_, edge) => {
+const onEdgeClick = (event, edge) => {
+  // Create a simplified copy of the edge data
+  const edgeData = {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: edge.label || '',
+    sourceNode: nodes.value.find(node => node.id === edge.source),
+    targetNode: nodes.value.find(node => node.id === edge.target)
+  };
+  
+  emit('edgeSelected', edgeData);
   emit('edgeClick', edge);
 };
 
@@ -274,13 +185,46 @@ onEdgesChange((changes) => {
 const handleConnect = (connection) => {
   if (!connection.source || !connection.target) return;
   
+  // Try to determine if this is coming from a gateway
+  const sourceNode = nodes.value.find(node => node.id === connection.source);
+  let label = '';
+  
+  // If the source is a gateway, we should add a label based on conditions
+  if (sourceNode && sourceNode.type === 'gateway') {
+    // Check if there's a default path label
+    if (sourceNode.data && sourceNode.data.defaultPath) {
+      label = sourceNode.data.defaultPath;
+    }
+    
+    // For existing gateway connections, check if we should use a condition's output
+    const existingEdges = edges.value.filter(edge => edge.source === connection.source);
+    if (existingEdges.length === 0 && sourceNode.data.conditions && sourceNode.data.conditions.length > 0) {
+      // If this is the first connection and we have conditions, use the first condition's output
+      const firstCondition = sourceNode.data.conditions[0];
+      if (firstCondition && firstCondition.output) {
+        label = firstCondition.output;
+      }
+    } else if (sourceNode.data.conditions) {
+      // If we already have connections, try to find an unused condition
+      const usedOutputs = existingEdges.map(edge => edge.label);
+      const unusedCondition = sourceNode.data.conditions.find(condition => 
+        condition.output && !usedOutputs.includes(condition.output)
+      );
+      
+      if (unusedCondition) {
+        label = unusedCondition.output;
+      }
+    }
+  }
+  
   const newEdge = {
     id: `${connection.source}-${connection.target}`,
     source: connection.source,
     target: connection.target,
     type: 'smoothstep',
     animated: true,
-    style: { stroke: '#555' }
+    style: { stroke: '#555' },
+    label: label
   };
 
   addEdges([newEdge]);
@@ -288,15 +232,38 @@ const handleConnect = (connection) => {
 };
 
 // Handle node removal
-const onNodeDelete = (nodes) => {
-  removeNodes(nodes);
-  emit('nodesChange', nodes.value);
+const onNodeDelete = (event) => {
+  // Check if we have a node in the event
+  if (event && event.node) {
+    removeNodes([event.node]);
+    emit('nodesChange', nodes.value);
+  }
 };
 
 // Handle edge removal
-const onEdgeDelete = (edges) => {
-  removeEdges(edges);
-  emit('edgesChange', edges.value);
+const onEdgeDelete = (event) => {
+  // Check if we have an edge in the event
+  if (event && event.edge) {
+    removeEdges([event.edge]);
+    emit('edgesChange', edges.value);
+  }
+};
+
+// Handle delete key press to remove selected elements
+const onDeleteKeyPress = () => {
+  const { getSelectedNodes, getSelectedEdges } = flowInstance.value;
+  const selectedNodes = getSelectedNodes();
+  const selectedEdges = getSelectedEdges();
+  
+  if (selectedNodes.length > 0) {
+    removeNodes(selectedNodes);
+    emit('nodesChange', nodes.value);
+  }
+  
+  if (selectedEdges.length > 0) {
+    removeEdges(selectedEdges);
+    emit('edgesChange', edges.value);
+  }
 };
 
 // Handle drop event
@@ -359,6 +326,7 @@ const onDragOver = (event) => {
       @connect="handleConnect"
       @nodeDoubleClick="onNodeDelete"
       @edgeDoubleClick="onEdgeDelete"
+      @keyup.delete="onDeleteKeyPress"
     >
       <Background pattern-color="#aaa" gap="20" />
       <Controls />
@@ -385,10 +353,10 @@ const onDragOver = (event) => {
 /* Node styles from ProcessFlowNodes.js are imported globally in a plugin */
 .process-flow-container {
   width: 100%;
-  height: calc(100vh - 216px); /* Adjust based on header/footer height */
-  min-height: 600px;
+  height: calc(100vh - 190px); /* Adjust based on new header/footer height */
+  min-height: 500px;
   border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
   flex: 1;

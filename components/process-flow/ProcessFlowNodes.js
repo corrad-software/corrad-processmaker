@@ -12,27 +12,37 @@ const CustomNode = markRaw({
         v-if="type !== 'start'"
         type="target"
         position="top"
-        :style="{ background: '#555' }"
+        :class="'handle-' + type + '-input'"
       />
       
-      <div class="custom-node-header">
-        <div class="custom-node-icon">
-          <slot name="icon"></slot>
-        </div>
-        <div class="custom-node-title">{{ label }}</div>
-        <div class="custom-node-badge" v-if="showBadge">
-          <slot name="badge"></slot>
-        </div>
-      </div>
       <div class="custom-node-content">
-        <slot></slot>
+        <template v-if="type === 'task' || type === 'form' || type === 'script'">
+          <div class="flex items-center mb-1">
+            <div class="custom-node-icon">
+              <slot name="icon"></slot>
+            </div>
+            <div class="custom-node-title">{{ label }}</div>
+            <div class="custom-node-badge" v-if="showBadge">
+              <slot name="badge"></slot>
+            </div>
+          </div>
+          <slot></slot>
+        </template>
+        
+        <template v-else>
+          <div class="custom-node-icon" v-if="type !== 'gateway'">
+            <slot name="icon"></slot>
+          </div>
+          <div class="custom-node-title">{{ label }}</div>
+          <slot></slot>
+        </template>
       </div>
 
       <Handle
         v-if="type !== 'end'"
         type="source"
         position="bottom"
-        :style="{ background: '#555' }"
+        :class="'handle-' + type + '-output'"
       />
     </div>
   `,
@@ -64,11 +74,11 @@ export const TaskNode = markRaw({
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons' }, 'assignment'),
+      icon: () => h('i', { class: 'material-icons text-blue-500' }, 'assignment'),
       default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'Task node'),
+        h('p', { class: 'node-description' }, this.data?.description || 'A general task'),
         h('div', { class: 'node-assignee' }, [
-          h('span', { class: 'node-assignee-label' }, 'Assigned to: '),
+          h('span', { class: 'node-assignee-label' }, 'Assigned to:'),
           h('span', { class: 'node-assignee-value' }, this.data?.assignee || 'Unassigned')
         ])
       ])
@@ -88,10 +98,8 @@ export const StartNode = markRaw({
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons' }, 'play_circle_filled'),
-      default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'Process starts here')
-      ])
+      icon: () => h('i', { class: 'material-icons text-green-600' }, 'play_arrow'),
+      default: () => null
     });
   }
 });
@@ -108,10 +116,8 @@ export const EndNode = markRaw({
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons' }, 'stop_circle'),
-      default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'Process ends here')
-      ])
+      icon: () => h('i', { class: 'material-icons text-red-600' }, 'stop'),
+      default: () => null
     });
   }
 });
@@ -123,18 +129,18 @@ export const GatewayNode = markRaw({
     return h(CustomNode, {
       id: this.id,
       type: 'gateway',
-      label: this.label || 'Decision',
+      label: this.label || 'Gateway',
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons' }, 'call_split'),
-      default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'Decision point'),
-        h('div', { class: 'node-conditions' }, [
-          h('span', { class: 'node-conditions-label' }, 'Conditions: '),
-          h('span', { class: 'node-conditions-value' }, this.data?.conditions?.length || '0')
-        ])
+      icon: () => h('i', { class: 'material-icons text-orange-500' }, 'call_split'),
+      default: () => h('div', { class: 'gateway-details' }, [
+        h('div', { class: 'node-conditions-value' }, 
+          this.data?.conditions?.length 
+            ? `${this.data.conditions.length} condition${this.data.conditions.length > 1 ? 's' : ''}` 
+            : ''
+        )
       ])
     });
   }
@@ -144,21 +150,31 @@ export const GatewayNode = markRaw({
 export const FormNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
   render() {
+    // Check if we have a form selected
+    const hasForm = this.data?.formId && this.data?.formName;
+    
+    // Create badge content based on form selection status
+    const badgeContent = hasForm ? 
+      h('span', { class: 'node-badge bg-purple-100 text-purple-600 px-1 text-xs rounded' }, 'Form') : 
+      null;
+    
     return h(CustomNode, {
       id: this.id,
       type: 'form',
-      label: this.label || 'Form',
+      label: this.label || 'Form Task',
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons' }, 'description'),
-      badge: () => this.data?.formId ? h('span', { class: 'node-badge' }, 'F') : null,
+      icon: () => h('i', { class: 'material-icons text-purple-500' }, 'description'),
+      badge: () => badgeContent,
       default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'Form submission'),
+        h('p', { class: 'node-description' }, this.data?.description || 'Form submission task'),
         h('div', { class: 'node-form-info' }, [
-          h('span', { class: 'node-form-label' }, 'Form: '),
-          h('span', { class: 'node-form-value' }, this.data?.formName || 'None selected')
+          h('span', { class: 'node-form-label' }, 'Form:'),
+          h('span', { 
+            class: hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
+          }, hasForm ? this.data.formName : 'None selected')
         ])
       ])
     });
@@ -177,7 +193,7 @@ export const ScriptNode = markRaw({
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons' }, 'code'),
+      icon: () => h('i', { class: 'material-icons script-icon' }, 'code'),
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'Script execution'),
         h('div', { class: 'node-script-info' }, [
@@ -202,16 +218,11 @@ export const nodeTypes = markRaw({
 // Default CSS for the nodes to be imported where needed
 export const nodeStyles = `
 .custom-node {
-  border-radius: 6px;
-  padding: 12px;
-  color: #333;
-  background: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  width: 200px;
-  font-size: 12px;
-  border: 2px solid transparent;
-  transition: all 0.2s;
   position: relative;
+  color: #333;
+  font-size: 12px;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
 .custom-node.selected {
@@ -219,79 +230,255 @@ export const nodeStyles = `
   box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
 }
 
-.custom-node-header {
+/* Base styles for different node types */
+.node-task, .node-form, .node-script {
+  width: 180px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid #e0e0e0;
+}
+
+.node-gateway {
+  width: 50px;
+  height: 50px;
+  background: white;
+  transform: rotate(45deg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #FF9800;
+}
+
+.node-start, .node-end {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.node-start {
+  background: #e8f5e9;
+  border: 1px solid #4CAF50;
+}
+
+.node-end {
+  background: #ffebee;
+  border: 1px solid #f44336;
+}
+
+/* Content positioning */
+.custom-node-content {
+  padding: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+.node-gateway .custom-node-content {
+  transform: rotate(-45deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+}
+
+.node-start .custom-node-content,
+.node-end .custom-node-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0;
 }
 
 .custom-node-icon {
-  margin-right: 8px;
+  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.node-start .custom-node-icon,
+.node-end .custom-node-icon {
+  margin: 0;
 }
 
 .custom-node-icon .material-icons {
-  font-size: 20px;
+  font-size: 16px;
 }
 
-.custom-node-title {
+.node-start .material-icons, 
+.node-end .material-icons {
+  font-size: 14px;
+}
+
+.node-task .custom-node-title,
+.node-form .custom-node-title,
+.node-script .custom-node-title {
   font-weight: 500;
-  flex-grow: 1;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
 }
 
-.custom-node-content {
-  font-size: 12px;
-  color: #666;
+.node-end .custom-node-title {
+  position: absolute;
+  width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  bottom: -29px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.node-start .custom-node-title {
+  position: absolute;
+  width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  bottom: 51px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.node-gateway .custom-node-title {
+  font-size: 9px;
+  font-weight: 500;
+  position: absolute;
+  width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
 }
 
 .node-details {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .node-description {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   color: #666;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 10px;
 }
 
 .node-assignee,
 .node-form-info,
 .node-script-info,
 .node-conditions {
-  font-size: 11px;
-  color: #888;
   display: flex;
-  gap: 4px;
-}
-
-.node-badge {
-  background: #e2e8f0;
-  padding: 2px 6px;
-  border-radius: 4px;
   font-size: 10px;
+  color: #666;
+  align-items: center;
+}
+
+.node-assignee-label,
+.node-form-label,
+.node-script-label {
   font-weight: 500;
+  margin-right: 4px;
 }
 
-/* Node type specific styles */
-.node-start .custom-node-icon .material-icons {
-  color: #4CAF50;
+.node-form-value,
+.node-script-value,
+.node-assignee-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.node-end .custom-node-icon .material-icons {
-  color: #f44336;
+.node-conditions-value {
+  font-size: 9px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.node-task .custom-node-icon .material-icons {
-  color: #2196F3;
+.node-form-id {
+  font-size: 9px;
+  color: #999;
 }
 
-.node-form .custom-node-icon .material-icons {
-  color: #9C27B0;
+.gateway-details {
+  font-size: 9px;
+  text-align: center;
 }
 
-.node-gateway .custom-node-icon .material-icons {
-  color: #FF9800;
+.handle-task-input,
+.handle-form-input,
+.handle-script-input,
+.handle-gateway-input {
+  top: -5px !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
 }
 
-.node-script .custom-node-icon .material-icons {
-  color: #607D8B;
+.handle-task-output,
+.handle-form-output,
+.handle-script-output,
+.handle-gateway-output {
+  bottom: -5px !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+}
+
+.handle-start-output {
+  bottom: -5px !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+}
+
+.handle-end-input {
+  top: -5px !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+}
+
+/* Position handles correctly for gateway node */
+.handle-gateway-input {
+  transform: translateY(-14px) !important;
+}
+
+.handle-gateway-output {
+  transform: translateY(14px) !important;
+}
+
+/* Badge style */
+.node-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
 }
 `; 

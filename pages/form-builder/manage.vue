@@ -160,13 +160,32 @@ definePageMeta({
 
 const router = useRouter();
 const formStore = useFormBuilderStore();
-const toast = useToast();
+let toast;
+
+// Try to use the toast composable if available
+try {
+  toast = useToast();
+} catch (error) {
+  // Create a simple toast object if composable is not available
+  toast = {
+    success: (msg) => console.log('Success:', msg),
+    error: (msg) => console.error('Error:', msg),
+    info: (msg) => console.info('Info:', msg),
+    warning: (msg) => console.warn('Warning:', msg)
+  };
+}
+
 const searchQuery = ref("");
 const showUnsavedChangesModal = ref(false);
 
 // Initialize and load forms
-onMounted(() => {
-  formStore.loadSavedForms();
+onMounted(async () => {
+  try {
+    await formStore.loadSavedForms();
+  } catch (error) {
+    console.error("Error loading forms:", error);
+    toast.error("Failed to load forms: " + (error.message || "Unknown error"));
+  }
 });
 
 // Format date for display
@@ -213,18 +232,29 @@ const confirmNavigation = () => {
   router.push("/form-builder");
 };
 
-const editForm = (formId) => {
-  formStore.loadForm(formId);
-  router.push("/form-builder");
+const editForm = async (formId) => {
+  try {
+    await formStore.loadForm(formId);
+    router.push("/form-builder");
+  } catch (error) {
+    console.error("Error loading form:", error);
+    toast.error("Failed to load form: " + (error.message || "Unknown error"));
+  }
 };
 
-const deleteForm = (formId) => {
+const deleteForm = async (formId) => {
   if (confirm("Are you sure you want to delete this form?")) {
-    const index = formStore.savedForms.findIndex((f) => f.id === formId);
-    if (index !== -1) {
-      formStore.savedForms.splice(index, 1);
-      localStorage.setItem("savedForms", JSON.stringify(formStore.savedForms));
+    try {
+      // Call the API to delete the form
+      await formStore.deleteForm(formId);
+      
+      // Refresh the forms list
+      await formStore.loadSavedForms();
+      
       toast.success("Form deleted successfully");
+    } catch (error) {
+      console.error("Error deleting form:", error);
+      toast.error("Failed to delete form: " + (error.message || "Unknown error"));
     }
   }
 };

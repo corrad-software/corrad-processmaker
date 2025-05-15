@@ -1,8 +1,21 @@
 <script setup>
-import { ref, onMounted, computed, shallowRef } from 'vue';
+import { ref, onMounted, computed, shallowRef, onUnmounted } from 'vue';
 import { useProcessBuilderStore } from '~/stores/processBuilder';
 import { useRouter } from 'vue-router';
 import ProcessFlowCanvas from '~/components/process-flow/ProcessFlowCanvas.vue';
+import ProcessBuilderComponents from '~/components/process-flow/ProcessBuilderComponents.vue';
+import FormSelector from '~/components/process-flow/FormSelector.vue';
+import GatewayConditionManager from '~/components/process-flow/GatewayConditionManager.vue';
+import { onBeforeRouteLeave } from 'vue-router';
+
+// Define page meta
+definePageMeta({
+  title: "Process Builder",
+  description: "Create business processes with drag and drop",
+  layout: "empty",
+  middleware: ["auth"],
+  requiresAuth: true,
+});
 
 // Initialize the store and router
 const processStore = useProcessBuilderStore();
@@ -22,6 +35,15 @@ const selectedNodeData = ref(null);
 
 // Track drag data
 const draggedComponent = ref(null);
+
+// Add a variable to track selected edge
+const selectedEdgeData = ref(null);
+
+// Add variables for navigation handling
+const showUnsavedChangesModal = ref(false);
+const pendingNavigation = ref(null);
+const navigationTarget = ref(null);
+const navigationConfirmed = ref(false);
 
 // Component definitions
 const components = [
@@ -125,37 +147,142 @@ const nodeLanguage = computed({
   }
 });
 
+// Add a computed property for gateway conditions
+const nodeConditions = computed({
+  get: () => selectedNodeData.value?.data?.conditions || [],
+  set: (value) => {
+    if (selectedNodeData.value) {
+      selectedNodeData.value.data.conditions = value;
+      updateNodeInStore();
+    }
+  }
+});
+
+// Add a computed property for gateway default path
+const nodeDefaultPath = computed({
+  get: () => selectedNodeData.value?.data?.defaultPath || 'Default',
+  set: (value) => {
+    if (selectedNodeData.value) {
+      selectedNodeData.value.data.defaultPath = value;
+      updateNodeInStore();
+    }
+  }
+});
+
 // Handle node selection
 const onNodeSelected = (node) => {
   selectedNodeData.value = JSON.parse(JSON.stringify(node));
   selectedNode.value = node;
+  selectedEdgeData.value = null;
   processStore.selectNode(node.id);
+};
+
+// Handle edge selection
+const onEdgeSelected = (edge) => {
+  selectedEdgeData.value = edge;
+  selectedNode.value = null;
+  selectedNodeData.value = null;
+  processStore.selectEdge(edge.id);
+};
+
+// Update edge label
+const updateEdgeLabel = (value) => {
+  if (selectedEdgeData.value) {
+    processStore.updateEdge(selectedEdgeData.value.id, { label: value });
+    selectedEdgeData.value.label = value;
+  }
+};
+
+// Update the pane click handler to clear edge selection too
+const onPaneClick = () => {
+  selectedNode.value = null;
+  selectedNodeData.value = null;
+  selectedEdgeData.value = null;
+  processStore.clearSelection();
 };
 
 // Update node in store
 const updateNodeInStore = () => {
   if (selectedNodeData.value) {
-    processStore.updateNode(selectedNodeData.value);
+    // Make sure we're passing the nodeId and updates correctly
+    processStore.updateNode(selectedNodeData.value.id, {
+      label: selectedNodeData.value.label,
+      data: selectedNodeData.value.data
+    });
   }
 };
 
-// Handle pane click (deselection)
-const onPaneClick = () => {
-  selectedNode.value = null;
-  selectedNodeData.value = null;
-  processStore.clearSelection();
+// Handle condition update
+const handleConditionUpdate = (conditions) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'gateway') {
+    selectedNodeData.value.data.conditions = conditions;
+    updateNodeInStore();
+  }
 };
 
-// Handle node changes
-const onNodesChange = (changes, nodes) => {
-  // For now just log changes
-  // console.log('Nodes changed:', changes);
+// Handle updates from the canvas when nodes change
+const onNodesChange = (changes, currentNodes) => {
+  if (!changes || !currentNodes) return;
+  
+  // Handle node removals
+  const removedNodes = changes
+    .filter(change => change.type === 'remove')
+    .map(change => change.id);
+    
+  if (removedNodes.length > 0) {
+    removedNodes.forEach(nodeId => {
+      processStore.deleteNode(nodeId);
+    });
+    
+    // Clear selection if the selected node was deleted
+    if (selectedNodeData.value && removedNodes.includes(selectedNodeData.value.id)) {
+      selectedNodeData.value = null;
+    }
+  }
+  
+  // Handle position changes
+  const positionChanges = {};
+  changes
+    .filter(change => change.type === 'position' && change.position)
+    .forEach(change => {
+      positionChanges[change.id] = change.position;
+    });
+    
+  if (Object.keys(positionChanges).length > 0) {
+    processStore.updateNodePositions(positionChanges);
+  }
+  
+  // Update node selection if needed
+  if (selectedNodeData.value) {
+    const updatedNode = currentNodes.find(node => node.id === selectedNodeData.value.id);
+    if (updatedNode) {
+      selectedNodeData.value = { ...updatedNode };
+    }
+  }
 };
 
-// Handle edge changes
-const onEdgesChange = (changes, edges) => {
-  // For now just log changes
-  // console.log('Edges changed:', changes);
+// Handle updates from the canvas when edges change
+const onEdgesChange = (changes, currentEdges) => {
+  if (!changes || !currentEdges) return;
+  
+  // Handle edge removals
+  const removedEdges = changes
+    .filter(change => change.type === 'remove')
+    .map(change => change.id);
+    
+  if (removedEdges.length > 0) {
+    removedEdges.forEach(edgeId => {
+      processStore.deleteEdge(edgeId);
+    });
+    
+    // Clear selection if the selected edge was deleted
+    if (selectedEdgeData.value && removedEdges.includes(selectedEdgeData.value.id)) {
+      selectedEdgeData.value = null;
+    }
+  }
+  
+  // Sync all edges
+  processStore.currentProcess.edges = currentEdges;
 };
 
 // Handle creating a new process
@@ -172,23 +299,90 @@ const createNewProcess = () => {
   newProcessDescription.value = '';
 };
 
-// Go to process management
-const goToManage = () => {
-  router.push('/process-builder/manage');
-};
-
-// Mock demo process for testing if no process exists
-const createDemoProcess = () => {
-  const process = processStore.createProcess('Demo Process', 'A demonstration process flow');
-  processStore.setCurrentProcess(process.id);
-};
-
-// Check if we have any processes, if not create a demo one
-onMounted(() => {
-  if (!processStore.currentProcess && processStore.processes.length === 0) {
-    createDemoProcess();
+// Add navigation guard
+onBeforeRouteLeave((to, from, next) => {
+  // If navigation was already confirmed or there are no unsaved changes, proceed
+  if (navigationConfirmed.value || !processStore.hasUnsavedChanges) {
+    next();
+    return;
   }
+  
+  // Otherwise show the confirmation modal
+  showUnsavedChangesModal.value = true;
+  pendingNavigation.value = () => {
+    navigationConfirmed.value = true;
+    next();
+  };
+  next(false);
 });
+
+// Navigation handlers
+const cancelNavigation = () => {
+  showUnsavedChangesModal.value = false;
+  pendingNavigation.value = null;
+  navigationTarget.value = null;
+  navigationConfirmed.value = false;
+};
+
+// Update the confirmNavigation function to handle targets
+const confirmNavigation = (target) => {
+  // If already confirmed or no unsaved changes, navigate directly
+  if (navigationConfirmed.value || !processStore.hasUnsavedChanges) {
+    router.push(target);
+    return;
+  }
+  
+  // Otherwise show confirmation modal
+  showUnsavedChangesModal.value = true;
+  navigationTarget.value = target;
+};
+
+// Add proceeding with navigation
+const proceedWithNavigation = () => {
+  showUnsavedChangesModal.value = false;
+  
+  if (pendingNavigation.value) {
+    pendingNavigation.value();
+  } else if (navigationTarget.value) {
+    navigationConfirmed.value = true; // Mark as confirmed before navigating
+    router.push(navigationTarget.value);
+  }
+};
+
+// Update the goToManage function to use the navigation system
+const goToManage = () => {
+  // If already confirmed or no unsaved changes, navigate directly
+  if (navigationConfirmed.value || !processStore.hasUnsavedChanges) {
+    router.push('/process-builder/manage');
+    return;
+  }
+  
+  // Otherwise show confirmation modal
+  showUnsavedChangesModal.value = true;
+  navigationTarget.value = "/process-builder/manage";
+};
+
+// Add events for beforeunload
+onMounted(() => {
+  // No automatic process creation - let the user create one explicitly
+  
+  // Add the beforeunload event listener
+  window.addEventListener('beforeunload', handleBeforeUnload);
+});
+
+onUnmounted(() => {
+  // Remove event listeners
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+});
+
+// Show warning if there are unsaved changes
+const handleBeforeUnload = (event) => {
+  if (processStore.hasUnsavedChanges) {
+    event.preventDefault();
+    event.returnValue = '';
+    return '';
+  }
+};
 
 // Handle drag start
 const onDragStart = (event, component) => {
@@ -219,223 +413,445 @@ const onDragEnd = (event) => {
   draggedComponent.value = null;
 };
 
-// Generate unique node ID
-const generateNodeId = (type) => {
-  return `${type}-${Math.random().toString(36).substr(2, 9)}`;
+// Add these functions to handle form selection
+const handleFormSelection = (form) => {
+  if (selectedNodeData.value && form) {
+    selectedNodeData.value.data.formId = form.formID;
+    selectedNodeData.value.data.formName = form.formName;
+    selectedNodeData.value.data.formUuid = form.formUUID;
+    updateNodeInStore();
+  }
+};
+
+const clearFormSelection = () => {
+  if (selectedNodeData.value) {
+    selectedNodeData.value.data.formId = null;
+    selectedNodeData.value.data.formName = '';
+    selectedNodeData.value.data.formUuid = null;
+    updateNodeInStore();
+  }
+};
+
+// Delete current node
+const deleteNode = () => {
+  if (selectedNodeData.value) {
+    // Store the node ID before clearing the selection
+    const nodeId = selectedNodeData.value.id;
+    
+    // Clear selection first to avoid references to deleted node
+    selectedNodeData.value = null;
+    selectedNode.value = null;
+    
+    // Delete the node
+    processStore.deleteNode(nodeId);
+  }
+};
+
+// Delete current edge
+const deleteEdge = () => {
+  if (selectedEdgeData.value) {
+    processStore.deleteEdge(selectedEdgeData.value.id);
+    selectedEdgeData.value = null;
+  }
+};
+
+// Save current process
+const saveProcess = () => {
+  processStore.saveProcess();
+};
+
+// Add a component handler to add components from the component panel
+const onAddComponent = (component) => {
+  // Create a new node from the component definition
+  const newNode = {
+    id: `${component.type}_${Date.now()}`,
+    type: component.type,
+    position: { x: 100, y: 100 }, // Default position
+    label: component.label,
+    data: component.data
+  };
+  
+  // Add the node to the process
+  processStore.addNode(newNode);
+  
+  // Select the newly added node
+  onNodeSelected(newNode);
+};
+
+// Fix references to functions
+const onFormSelected = (formData) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'form') {
+    selectedNodeData.value.data.formId = formData.id;
+    selectedNodeData.value.data.formName = formData.name;
+    updateNodeInStore();
+  }
+};
+
+const onConditionsUpdated = (conditions) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'gateway') {
+    selectedNodeData.value.data.conditions = conditions;
+    updateNodeInStore();
+  }
 };
 </script>
 
 <template>
-  <div class="process-builder-container h-[calc(100vh-100px)] flex flex-col">
-    <div class="process-builder-header mb-4 flex justify-between items-center p-4 bg-white shadow-sm">
-      <h1 class="text-2xl font-bold">Process Builder</h1>
-      
-      <div class="process-builder-actions flex gap-2">
-        <button
-          v-if="!isCreatingProcess"
-          @click="isCreatingProcess = true"
-          class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          New Process
-        </button>
-        
-        <button
-          v-if="hasCurrentProcess"
-          @click="processStore.saveProcess()"
-          class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          :disabled="!processStore.hasUnsavedChanges"
-        >
-          Save Process
-        </button>
-        
-        <button
-          @click="goToManage"
-          class="px-4 py-2 border rounded hover:bg-gray-100"
-        >
-          Manage Processes
-        </button>
+  <div class="process-builder flex flex-col h-screen bg-white">
+    <!-- Header Bar -->
+    <header
+      class="bg-gray-800 px-4 py-4 flex items-center justify-between text-white shadow-md"
+    >
+      <div class="flex items-center gap-3">
+        <img
+          src="@/assets/img/logo/logo-word-white.svg"
+          alt="Corrad Logo"
+          class="h-7"
+        />
       </div>
-    </div>
-    
-    <!-- New process form -->
-    <div v-if="isCreatingProcess" class="mb-4 p-4 border rounded bg-gray-50 mx-4">
-      <h2 class="text-lg font-bold mb-2">Create New Process</h2>
-      
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Process Name</label>
-        <input
-          v-model="newProcessName"
+
+      <div class="flex items-center gap-3">
+        <FormKit
+          v-if="hasCurrentProcess"
+          v-model="processStore.currentProcess.name"
           type="text"
-          class="w-full px-3 py-2 border rounded"
           placeholder="Enter process name"
+          :classes="{
+            outer: 'w-64 mb-0',
+            input: 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+          }"
         />
       </div>
       
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea
-          v-model="newProcessDescription"
-          rows="2"
-          class="w-full px-3 py-2 border rounded"
-          placeholder="Enter process description"
-        ></textarea>
+      <div class="flex items-center gap-3">
+        <RsButton @click="saveProcess" variant="primary" size="sm" :disabled="!hasCurrentProcess">
+          <Icon name="material-symbols:save" class="mr-1" />
+          Save Process
+        </RsButton>
+        <RsButton @click="confirmNavigation('/process-builder/manage')" variant="tertiary" size="sm">
+          <Icon name="material-symbols:arrow-back" class="mr-1" />
+          Back to Processes
+        </RsButton>
       </div>
-      
-      <div class="flex gap-2">
-        <button
-          @click="createNewProcess"
-          class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          :disabled="!newProcessName.trim()"
-        >
-          Create
-        </button>
-        
-        <button
-          @click="isCreatingProcess = false"
-          class="px-4 py-2 border rounded hover:bg-gray-100"
-        >
-          Cancel
-        </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden" v-if="hasCurrentProcess">
+      <!-- Left Panel - Components -->
+      <div class="w-64 border-r border-gray-200 flex flex-col overflow-hidden">
+        <div class="bg-gray-100 p-3 flex items-center justify-between border-b border-gray-200">
+          <h2 class="text-sm font-medium text-gray-700">Process Components</h2>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+          <ProcessBuilderComponents @add-component="onAddComponent" />
+        </div>
       </div>
-    </div>
-    
-    <div v-if="hasCurrentProcess" class="flex flex-1 gap-4 p-4 min-h-0 overflow-hidden">
-      <!-- Left panel - Component palette -->
-      <div class="process-builder-palette w-64 bg-white shadow-md rounded-md overflow-y-auto">
-        <div class="p-4">
-          <h2 class="text-lg font-bold mb-2">Components</h2>
-          <div class="process-builder-component-list space-y-2">
-            <div 
-              v-for="component in components"
-              :key="component.type"
-              class="process-component-item p-2 border rounded cursor-grab hover:bg-gray-50 transition-transform"
-              draggable="true"
-              @dragstart="(e) => onDragStart(e, component)"
-              @dragend="onDragEnd"
-            >
-              <div class="flex items-center">
-                <i :class="['material-icons mr-2', component.iconColor]">{{ component.icon }}</i>
-                <span>{{ component.label }}</span>
+
+      <!-- Center Panel - Process Canvas -->
+      <div class="flex-1 relative">
+        <ProcessFlowCanvas 
+          :initial-nodes="processStore.currentProcess.nodes"
+          :initial-edges="processStore.currentProcess.edges"
+          @node-selected="onNodeSelected"
+          @edge-selected="onEdgeSelected"
+          @pane-click="onPaneClick" 
+          @nodes-change="onNodesChange"
+          @edges-change="onEdgesChange"
+        />
+      </div>
+
+      <!-- Right Panel - Properties -->
+      <div class="w-72 border-l border-gray-200 flex flex-col overflow-hidden">
+        <div class="bg-gray-100 p-3 flex items-center justify-between border-b border-gray-200">
+          <h2 class="text-sm font-medium text-gray-700">Properties</h2>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 bg-white">
+          <!-- No selection state -->
+          <div v-if="!selectedNodeData && !selectedEdgeData" class="text-gray-500 text-center py-8">
+            <Icon name="material-symbols:touch-app" class="w-12 h-12 mx-auto mb-2" />
+            <p>Select a node or connection to edit its properties</p>
+          </div>
+
+          <!-- Node properties -->
+          <div v-else-if="selectedNodeData" class="space-y-4">
+            <h3 class="text-sm font-medium text-gray-700 mb-2">{{ selectedNodeData.type.charAt(0).toUpperCase() + selectedNodeData.type.slice(1) }} Node Properties</h3>
+            
+            <!-- Common properties for all nodes -->
+            <div class="space-y-3">
+              <FormKit
+                v-model="nodeLabel"
+                type="text"
+                label="Label"
+                placeholder="Node label"
+              />
+              
+              <FormKit
+                v-model="nodeDescription"
+                type="textarea"
+                label="Description"
+                placeholder="Enter description"
+                :rows="3"
+              />
+            </div>
+            
+            <!-- Task specific properties -->
+            <div v-if="selectedNodeData.type === 'task'" class="space-y-3">
+              <FormKit
+                v-model="nodeAssignee"
+                type="text"
+                label="Assignee"
+                placeholder="Enter assignee"
+              />
+            </div>
+            
+            <!-- Form specific properties -->
+            <div v-if="selectedNodeData.type === 'form'" class="space-y-3">
+              <FormSelector
+                v-model="selectedNodeData.data.formId" 
+                @select="onFormSelected"
+              />
+            </div>
+            
+            <!-- Script specific properties -->
+            <div v-if="selectedNodeData.type === 'script'" class="space-y-3">
+              <FormKit
+                v-model="nodeLanguage"
+                type="select"
+                label="Language"
+                :options="['JavaScript', 'Python', 'PHP']"
+              />
+              
+              <FormKit
+                v-if="selectedNodeData.data.script !== undefined"
+                v-model="selectedNodeData.data.script"
+                type="textarea"
+                label="Script"
+                placeholder="Enter script code"
+                :rows="5"
+              />
+            </div>
+            
+            <!-- Gateway specific properties -->
+            <div v-if="selectedNodeData.type === 'gateway'" class="space-y-3">
+              <FormKit
+                v-model="nodeDefaultPath"
+                type="text"
+                label="Default Path Label"
+                placeholder="Default"
+              />
+              
+              <GatewayConditionManager
+                v-model="nodeConditions"
+                :gateway-id="selectedNodeData.id"
+                @update:modelValue="handleConditionUpdate"
+              />
+            </div>
+            
+            <!-- Delete button -->
+            <div class="pt-4 border-t border-gray-200 mt-4">
+              <RsButton @click="deleteNode" variant="danger" size="sm" class="w-full">
+                <Icon name="material-symbols:delete" class="mr-1" />
+                Delete Node
+              </RsButton>
+            </div>
+          </div>
+          
+          <!-- Edge properties -->
+          <div v-else-if="selectedEdgeData" class="space-y-4">
+            <h3 class="text-sm font-medium text-gray-700 mb-2">Connection Properties</h3>
+            
+            <div class="space-y-3">
+              <FormKit
+                :model-value="selectedEdgeData.label"
+                @input="updateEdgeLabel"
+                type="text"
+                label="Label"
+                placeholder="Connection label"
+              />
+              
+              <div class="pt-4">
+                <div class="mb-2 text-sm text-gray-500">Connection Details</div>
+                <div class="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm">
+                  <div class="mb-1">
+                    <span class="font-medium">From:</span> 
+                    {{ selectedEdgeData.sourceNode?.label || selectedEdgeData.source }}
+                  </div>
+                  <div>
+                    <span class="font-medium">To:</span> 
+                    {{ selectedEdgeData.targetNode?.label || selectedEdgeData.target }}
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Delete button -->
+              <div class="pt-4 border-t border-gray-200 mt-4">
+                <RsButton @click="deleteEdge" variant="danger" size="sm" class="w-full">
+                  <Icon name="material-symbols:delete" class="mr-1" />
+                  Delete Connection
+                </RsButton>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- Middle panel - Canvas -->
-      <div class="process-builder-canvas flex-1 min-w-0">
-        <ProcessFlowCanvas
-          @node-selected="onNodeSelected"
-          @pane-click="onPaneClick"
-          @nodes-change="onNodesChange"
-          @edges-change="onEdgesChange"
-        />
-      </div>
-      
-      <!-- Right panel - Properties -->
-      <div class="process-builder-properties w-72 bg-white shadow-md rounded-md overflow-y-auto">
-        <div class="p-4">
-          <h2 class="text-lg font-bold mb-2">Properties</h2>
-          
-          <div v-if="selectedNodeData" class="process-properties-content space-y-4">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Node ID</label>
-              <div class="px-3 py-2 border rounded bg-gray-50 text-sm">{{ selectedNodeData.id }}</div>
-            </div>
+    </div>
+
+    <!-- Empty state - No process selected -->
+    <div v-else class="flex-1 flex items-center justify-center bg-gray-50">
+      <div class="text-center p-8 max-w-md">
+        <Icon name="material-symbols:flowchart" class="w-16 h-16 mx-auto mb-4 text-gray-400" />
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Create a New Process</h2>
+        <p class="text-gray-600 mb-6">Get started by creating a new process or navigate back to manage your existing processes.</p>
+        
+        <div class="space-y-3">
+          <div class="mb-4">
+            <FormKit
+              v-model="newProcessName"
+              type="text"
+              label="Process Name"
+              placeholder="Enter a name for your new process"
+              validation="required"
+            />
             
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Node Type</label>
-              <div class="px-3 py-2 border rounded bg-gray-50 text-sm">{{ selectedNodeData.type }}</div>
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Label</label>
-              <input
-                type="text"
-                v-model="nodeLabel"
-                class="w-full px-3 py-2 border rounded text-sm"
-              />
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                v-model="nodeDescription"
-                rows="3"
-                class="w-full px-3 py-2 border rounded text-sm"
-              ></textarea>
-            </div>
-            
-            <!-- Conditional fields based on node type -->
-            <div v-if="selectedNodeData.type === 'task'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-              <input
-                type="text"
-                v-model="nodeAssignee"
-                class="w-full px-3 py-2 border rounded text-sm"
-              />
-            </div>
-            
-            <div v-if="selectedNodeData.type === 'form'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Form Name</label>
-              <input
-                type="text"
-                v-model="nodeFormName"
-                class="w-full px-3 py-2 border rounded text-sm"
-              />
-            </div>
-            
-            <div v-if="selectedNodeData.type === 'script'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Language</label>
-              <select
-                v-model="nodeLanguage"
-                class="w-full px-3 py-2 border rounded text-sm"
-              >
-                <option value="JavaScript">JavaScript</option>
-                <option value="PHP">PHP</option>
-                <option value="Python">Python</option>
-              </select>
-            </div>
+            <FormKit
+              v-model="newProcessDescription"
+              type="textarea"
+              label="Description (Optional)"
+              placeholder="Enter a description"
+              :rows="3"
+            />
           </div>
           
-          <div v-else class="text-gray-500 text-sm italic">
-            Select a node to view its properties
+          <div class="flex justify-center gap-4">
+            <RsButton @click="createNewProcess" variant="primary" :disabled="!newProcessName.trim()">
+              <Icon name="material-symbols:add" class="mr-1" />
+              Create Process
+            </RsButton>
+            
+            <RsButton @click="confirmNavigation('/process-builder/manage')" variant="tertiary">
+              <Icon name="material-symbols:arrow-back" class="mr-1" />
+              Back to Processes
+            </RsButton>
           </div>
         </div>
       </div>
     </div>
     
-    <!-- No process message -->
-    <div v-if="!hasCurrentProcess && !isCreatingProcess" class="flex-1 flex items-center justify-center">
-      <div class="text-center">
-        <div class="text-gray-500 mb-4">
-          <i class="material-icons text-5xl">account_tree</i>
-          <p class="mt-2 text-lg">No process is currently open</p>
-        </div>
-        
-        <div class="flex flex-col items-center space-y-3">
-          <button
-            @click="isCreatingProcess = true"
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Create New Process
-          </button>
-          
-          <button
-            @click="goToManage"
-            class="px-4 py-2 border rounded hover:bg-gray-100"
-          >
-            Go to Process Management
-          </button>
+    <!-- Unsaved changes dialog -->
+    <RsModal v-model="showUnsavedChangesModal" title="Unsaved Changes" size="md" position="center">
+      <div class="p-4">
+        <div class="flex items-center mb-4">
+          <Icon name="material-symbols:warning-outline" class="text-yellow-500 w-8 h-8 mr-3" />
+          <div>
+            <p class="text-gray-600">You have unsaved changes that will be lost if you leave the page.</p>
+          </div>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <RsButton @click="cancelNavigation" variant="tertiary">
+            Stay on this Page
+          </RsButton>
+          <RsButton @click="proceedWithNavigation" variant="danger">
+            Discard Changes
+          </RsButton>
+        </div>
+      </template>
+    </RsModal>
   </div>
 </template>
 
 <style scoped>
+.process-builder {
+  --flow-node-selected-color: theme('colors.blue.500');
+  --flow-background-color: theme('colors.gray.100');
+  --flow-connection-path-color: theme('colors.gray.400');
+  --flow-connection-path-hover-color: theme('colors.blue.400');
+}
+
+:deep(.custom-node) {
+  border-radius: 4px;
+  padding: 10px;
+}
+
+:deep(.custom-node.selected) {
+  border-color: var(--flow-node-selected-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+:deep(.custom-node-content) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.custom-node-title) {
+  margin-top: 4px;
+  text-align: center;
+  font-weight: 500;
+}
+
+:deep(.node-gateway) {
+  transform: rotate(45deg);
+  background: white;
+  border: 2px solid #FF9800;
+}
+
+:deep(.node-gateway .custom-node-content) {
+  transform: rotate(-45deg);
+}
+
+:deep(.node-start), :deep(.node-end) {
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+}
+
+:deep(.node-task), :deep(.node-form), :deep(.node-script) {
+  min-width: 160px;
+  background: white;
+  border: 1px solid #ddd;
+}
+
+:deep(.node-details) {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  width: 100%;
+}
+
+:deep(.node-description) {
+  color: #666;
+  margin-bottom: 4px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .process-builder-container {
   background-color: #f8fafc;
+}
+
+.process-name-input :deep(.formkit-inner) {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  min-width: 200px;
+}
+
+.process-name-input :deep(.formkit-inner:focus-within) {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.process-name-input :deep(input::placeholder) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.process-name-input :deep(.formkit-message) {
+  color: rgba(255, 200, 200, 0.9);
+  font-size: 0.7rem;
+  position: absolute;
 }
 
 .process-builder-palette,

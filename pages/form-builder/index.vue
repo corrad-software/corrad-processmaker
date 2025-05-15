@@ -251,7 +251,20 @@ definePageMeta({
 
 const router = useRouter();
 const formStore = useFormBuilderStore();
-const toast = useToast();
+let toast;
+
+// Try to use the toast composable if available
+try {
+  toast = useToast();
+} catch (error) {
+  // Create a simple toast object if composable is not available
+  toast = {
+    success: (msg) => console.log('Success:', msg),
+    error: (msg) => console.error('Error:', msg),
+    info: (msg) => console.info('Info:', msg),
+    warning: (msg) => console.warn('Warning:', msg)
+  };
+}
 
 const showPreview = ref(false);
 const showUnsavedChangesModal = ref(false);
@@ -271,8 +284,27 @@ const formName = computed({
 });
 
 // Initialize the form builder
-onMounted(() => {
-  formStore.loadSavedForms();
+onMounted(async () => {
+  try {
+    await formStore.loadSavedForms();
+    
+    // Check if there's a form ID in the URL query parameters
+    const route = useRoute();
+    const formId = route.query.id;
+    
+    if (formId) {
+      try {
+        await formStore.loadForm(formId);
+        toast.success(`Form '${formStore.formName}' loaded successfully`);
+      } catch (error) {
+        console.error('Error loading form from ID:', error);
+        toast.error(`Failed to load form: ${error.message || 'Unknown error'}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error initializing form builder:', error);
+    toast.error(`Initialization error: ${error.message || 'Unknown error'}`);
+  }
   
   // Add the beforeunload event listener
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -391,7 +423,7 @@ const handleDrop = (event) => {
   formStore.addComponent(componentData);
 };
 
-const handleSave = () => {
+const handleSave = async () => {
   if (!formStore.formName.trim()) {
     toast.error("Please enter a form name");
     return;
@@ -402,8 +434,17 @@ const handleSave = () => {
     return;
   }
 
-  formStore.saveForm();
-  toast.success("Form saved successfully");
+  try {
+    const savedForm = await formStore.saveForm();
+    toast.success("Form saved successfully");
+    
+    // Update URL to include the form ID without reloading the page
+    const newPath = `/form-builder?id=${savedForm.formUUID}`;
+    window.history.replaceState({}, '', newPath);
+  } catch (error) {
+    console.error("Error saving form:", error);
+    toast.error(`Failed to save form: ${error.message || 'Unknown error'}`);
+  }
 };
 
 const handlePreview = () => {

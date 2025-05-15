@@ -3,6 +3,15 @@ import { ref, computed, onMounted } from 'vue';
 import { useProcessBuilderStore } from '~/stores/processBuilder';
 import { useRouter } from 'vue-router';
 
+// Define page meta
+definePageMeta({
+  title: "Process Management",
+  description: "Manage your business processes",
+  layout: "empty",
+  middleware: ["auth"],
+  requiresAuth: true,
+});
+
 // Initialize the store and router
 const processStore = useProcessBuilderStore();
 const router = useRouter();
@@ -100,7 +109,7 @@ const createNewProcess = () => {
 
 // Go back to builder
 const goToBuilder = () => {
-  router.push('/process-builder');
+  router.push('/');
 };
 
 // Check if we have processes, if not create a demo one
@@ -119,126 +128,137 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="process-management p-6">
-    <div class="flex justify-between items-center mb-6">
-      <div class="flex items-center">
-        <button 
-          @click="goToBuilder" 
-          class="mr-3 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <i class="material-icons">arrow_back</i>
-        </button>
-        <h1 class="text-2xl font-bold">Process Management</h1>
+  <div class="flex flex-col h-screen bg-gray-50">
+    <!-- Header Bar -->
+    <header
+      class="bg-gray-800 px-4 py-4 flex items-center justify-between text-white shadow-md"
+    >
+      <div class="flex items-center gap-3">
+        <Icon
+          @click="goToBuilder"
+          name="ph:arrow-circle-left-duotone"
+          class="cursor-pointer w-6 h-6"
+        />
+        <img
+          src="@/assets/img/logo/logo-word-white.svg"
+          alt="Corrad Logo"
+          class="h-7"
+        />
+      </div>
+
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-semibold text-white">Process Management</h1>
       </div>
       
-      <button
-        @click="createNewProcess"
-        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        Create New Process
-      </button>
-    </div>
-    
-    <div class="mb-6">
-      <div class="relative">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search processes..."
-          class="w-full px-4 py-2 pl-10 border rounded"
-        />
-        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-          <i class="material-icons text-lg">search</i>
-        </span>
+      <div class="flex items-center gap-3">
+        <RsButton @click="createNewProcess" variant="primary" size="sm">
+          <Icon name="material-symbols:add" class="mr-1" />
+          Create New Process
+        </RsButton>
       </div>
-    </div>
-    
-    <div class="bg-white shadow-md rounded-lg overflow-hidden">
-      <table class="w-full table-auto">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          <tr v-if="filteredProcesses.length === 0">
-            <td colspan="5" class="px-6 py-4 text-center text-gray-500 italic">
-              No processes found
-            </td>
-          </tr>
-          <tr v-for="process in filteredProcesses" :key="process.id" class="hover:bg-gray-50">
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="font-medium text-gray-900">{{ process.name }}</div>
-            </td>
-            <td class="px-6 py-4">
-              <div class="text-sm text-gray-500 truncate max-w-xs">{{ process.description }}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm text-gray-500">{{ formatDate(process.createdAt) }}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm text-gray-500">{{ formatDate(process.updatedAt) }}</div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-              <div class="flex space-x-2 justify-end">
-                <button 
-                  @click="editProcess(process.id)"
-                  class="text-blue-600 hover:text-blue-900"
-                  title="Edit Process"
-                >
-                  <i class="material-icons">edit</i>
-                </button>
-                <button 
-                  @click="duplicateProcess(process)"
-                  class="text-green-600 hover:text-green-900"
-                  title="Duplicate Process"
-                >
-                  <i class="material-icons">content_copy</i>
-                </button>
-                <button 
-                  @click="confirmDelete(process.id)"
-                  class="text-red-600 hover:text-red-900"
-                  title="Delete Process"
-                >
-                  <i class="material-icons">delete</i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 p-6 overflow-auto">
+      <div class="mb-6">
+        <div class="relative max-w-md">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search processes..."
+            class="w-full px-4 py-2 pl-10 border rounded bg-white"
+          />
+          <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <Icon name="material-symbols:search" class="text-lg" />
+          </span>
+        </div>
+      </div>
+      
+      <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="w-full table-auto">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr v-if="filteredProcesses.length === 0">
+              <td colspan="5" class="px-6 py-4 text-center text-gray-500 italic">
+                No processes found
+              </td>
+            </tr>
+            <tr v-for="process in filteredProcesses" :key="process.id" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="font-medium text-gray-900">{{ process.name }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-500 truncate max-w-xs">{{ process.description }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-500">{{ formatDate(process.createdAt) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-500">{{ formatDate(process.updatedAt) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex space-x-3 justify-end">
+                  <button 
+                    @click="editProcess(process.id)"
+                    class="text-blue-600 hover:text-blue-900"
+                    title="Edit Process"
+                  >
+                    <Icon name="material-symbols:edit" class="text-lg" />
+                  </button>
+                  <button 
+                    @click="duplicateProcess(process)"
+                    class="text-green-600 hover:text-green-900"
+                    title="Duplicate Process"
+                  >
+                    <Icon name="material-symbols:content-copy" class="text-lg" />
+                  </button>
+                  <button 
+                    @click="confirmDelete(process.id)"
+                    class="text-red-600 hover:text-red-900"
+                    title="Delete Process"
+                  >
+                    <Icon name="material-symbols:delete" class="text-lg" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     
     <!-- Delete confirmation dialog -->
-    <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-96">
-        <h3 class="text-lg font-bold mb-4">Confirm Delete</h3>
-        <p class="mb-6">Are you sure you want to delete this process? This action cannot be undone.</p>
-        <div class="flex justify-end space-x-2">
-          <button 
-            @click="cancelDelete"
-            class="px-4 py-2 border rounded hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button 
-            @click="deleteProcess"
-            class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
-            Delete
-          </button>
+    <RsModal v-model="showDeleteConfirm" title="Confirm Delete" size="md" position="center">
+      <div class="p-4">
+        <div class="flex items-center mb-4">
+          <Icon name="material-symbols:warning-outline" class="text-yellow-500 w-8 h-8 mr-3" />
+          <div>
+            <p class="text-gray-600">Are you sure you want to delete this process? This action cannot be undone.</p>
+          </div>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <RsButton @click="cancelDelete" variant="tertiary">
+            Cancel
+          </RsButton>
+          <RsButton @click="deleteProcess" variant="danger">
+            Delete
+          </RsButton>
+        </div>
+      </template>
+    </RsModal>
   </div>
 </template>
 
 <style scoped>
-.process-management {
-  min-height: calc(100vh - 80px);
-}
+/* No need for any special styles, using the flex layout */
 </style> 
