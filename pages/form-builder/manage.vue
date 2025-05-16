@@ -3,7 +3,7 @@
     <div class="flex flex-col h-screen bg-gray-50">
       <!-- Header -->
       <header
-        class="bg-gray-800 p-2 flex flex-wrap items-center justify-between text-white"
+        class="bg-gray-800 p-2 flex flex-wrap items-center justify-between text-white min-h-[70px]"
       >
         <div class="flex items-center mb-2 sm:mb-0 gap-4">
           <Icon
@@ -18,39 +18,47 @@
           />
         </div>
         <div class="flex flex-wrap items-center space-x-2">
-          <RsButton @click="navigateToBuilder" variant="primary" class="mr-2">
-            <Icon name="material-symbols:add" class="mr-2" />
-            Create New Form
-          </RsButton>
           <h1 class="text-lg font-semibold">Manage Forms</h1>
         </div>
       </header>
 
       <!-- Main content -->
+
       <div class="flex-1 overflow-auto p-6">
         <div class="container mx-auto">
-          <!-- Search bar -->
+          <!-- Header with title, search and create button -->
           <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
             <div
               class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
             >
               <h2 class="text-xl font-medium">Saved Forms</h2>
-              <div class="relative w-full md:w-64">
-                <input
-                  type="text"
-                  v-model="searchQuery"
-                  placeholder="Search forms..."
-                  class="w-full px-3 py-2 pl-9 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <Icon
-                  name="material-symbols:search"
-                  class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-                />
+              <div class="flex space-x-4 items-center">
+                <div class="relative w-64">
+                  <input
+                    type="text"
+                    v-model="searchQuery"
+                    placeholder="Search forms..."
+                    class="w-full px-3 py-2 pl-9 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Icon
+                    name="material-symbols:search"
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                  />
+                </div>
+                <RsButton
+                  @click="navigateToBuilder"
+                  variant="primary"
+                  class="flex items-center whitespace-nowrap"
+                >
+                  <Icon name="material-symbols:add" class="mr-2" />
+                  Create Form
+                </RsButton>
               </div>
             </div>
           </div>
 
           <!-- Forms list -->
+
           <div class="bg-white rounded-lg shadow-sm">
             <div
               v-if="formStore.savedForms.length === 0"
@@ -62,47 +70,35 @@
               />
               <p class="text-lg font-medium">No forms found</p>
               <p class="text-sm mb-4">Start by creating a new form</p>
-              <RsButton @click="navigateToBuilder" variant="primary"
-                >Create Form</RsButton
-              >
             </div>
 
             <div v-else>
               <RsTable
-                :field="['Form Name', 'Created', 'Actions']"
                 :data="filteredForms"
-                :options="{ striped: true, hover: true }"
-                :optionsAdvanced="{ sortable: true, responsive: true }"
+                :options="{
+                  variant: 'default',
+                }"
               >
-                <template #cell-2="{ row, index }">
-                  <div class="flex space-x-2 justify-end">
-                    <RsButton
-                      @click="editForm(row.id)"
-                      size="sm"
-                      variant="tertiary"
-                    >
-                      <template #prepend>
-                        <Icon
-                          name="material-symbols:edit-outline"
-                          class="w-4 h-4"
-                        />
-                      </template>
-                      Edit
-                    </RsButton>
-                    <RsButton
-                      @click="deleteForm(row.id)"
-                      size="sm"
-                      variant="tertiary"
-                      class="text-red-500"
-                    >
-                      <template #prepend>
-                        <Icon
-                          name="material-symbols:delete-outline"
-                          class="w-4 h-4"
-                        />
-                      </template>
-                      Delete
-                    </RsButton>
+                <template v-slot:formName="data">
+                  <div class="font-medium">{{ data.text }}</div>
+                </template>
+                <template v-slot:created="data">
+                  <div>{{ data.text }}</div>
+                </template>
+                <template v-slot:action="data">
+                  <div class="flex space-x-2">
+                    <Icon
+                      name="material-symbols:edit-outline-rounded"
+                      class="text-primary hover:text-primary/90 cursor-pointer"
+                      size="22"
+                      @click="editForm(data.value.id)"
+                    ></Icon>
+                    <Icon
+                      name="material-symbols:delete-outline"
+                      class="text-red-500 hover:text-red-400 cursor-pointer"
+                      size="22"
+                      @click="deleteForm(data.value.id)"
+                    ></Icon>
                   </div>
                 </template>
               </RsTable>
@@ -144,6 +140,33 @@
         </div>
       </template>
     </RsModal>
+
+    <!-- Delete Confirmation Modal -->
+    <RsModal v-model="showDeleteModal" title="Delete Form" size="md">
+      <div class="p-4">
+        <div class="flex items-center mb-4">
+          <Icon
+            name="material-symbols:delete-forever-outline"
+            class="text-red-500 w-8 h-8 mr-3"
+          />
+          <div>
+            <h3 class="font-medium text-lg">Delete Form</h3>
+            <p class="text-gray-600">
+              Are you sure you want to delete this form? This action cannot be
+              undone.
+            </p>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <RsButton @click="cancelDelete" variant="tertiary"> Cancel </RsButton>
+          <RsButton @click="confirmDelete" variant="danger">
+            Delete Form
+          </RsButton>
+        </div>
+      </template>
+    </RsModal>
   </div>
 </template>
 
@@ -168,15 +191,17 @@ try {
 } catch (error) {
   // Create a simple toast object if composable is not available
   toast = {
-    success: (msg) => console.log('Success:', msg),
-    error: (msg) => console.error('Error:', msg),
-    info: (msg) => console.info('Info:', msg),
-    warning: (msg) => console.warn('Warning:', msg)
+    success: (msg) => console.log("Success:", msg),
+    error: (msg) => console.error("Error:", msg),
+    info: (msg) => console.info("Info:", msg),
+    warning: (msg) => console.warn("Warning:", msg),
   };
 }
 
 const searchQuery = ref("");
 const showUnsavedChangesModal = ref(false);
+const showDeleteModal = ref(false);
+const formToDelete = ref(null);
 
 // Initialize and load forms
 onMounted(async () => {
@@ -191,11 +216,13 @@ onMounted(async () => {
 // Format date for display
 const formatDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return date
+    .toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+    .replace(",", "");
 };
 
 // Filtered and formatted forms for table display
@@ -205,11 +232,19 @@ const filteredForms = computed(() => {
       if (!searchQuery.value) return true;
       return form.name.toLowerCase().includes(searchQuery.value.toLowerCase());
     })
-    .map((form) => ({
-      id: form.id,
-      "Form Name": form.name,
-      Created: formatDate(form.createdAt),
-    }));
+    .map((form) => {
+      console.log(form);
+
+      // Get form name or fallback to the ID if name is not available
+      const formName = form.name ? form.name : form.id;
+
+      return {
+        id: form.id,
+        formName: formName,
+        created: form.createdAt ? formatDate(form.createdAt) : "New Form",
+        action: { id: form.id }, // Pass the ID to the action slot
+      };
+    });
 });
 
 // Navigation and action handlers
@@ -242,20 +277,33 @@ const editForm = async (formId) => {
   }
 };
 
-const deleteForm = async (formId) => {
-  if (confirm("Are you sure you want to delete this form?")) {
-    try {
-      // Call the API to delete the form
-      await formStore.deleteForm(formId);
-      
-      // Refresh the forms list
-      await formStore.loadSavedForms();
-      
-      toast.success("Form deleted successfully");
-    } catch (error) {
-      console.error("Error deleting form:", error);
-      toast.error("Failed to delete form: " + (error.message || "Unknown error"));
-    }
+const deleteForm = (formId) => {
+  formToDelete.value = formId;
+  showDeleteModal.value = true;
+};
+
+const cancelDelete = () => {
+  showDeleteModal.value = false;
+  formToDelete.value = null;
+};
+
+const confirmDelete = async () => {
+  if (!formToDelete.value) return;
+
+  try {
+    // Call the API to delete the form
+    await formStore.deleteForm(formToDelete.value);
+
+    // Refresh the forms list
+    await formStore.loadSavedForms();
+
+    toast.success("Form deleted successfully");
+  } catch (error) {
+    console.error("Error deleting form:", error);
+    toast.error("Failed to delete form: " + (error.message || "Unknown error"));
+  } finally {
+    showDeleteModal.value = false;
+    formToDelete.value = null;
   }
 };
 </script>

@@ -5,13 +5,17 @@
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-medium text-gray-900">Process Variables</h3>
-          <p class="mt-1 text-sm text-gray-500">Manage variables for your process flow</p>
+          <p class="mt-1 text-sm text-gray-500">
+            Manage variables for your process flow
+          </p>
         </div>
-        <RsButton 
-          @click="() => {
-            resetForm();
-            showAddVariable = true;
-          }"
+        <RsButton
+          @click="
+            () => {
+              resetForm();
+              showAddVariable = true;
+            }
+          "
           variant="primary"
           size="sm"
         >
@@ -25,40 +29,42 @@
     <div class="p-4">
       <!-- Empty State -->
       <div v-if="!variables.length" class="text-center py-8">
-        <Icon name="material-symbols:data-object" class="w-12 h-12 mx-auto mb-3 text-gray-400" />
-        <h4 class="text-sm font-medium text-gray-900 mb-1">No Variables Added</h4>
-        <p class="text-sm text-gray-500 mb-4">Add variables to store and manage data in your process</p>
-        <RsButton 
-          @click="() => {
-            resetForm();
-            showAddVariable = true;
-          }"
-          variant="secondary"
-          size="sm"
-        >
-          <Icon name="material-symbols:add" class="mr-1" />
-          Add Your First Variable
-        </RsButton>
+        <Icon
+          name="material-symbols:data-object"
+          class="w-12 h-12 mx-auto mb-3 text-gray-400"
+        />
+        <h4 class="text-sm font-medium text-gray-900 mb-1">
+          No Variables Added
+        </h4>
+        <p class="text-sm text-gray-500 mb-4">
+          Add variables to store and manage data in your process
+        </p>
       </div>
 
       <!-- Variable List -->
       <div v-else class="space-y-2">
-        <div v-for="variable in variables" :key="variable.name" class="variable-item">
-          <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200">
+        <div
+          v-for="variable in variables"
+          :key="variable.name"
+          class="variable-item"
+        >
+          <div
+            class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200"
+          >
             <div class="flex-1">
               <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-900">{{ variable.name }}</span>
-                <RsBadge 
-                  :variant="variable.scope === 'global' ? 'primary' : 'secondary'"
+                <span class="font-medium text-gray-900">{{
+                  variable.name
+                }}</span>
+                <RsBadge
+                  :variant="
+                    variable.scope === 'global' ? 'primary' : 'secondary'
+                  "
                   size="sm"
                 >
                   {{ variable.scope }}
                 </RsBadge>
-                <RsBadge 
-                  variant="outline"
-                  size="sm"
-                  class="text-gray-500"
-                >
+                <RsBadge variant="outline" size="sm" class="text-gray-500">
                   {{ variable.type }}
                 </RsBadge>
               </div>
@@ -67,14 +73,14 @@
               </p>
             </div>
             <div class="flex items-center gap-2 ml-4">
-              <button 
+              <button
                 @click="editVariable(variable)"
                 class="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
                 title="Edit variable"
               >
                 <Icon name="material-symbols:edit" class="w-4 h-4" />
               </button>
-              <button 
+              <button
                 @click="deleteVariable(variable)"
                 class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                 title="Delete variable"
@@ -110,8 +116,9 @@
           validation="required|alpha_numeric|length:3,50"
           :validation-messages="{
             required: 'Variable name is required',
-            alpha_numeric: 'Variable name can only contain letters, numbers, and underscores',
-            length: 'Variable name must be between 3 and 50 characters'
+            alpha_numeric:
+              'Variable name can only contain letters, numbers, and underscores',
+            length: 'Variable name must be between 3 and 50 characters',
           }"
         />
 
@@ -127,11 +134,11 @@
             { label: 'Object', value: 'object' },
             { label: 'Array', value: 'array' },
             { label: 'Date', value: 'date' },
-            { label: 'File', value: 'file' }
+            { label: 'File', value: 'file' },
           ]"
           validation="required"
           :validation-messages="{
-            required: 'Variable type is required'
+            required: 'Variable type is required',
           }"
         />
 
@@ -142,11 +149,11 @@
           label="Scope"
           :options="[
             { label: 'Process', value: 'process' },
-            { label: 'Global', value: 'global' }
+            { label: 'Global', value: 'global' },
           ]"
           validation="required"
           :validation-messages="{
-            required: 'Variable scope is required'
+            required: 'Variable scope is required',
           }"
         />
 
@@ -168,18 +175,11 @@
         />
 
         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-200">
-          <RsButton
-            type="button"
-            @click="closeModal"
-            variant="tertiary"
-          >
+          <RsButton type="button" @click="closeModal" variant="tertiary">
             Cancel
           </RsButton>
-          <FormKit
-            type="submit"
-            input-class="rs-button rs-button-primary"
-          >
-            {{ editingVariable ? 'Update' : 'Add' }}
+          <FormKit type="submit" input-class="rs-button rs-button-primary">
+            {{ editingVariable ? "Update" : "Add" }}
           </FormKit>
         </div>
       </FormKit>
@@ -188,8 +188,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useVariableStore } from '~/stores/variableStore';
+import { ref, computed } from "vue";
+import { useVariableStore } from "~/stores/variableStore";
 
 const variableStore = useVariableStore();
 
@@ -197,11 +197,11 @@ const variableStore = useVariableStore();
 const showAddVariable = ref(false);
 const editingVariable = ref(null);
 const variableForm = ref({
-  name: '',
-  type: 'string',
-  scope: 'process',
-  description: '',
-  isRequired: false
+  name: "",
+  type: "string",
+  scope: "process",
+  description: "",
+  isRequired: false,
 });
 
 // Computed
@@ -209,7 +209,7 @@ const variables = computed(() => {
   // This was only returning process variables, let's fix it to return both process and global variables
   const allVars = [
     ...variableStore.getAllVariables.process,
-    ...variableStore.getAllVariables.global
+    ...variableStore.getAllVariables.global,
   ];
   return allVars;
 });
@@ -229,11 +229,11 @@ const deleteVariable = (variable) => {
 
 const resetForm = () => {
   variableForm.value = {
-    name: '',
-    type: 'string',
-    scope: 'process',
-    description: '',
-    isRequired: false
+    name: "",
+    type: "string",
+    scope: "process",
+    description: "",
+    isRequired: false,
   };
   editingVariable.value = null;
 };
@@ -251,7 +251,7 @@ const saveVariable = async (formData) => {
       type: formData.type,
       scope: formData.scope,
       description: formData.description,
-      isRequired: formData.isRequired
+      isRequired: formData.isRequired,
     };
 
     if (editingVariable.value) {
@@ -269,7 +269,7 @@ const saveVariable = async (formData) => {
     // Close modal and reset form
     closeModal();
   } catch (error) {
-    console.error('Error saving variable:', error);
+    console.error("Error saving variable:", error);
     // You might want to show an error message to the user here
   }
 };
@@ -287,4 +287,4 @@ const saveVariable = async (formData) => {
 .variable-item:hover {
   @apply transform -translate-y-1;
 }
-</style> 
+</style>
