@@ -179,7 +179,7 @@ The database schema is defined in Prisma schema (`/prisma/schema.prisma`) and in
 4. Users are assigned tasks based on the process definition
 5. When form tasks are encountered, users fill out forms
 6. Form data is stored in process variables
-7. Gateway conditions determine the next path
+7. Decision Points determine the next path
 8. The process continues until completion
 
 ## Security Architecture

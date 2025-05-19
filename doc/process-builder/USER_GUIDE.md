@@ -71,12 +71,15 @@ Activities represent work performed in a process:
   - Properties: Language, description, script content
 
 ### Gateways
-Gateways control flow divergence and convergence:
+Decision points control flow divergence and convergence:
 
-- **Gateway** (Orange Icon)
+- **Decision Point** (Orange Diamond Icon)
   - Creates alternative paths based on conditions
   - Has both input and output handles
+  - Shows the number of configured paths in a badge
+  - Displays path names within the diamond
   - Properties: Conditions, default path, description
+  - Connection labels automatically match condition paths
 
 ## Working with the Process Canvas
 

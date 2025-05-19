@@ -46,7 +46,7 @@ const availableComponents = [
   // Core components
   {
     type: 'start',
-    name: 'Start Event',
+    name: 'Start Point',
     category: 'Core',
     icon: 'material-symbols:play-circle-outline',
     description: 'Initiates the process flow',
@@ -59,7 +59,7 @@ const availableComponents = [
   },
   {
     type: 'end',
-    name: 'End Event',
+    name: 'End Point',
     category: 'Core',
     icon: 'material-symbols:stop-circle-outline',
     description: 'Terminates the process flow',
@@ -101,14 +101,14 @@ const availableComponents = [
   },
   {
     type: 'gateway',
-    name: 'Gateway',
+    name: 'Decision Point',
     category: 'Core',
     icon: 'material-symbols:call-split',
     description: 'Decision point for flow control',
     defaultProps: {
-      label: 'Gateway',
+      label: 'Decision Point',
       data: {
-        description: 'Decision gateway',
+        description: 'Decision point for branching the workflow',
         conditions: [],
         defaultPath: 'Default'
       }

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, shallowRef, onUnmounted } from 'vue';
+import { ref, onMounted, computed, shallowRef, onUnmounted, nextTick } from 'vue';
 import { useProcessBuilderStore } from '~/stores/processBuilder';
 import { useVariableStore } from '~/stores/variableStore';
 import { useRouter } from 'vue-router';
@@ -48,11 +48,14 @@ const pendingNavigation = ref(null);
 const navigationTarget = ref(null);
 const navigationConfirmed = ref(false);
 
+// Add a ref for the ProcessFlowCanvas component
+const processFlowCanvas = ref(null);
+
 // Component definitions
 const components = [
   {
     type: 'start',
-    label: 'Start',
+    label: 'Start Point',
     icon: 'play_circle_filled',
     iconColor: 'text-green-500',
     data: { description: 'Process starts here' }
@@ -73,10 +76,10 @@ const components = [
   },
   {
     type: 'gateway',
-    label: 'Gateway',
+    label: 'Decision Point',
     icon: 'call_split',
     iconColor: 'text-orange-500',
-    data: { description: 'Decision point', conditions: [] }
+    data: { description: 'Decision point for branching the workflow', conditions: [] }
   },
   {
     type: 'script',
@@ -87,7 +90,7 @@ const components = [
   },
   {
     type: 'end',
-    label: 'End',
+    label: 'End Point',
     icon: 'stop_circle',
     iconColor: 'text-red-500',
     data: { description: 'Process completes here' }
@@ -101,10 +104,10 @@ const hasCurrentProcess = computed(() => {
 
 // Computed properties for node data
 const nodeLabel = computed({
-  get: () => selectedNodeData.value?.data?.label || '',
+  get: () => selectedNodeData.value?.label || '',
   set: (value) => {
     if (selectedNodeData.value) {
-      selectedNodeData.value.data.label = value;
+      selectedNodeData.value.label = value;
       updateNodeInStore();
     }
   }
@@ -191,13 +194,30 @@ const gatewayAvailableVariables = computed(() => {
     scope: 'global'
   }));
   const allVars = [...processVars, ...globalVars];
-  console.log('Gateway available variables:', allVars);
+  // console.log('Gateway available variables:', allVars);
   return allVars;
 });
 
 // Handle node selection
 const onNodeSelected = (node) => {
-  selectedNodeData.value = JSON.parse(JSON.stringify(node));
+  // console.log('Node selected:', node);
+  
+  // Create a deep copy of the node to avoid reactivity issues
+  const nodeCopy = JSON.parse(JSON.stringify(node));
+  
+  // Always ensure label is present in both places for consistency
+  if (!nodeCopy.label && nodeCopy.data && nodeCopy.data.label) {
+    // If label is missing but exists in data, use it
+    nodeCopy.label = nodeCopy.data.label;
+  } else if (nodeCopy.label && nodeCopy.data) {
+    // If label exists, make sure it's also in data
+    nodeCopy.data.label = nodeCopy.label;
+  }
+  
+  // Set the selected node data
+  selectedNodeData.value = nodeCopy;
+  
+  // Keep a reference to the original node
   selectedNode.value = node;
   selectedEdgeData.value = null;
   processStore.selectNode(node.id);
@@ -230,10 +250,30 @@ const onPaneClick = () => {
 // Update node in store
 const updateNodeInStore = () => {
   if (selectedNodeData.value) {
-    // Make sure we're passing the nodeId and updates correctly
-    processStore.updateNode(selectedNodeData.value.id, {
-      label: selectedNodeData.value.label,
-      data: selectedNodeData.value.data
+    // console.log('Updating node:', selectedNodeData.value.id, selectedNodeData.value.label);
+    
+    // Simplify the update to avoid recursive reactivity
+    const nodeId = selectedNodeData.value.id;
+    const newLabel = selectedNodeData.value.label;
+    const newData = { ...selectedNodeData.value.data };
+    
+    // Update the node canvas separately to avoid reactivity chain
+    nextTick(() => {
+      if (processFlowCanvas.value) {
+        processFlowCanvas.value.updateNode(nodeId, {
+          label: newLabel,
+          data: {
+            ...newData,
+            label: newLabel
+          }
+        });
+      }
+    });
+    
+    // Update in store with minimal change
+    processStore.updateNode(nodeId, {
+      label: newLabel,
+      data: newData
     });
   }
 };
@@ -241,7 +281,34 @@ const updateNodeInStore = () => {
 // Handle condition update
 const handleConditionUpdate = (conditions) => {
   if (selectedNodeData.value && selectedNodeData.value.type === 'gateway') {
-    selectedNodeData.value.data.conditions = conditions;
+    // Update conditions in the node data
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      conditions: conditions
+    };
+    
+    // Update edges with new condition outputs
+    if (processStore.currentProcess?.edges) {
+      const updatedEdges = processStore.currentProcess.edges.map(edge => {
+        if (edge.source === selectedNodeData.value.id) {
+          // Find matching condition group
+          const matchingGroup = conditions.find(group => group.output === edge.label);
+          if (!matchingGroup) {
+            // If no matching group found, update edge label to default
+            return {
+              ...edge,
+              label: selectedNodeData.value.data.defaultPath || 'Default'
+            };
+          }
+        }
+        return edge;
+      });
+      
+      // Update edges in store
+      processStore.currentProcess.edges = updatedEdges;
+    }
+    
+    // Update the node in store
     updateNodeInStore();
   }
 };
@@ -441,19 +508,40 @@ const onDragEnd = (event) => {
 
 // Add these functions to handle form selection
 const handleFormSelection = (form) => {
-  if (selectedNodeData.value && form) {
-    selectedNodeData.value.data.formId = form.formID;
-    selectedNodeData.value.data.formName = form.formName;
-    selectedNodeData.value.data.formUuid = form.formUUID;
+  if (selectedNodeData.value) {
+    // Update all form-related data
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      formId: form.formID,
+      formName: form.formName,
+      formUuid: form.formUUID,
+      label: form.formName,
+      description: `Form: ${form.formName}`
+    };
+    
+    // Also update the node's root label
+    selectedNodeData.value.label = form.formName;
+    
+    // Update the node in store to trigger reactivity
     updateNodeInStore();
   }
 };
 
 const clearFormSelection = () => {
   if (selectedNodeData.value) {
-    selectedNodeData.value.data.formId = null;
-    selectedNodeData.value.data.formName = '';
-    selectedNodeData.value.data.formUuid = null;
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      formId: null,
+      formName: '',
+      formUuid: null,
+      label: 'Form Task',
+      description: 'Form submission task'
+    };
+    
+    // Reset the node's root label
+    selectedNodeData.value.label = 'Form Task';
+    
+    // Update the node in store
     updateNodeInStore();
   }
 };
@@ -575,6 +663,7 @@ const onConditionsUpdated = (conditions) => {
       <!-- Center Panel - Process Canvas -->
       <div class="flex-1 relative">
         <ProcessFlowCanvas 
+          ref="processFlowCanvas"
           :initial-nodes="processStore.currentProcess.nodes"
           :initial-edges="processStore.currentProcess.edges"
           @node-selected="onNodeSelected"
@@ -628,14 +717,18 @@ const onConditionsUpdated = (conditions) => {
 
             <!-- Form Selection for Form Nodes -->
             <div v-if="selectedNodeData.type === 'form'">
-              <FormSelector @select="onFormSelected" />
+              <FormSelector 
+                @select="handleFormSelection"
+                @clear="clearFormSelection"
+                :formId="selectedNodeData.data?.formId"
+              />
             </div>
 
             <!-- Gateway Conditions -->
             <div v-if="selectedNodeData.type === 'gateway'">
               <GatewayConditionManager
                 :conditions="selectedNodeData.data.conditions"
-                @update="onConditionsUpdated"
+                @update:conditions="handleConditionUpdate"
                 :availableVariables="gatewayAvailableVariables"
               />
             </div>

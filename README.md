@@ -12,7 +12,7 @@ The platform consists of two primary modules:
 
 #### 1. Process Builder
 A visual workflow designer that allows you to create and manage business processes with a drag-and-drop interface.
-- Create process flows with start/end events, tasks, gateways, and more
+- Create process flows with start/end points, tasks, decision points, and more
 - Define conditions for workflow branching
 - Connect tasks to forms for data collection
 - Manage process variables and data flow

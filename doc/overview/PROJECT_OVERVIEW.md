@@ -48,7 +48,7 @@ The Process Builder is the heart of the system, allowing users to design executa
 - Support for various node types:
   - Start/End events
   - Tasks (manual, form, script)
-  - Gateways for decision points
+  - Decision Points for branching workflows
 - Connection management between nodes
 - Properties panel for node configuration
 - Variable management for process data

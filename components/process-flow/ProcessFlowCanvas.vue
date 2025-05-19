@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, shallowRef } from 'vue';
+import { ref, onMounted, computed, shallowRef, watch, defineExpose } from 'vue';
 import { VueFlow, useVueFlow, Panel } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -44,7 +44,8 @@ const {
   fitView,
   project,
   removeNodes,
-  removeEdges
+  removeEdges,
+  updateNodeInternals
 } = useVueFlow({
   defaultEdgeOptions: {
     animated: true,
@@ -89,9 +90,6 @@ const selectedNode = shallowRef(null);
 
 // Handle node selection
 const onNodeClick = ({ node }) => {
-  // Add detailed debugging
-  // console.log('Raw node:', node);
-
   // Check if node exists and has required properties
   if (!node || !node.id) {
     console.warn('Invalid node clicked - Missing required properties');
@@ -103,6 +101,7 @@ const onNodeClick = ({ node }) => {
     const nodeData = {
       id: node.id,
       type: node.type,
+      label: node.label || (node.data && node.data.label) || '',
       data: node.data ? JSON.parse(JSON.stringify(node.data)) : {},
       position: node.dimensions ? { 
         x: node.dimensions.x || 0, 
@@ -170,6 +169,8 @@ onMounted(() => {
     fitView();
   }, 100);
 });
+
+// Remove the deep watch as it's causing recursive updates
 
 // Handle node changes
 onNodesChange((changes) => {
@@ -309,6 +310,49 @@ const onDragOver = (event) => {
   event.stopPropagation();
   event.dataTransfer.dropEffect = 'copy';
 };
+
+// Add a method to update a node in the flow
+const updateNode = (nodeId, updates) => {
+  if (!nodeId) return;
+  
+  // console.log('ProcessFlowCanvas: Updating node:', nodeId, updates);
+  
+  // Find the node in Vue Flow nodes
+  const nodeIndex = nodes.value.findIndex(n => n.id === nodeId);
+  if (nodeIndex === -1) {
+    console.warn(`Node with ID ${nodeId} not found in flow`);
+    return;
+  }
+  
+  // Update the node with new values
+  const node = nodes.value[nodeIndex];
+  
+  // Ensure label is consistently set in both places
+  const updatedLabel = updates.label || node.label;
+  const updatedData = {
+    ...node.data,
+    ...(updates.data || {}),
+    label: updatedLabel // Ensure label is also in data
+  };
+  
+  // Update the node directly to avoid triggering watchers unnecessarily
+  Object.assign(nodes.value[nodeIndex], {
+    label: updatedLabel,
+    data: updatedData
+  });
+  
+  // Notify Vue Flow to update the node's internals
+  updateNodeInternals(nodeId);
+  
+  // console.log('Node updated:', updatedData);
+  
+  return updatedData;
+};
+
+// Expose methods to parent components
+defineExpose({
+  updateNode
+});
 </script>
 
 <template>

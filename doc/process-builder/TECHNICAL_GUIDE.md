@@ -469,19 +469,26 @@ function createConnection(connection: Connection): Edge {
 // Form task node implementation
 const FormNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      return this.label || (this.data && this.data.label) || 'Form Task';
+    },
+    formName() {
+      return this.data?.formName || 'None selected';
+    },
+    hasForm() {
+      return !!(this.data?.formId && this.data?.formName);
+    }
+  },
   render() {
-    // Check if we have a form selected
-    const hasForm = this.data?.formId && this.data?.formName;
-    
-    // Create badge content based on form selection status
-    const badgeContent = hasForm ? 
+    const badgeContent = this.hasForm ? 
       h('span', { class: 'node-badge bg-purple-100 text-purple-600 px-1 text-xs rounded' }, 'Form') : 
       null;
     
     return h(CustomNode, {
       id: this.id,
       type: 'form',
-      label: this.label || 'Form Task',
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
@@ -491,10 +498,10 @@ const FormNode = markRaw({
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'Form submission task'),
         h('div', { class: 'node-form-info' }, [
-          h('span', { class: 'node-form-label' }, 'Form:'),
+          h('span', { class: 'node-form-label' }, 'Form: '),
           h('span', { 
-            class: hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
-          }, hasForm ? this.data.formName : 'None selected')
+            class: this.hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
+          }, this.formName)
         ])
       ])
     });
@@ -509,16 +516,29 @@ const FormNode = markRaw({
   <FormSelector
     v-model="selectedNodeData.data.formId" 
     @select="handleFormSelection"
+    @clear="clearFormSelection"
+    :formId="selectedNodeData.data?.formId"
   />
 </div>
 
 <script setup>
 // Form selection handler
 const handleFormSelection = (form) => {
-  if (selectedNodeData.value && form) {
-    selectedNodeData.value.data.formId = form.formID;
-    selectedNodeData.value.data.formName = form.formName;
-    selectedNodeData.value.data.formUuid = form.formUUID;
+  if (selectedNodeData.value) {
+    // Update all form-related data
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      formId: form.formID,
+      formName: form.formName,
+      formUuid: form.formUUID,
+      label: form.formName,
+      description: `Form: ${form.formName}`
+    };
+    
+    // Also update the node's root label
+    selectedNodeData.value.label = form.formName;
+    
+    // Update the node in store to trigger reactivity
     updateNodeInStore();
   }
 };
@@ -526,13 +546,221 @@ const handleFormSelection = (form) => {
 // Clear form selection
 const clearFormSelection = () => {
   if (selectedNodeData.value) {
-    selectedNodeData.value.data.formId = null;
-    selectedNodeData.value.data.formName = '';
-    selectedNodeData.value.data.formUuid = null;
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      formId: null,
+      formName: '',
+      formUuid: null,
+      label: 'Form Task',
+      description: 'Form submission task'
+    };
+    
+    // Reset the node's root label
+    selectedNodeData.value.label = 'Form Task';
+    
+    // Update the node in store
     updateNodeInStore();
   }
 };
 </script>
+```
+
+## Decision Point/Gateway Node
+
+### Gateway Node Implementation
+```typescript
+// Decision/Gateway node
+export const GatewayNode = markRaw({
+  props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      return this.label || (this.data && this.data.label) || 'Decision Point';
+    },
+    
+    totalPaths() {
+      return Array.isArray(this.data?.conditions) ? this.data.conditions.length : 0;
+    },
+    
+    totalConditions() {
+      if (!Array.isArray(this.data?.conditions)) return 0;
+      
+      return this.data.conditions.reduce((total, group) => {
+        return total + (Array.isArray(group.conditions) ? group.conditions.length : 0);
+      }, 0);
+    },
+    
+    conditionSummary() {
+      if (this.totalPaths === 0) return 'No paths';
+      
+      const paths = this.data.conditions
+        .map(group => group.output || 'Unlabeled')
+        .filter(Boolean)
+        .join(', ');
+        
+      return paths || 'Unconfigured paths';
+    }
+  },
+  render() {
+    // Create the badge content
+    const badgeContent = h('span', { 
+      class: 'node-badge bg-orange-100 text-orange-600 px-1 text-xs rounded absolute -top-5 left-1/2 transform -translate-x-1/2 whitespace-nowrap'
+    }, `${this.totalPaths} path${this.totalPaths !== 1 ? 's' : ''}`);
+
+    return h(CustomNode, {
+      id: this.id,
+      type: 'gateway',
+      label: this.nodeLabel,
+      selected: this.selected,
+      data: this.data,
+      onClick: () => this.$emit('node-click', this.id)
+    }, {
+      icon: () => h('i', { class: 'material-icons text-orange-500' }, 'call_split'),
+      badge: () => badgeContent,
+      default: () => h('div', { class: 'gateway-details' }, [
+        h('div', { class: 'node-conditions-value' }, this.conditionSummary)
+      ])
+    });
+  }
+});
+```
+
+### Gateway Node Styling
+```css
+/* Gateway specific styles */
+.node-gateway {
+  width: 120px !important;
+  height: 120px !important;
+  background: white;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid #f97316;
+  position: relative;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.node-gateway:hover {
+  border-color: #ea580c;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.node-gateway .custom-node-content {
+  position: absolute;
+  transform: rotate(-45deg);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.node-gateway .custom-node-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.node-gateway .gateway-details {
+  width: 100%;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.node-gateway .node-conditions-value {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.node-gateway .material-icons {
+  font-size: 24px;
+  color: #f97316;
+  margin-bottom: 4px;
+}
+
+.node-gateway .node-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(-45deg);
+  background-color: #fff7ed;
+  border: 1px solid #fdba74;
+  z-index: 10;
+  font-size: 11px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  margin-top: 8px;
+}
+
+/* Position handles correctly for gateway node */
+.handle-gateway-input {
+  transform: translateY(-42px) !important;
+  background-color: #f97316 !important;
+  border: 2px solid white !important;
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.handle-gateway-output {
+  transform: translateY(42px) !important;
+  background-color: #f97316 !important;
+  border: 2px solid white !important;
+  width: 12px !important;
+  height: 12px !important;
+}
+```
+
+### Gateway Condition Management
+```typescript
+// Handle condition update
+const handleConditionUpdate = (conditions) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'gateway') {
+    // Update conditions in the node data
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      conditions: conditions
+    };
+    
+    // Update edges with new condition outputs
+    if (processStore.currentProcess?.edges) {
+      const updatedEdges = processStore.currentProcess.edges.map(edge => {
+        if (edge.source === selectedNodeData.value.id) {
+          // Find matching condition group
+          const matchingGroup = conditions.find(group => group.output === edge.label);
+          if (!matchingGroup) {
+            // If no matching group found, update edge label to default
+            return {
+              ...edge,
+              label: selectedNodeData.value.data.defaultPath || 'Default'
+            };
+          }
+        }
+        return edge;
+      });
+      
+      // Update edges in store
+      processStore.currentProcess.edges = updatedEdges;
+    }
+    
+    // Update the node in store
+    updateNodeInStore();
+  }
+};
 ```
 
 ## Event Handling

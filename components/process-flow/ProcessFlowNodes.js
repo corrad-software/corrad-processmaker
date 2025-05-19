@@ -21,7 +21,7 @@ const CustomNode = markRaw({
             <div class="custom-node-icon">
               <slot name="icon"></slot>
             </div>
-            <div class="custom-node-title">{{ label }}</div>
+            <div class="custom-node-title">{{ nodeLabel }}</div>
             <div class="custom-node-badge" v-if="showBadge">
               <slot name="badge"></slot>
             </div>
@@ -33,7 +33,7 @@ const CustomNode = markRaw({
           <div class="custom-node-icon" v-if="type !== 'gateway'">
             <slot name="icon"></slot>
           </div>
-          <div class="custom-node-title">{{ label }}</div>
+          <div class="custom-node-title">{{ nodeLabel }}</div>
           <slot></slot>
         </template>
       </div>
@@ -48,6 +48,10 @@ const CustomNode = markRaw({
   `,
   props: ['id', 'type', 'label', 'selected', 'data'],
   computed: {
+    nodeLabel() {
+      // First try the label prop, then try data.label, then provide a default
+      return this.label || (this.data && this.data.label) || this.type || 'Node';
+    },
     showBadge() {
       return this.$slots.badge;
     }
@@ -65,11 +69,17 @@ const CustomNode = markRaw({
 // Task node
 export const TaskNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'Task';
+    }
+  },
   render() {
     return h(CustomNode, {
       id: this.id,
       type: 'task',
-      label: this.label,
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
@@ -89,11 +99,17 @@ export const TaskNode = markRaw({
 // Start node
 export const StartNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'Start';
+    }
+  },
   render() {
     return h(CustomNode, {
       id: this.id,
       type: 'start',
-      label: this.label || 'Start',
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
@@ -107,11 +123,17 @@ export const StartNode = markRaw({
 // End node
 export const EndNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'End';
+    }
+  },
   render() {
     return h(CustomNode, {
       id: this.id,
       type: 'end',
-      label: this.label || 'End',
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
@@ -125,22 +147,52 @@ export const EndNode = markRaw({
 // Decision/Gateway node
 export const GatewayNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      return this.label || (this.data && this.data.label) || 'Decision Point';
+    },
+    
+    totalPaths() {
+      return Array.isArray(this.data?.conditions) ? this.data.conditions.length : 0;
+    },
+    
+    totalConditions() {
+      if (!Array.isArray(this.data?.conditions)) return 0;
+      
+      return this.data.conditions.reduce((total, group) => {
+        return total + (Array.isArray(group.conditions) ? group.conditions.length : 0);
+      }, 0);
+    },
+    
+    conditionSummary() {
+      if (this.totalPaths === 0) return 'No paths';
+      
+      const paths = this.data.conditions
+        .map(group => group.output || 'Unlabeled')
+        .filter(Boolean)
+        .join(', ');
+        
+      return paths || 'Unconfigured paths';
+    }
+  },
   render() {
+    // Create the badge content
+    const badgeContent = h('span', { 
+      class: 'node-badge bg-orange-100 text-orange-600 px-1 text-xs rounded absolute -top-5 left-1/2 transform -translate-x-1/2 whitespace-nowrap'
+    }, `${this.totalPaths} path${this.totalPaths !== 1 ? 's' : ''}`);
+
     return h(CustomNode, {
       id: this.id,
       type: 'gateway',
-      label: this.label || 'Gateway',
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
       icon: () => h('i', { class: 'material-icons text-orange-500' }, 'call_split'),
+      badge: () => badgeContent,
       default: () => h('div', { class: 'gateway-details' }, [
-        h('div', { class: 'node-conditions-value' }, 
-          this.data?.conditions?.length 
-            ? `${this.data.conditions.length} condition${this.data.conditions.length > 1 ? 's' : ''}` 
-            : ''
-        )
+        h('div', { class: 'node-conditions-value' }, this.conditionSummary)
       ])
     });
   }
@@ -149,19 +201,27 @@ export const GatewayNode = markRaw({
 // Form node
 export const FormNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'Form Task';
+    },
+    formName() {
+      return this.data?.formName || 'None selected';
+    },
+    hasForm() {
+      return !!(this.data?.formId && this.data?.formName);
+    }
+  },
   render() {
-    // Check if we have a form selected
-    const hasForm = this.data?.formId && this.data?.formName;
-    
-    // Create badge content based on form selection status
-    const badgeContent = hasForm ? 
+    const badgeContent = this.hasForm ? 
       h('span', { class: 'node-badge bg-purple-100 text-purple-600 px-1 text-xs rounded' }, 'Form') : 
       null;
     
     return h(CustomNode, {
       id: this.id,
       type: 'form',
-      label: this.label || 'Form Task',
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
@@ -171,10 +231,10 @@ export const FormNode = markRaw({
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'Form submission task'),
         h('div', { class: 'node-form-info' }, [
-          h('span', { class: 'node-form-label' }, 'Form:'),
+          h('span', { class: 'node-form-label' }, 'Form: '),
           h('span', { 
-            class: hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
-          }, hasForm ? this.data.formName : 'None selected')
+            class: this.hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
+          }, this.formName)
         ])
       ])
     });
@@ -184,11 +244,17 @@ export const FormNode = markRaw({
 // Script node
 export const ScriptNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'Script';
+    }
+  },
   render() {
     return h(CustomNode, {
       id: this.id,
       type: 'script',
-      label: this.label || 'Script',
+      label: this.nodeLabel,
       selected: this.selected,
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
@@ -244,12 +310,17 @@ export const nodeStyles = `
 }
 
 .node-gateway {
-  width: 50px;
-  height: 50px;
+  width: 120px !important;
+  height: 120px !important;
   background: white;
   transform: rotate(45deg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #FF9800;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid #f97316;
+  position: relative;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .node-start, .node-end {
@@ -280,14 +351,15 @@ export const nodeStyles = `
 }
 
 .node-gateway .custom-node-content {
+  position: absolute;
   transform: rotate(-45deg);
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  width: 100%;
-  padding: 0;
+  padding: 8px;
 }
 
 .node-start .custom-node-content,
@@ -359,17 +431,16 @@ export const nodeStyles = `
 }
 
 .node-gateway .custom-node-title {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
-  position: absolute;
-  width: 60px;
+  color: #333;
+  margin: 0;
+  text-align: center;
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  bottom: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
+  line-height: 1.2;
 }
 
 .node-details {
@@ -413,12 +484,13 @@ export const nodeStyles = `
 }
 
 .node-conditions-value {
-  font-size: 9px;
+  font-size: 11px;
   color: #666;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .node-form-id {
@@ -427,8 +499,9 @@ export const nodeStyles = `
 }
 
 .gateway-details {
-  font-size: 9px;
+  width: 100%;
   text-align: center;
+  margin-top: 4px;
 }
 
 .handle-task-input,
@@ -467,11 +540,19 @@ export const nodeStyles = `
 
 /* Position handles correctly for gateway node */
 .handle-gateway-input {
-  transform: translateY(-14px) !important;
+  transform: translateY(-42px) !important;
+  background-color: #f97316 !important;
+  border: 2px solid white !important;
+  width: 12px !important;
+  height: 12px !important;
 }
 
 .handle-gateway-output {
-  transform: translateY(14px) !important;
+  transform: translateY(42px) !important;
+  background-color: #f97316 !important;
+  border: 2px solid white !important;
+  width: 12px !important;
+  height: 12px !important;
 }
 
 /* Badge style */
@@ -480,5 +561,31 @@ export const nodeStyles = `
   padding: 1px 4px;
   border-radius: 3px;
   margin-left: 4px;
+}
+
+/* Gateway specific styles */
+.node-gateway:hover {
+  border-color: #ea580c;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.node-gateway .node-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(-45deg);
+  background-color: #fff7ed;
+  border: 1px solid #fdba74;
+  z-index: 10;
+  font-size: 11px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  margin-top: 8px;
+}
+
+.node-gateway .material-icons {
+  font-size: 24px;
+  color: #f97316;
+  margin-bottom: 4px;
 }
 `; 
