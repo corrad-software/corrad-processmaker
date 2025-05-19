@@ -73,9 +73,50 @@ export const TaskNode = markRaw({
     nodeLabel() {
       // Get label from either prop or data, with fallback
       return this.label || (this.data && this.data.label) || 'Task';
+    },
+    
+    // Helper method to get assignment display text
+    assignmentText() {
+      if (!this.data) return 'Unassigned';
+      
+      const { assignmentType, assignedUsers, assignedRoles, assigneeVariable } = this.data;
+      
+      if (assignmentType === 'user' && Array.isArray(assignedUsers) && assignedUsers.length > 0) {
+        return `${assignedUsers.length} User${assignedUsers.length > 1 ? 's' : ''}`;
+      }
+      
+      if (assignmentType === 'role' && Array.isArray(assignedRoles) && assignedRoles.length > 0) {
+        return `${assignedRoles.length} Role${assignedRoles.length > 1 ? 's' : ''}`;
+      }
+      
+      if (assignmentType === 'variable' && assigneeVariable) {
+        return `Variable: ${assigneeVariable}`;
+      }
+      
+      return 'Unassigned';
+    },
+    
+    // Helper to determine priority class
+    priorityClass() {
+      if (!this.data || !this.data.priority) return '';
+      
+      const priorityColors = {
+        low: 'text-green-500',
+        medium: 'text-blue-500',
+        high: 'text-orange-500',
+        urgent: 'text-red-500'
+      };
+      
+      return priorityColors[this.data.priority] || '';
     }
   },
   render() {
+    const badgeContent = this.data?.priority ? 
+      h('span', { 
+        class: `node-badge px-1 text-xs rounded ${this.priorityClass} bg-gray-100`
+      }, this.data.priority.charAt(0).toUpperCase() + this.data.priority.slice(1)) : 
+      null;
+      
     return h(CustomNode, {
       id: this.id,
       type: 'task',
@@ -85,12 +126,22 @@ export const TaskNode = markRaw({
       onClick: () => this.$emit('node-click', this.id)
     }, {
       icon: () => h('i', { class: 'material-icons text-blue-500' }, 'assignment'),
+      badge: () => badgeContent,
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'A general task'),
-        h('div', { class: 'node-assignee' }, [
-          h('span', { class: 'node-assignee-label' }, 'Assigned to:'),
-          h('span', { class: 'node-assignee-value' }, this.data?.assignee || 'Unassigned')
-        ])
+        h('div', { class: 'node-assignee flex items-center justify-between text-xs' }, [
+          h('span', { class: 'node-assignee-label' }, 'Assigned:'),
+          h('span', { class: 'node-assignee-value ml-1 font-medium text-blue-600' }, this.assignmentText)
+        ]),
+        this.data?.dueDateType !== 'none' && this.data?.dueDateType ?
+          h('div', { class: 'node-due-date text-xs mt-1' }, [
+            h('span', { class: 'node-due-date-label' }, 'Due:'),
+            h('span', { class: 'node-due-date-value ml-1' }, 
+              this.data.dueDateType === 'fixed' ? 
+                `${this.data.dueDateDays || 0} days` : 
+                `Variable: ${this.data.dueDateVariable || 'none'}`
+            )
+          ]) : null
       ])
     });
   }
@@ -178,7 +229,7 @@ export const GatewayNode = markRaw({
   render() {
     // Create the badge content
     const badgeContent = h('span', { 
-      class: 'node-badge bg-orange-100 text-orange-600 px-1 text-xs rounded absolute -top-5 left-1/2 transform -translate-x-1/2 whitespace-nowrap'
+      class: 'node-badge bg-orange-100 text-orange-600 px-1 text-xs rounded'
     }, `${this.totalPaths} path${this.totalPaths !== 1 ? 's' : ''}`);
 
     return h(CustomNode, {
@@ -192,7 +243,11 @@ export const GatewayNode = markRaw({
       icon: () => h('i', { class: 'material-icons text-orange-500' }, 'call_split'),
       badge: () => badgeContent,
       default: () => h('div', { class: 'gateway-details' }, [
-        h('div', { class: 'node-conditions-value' }, this.conditionSummary)
+        h('p', { class: 'node-description' }, this.data?.description || 'Decision based on conditions'),
+        h('div', { class: 'node-conditions flex items-center justify-between text-xs' }, [
+          h('span', { class: 'node-conditions-label' }, 'Paths:'),
+          h('span', { class: 'node-conditions-value ml-1 font-medium text-orange-600' }, this.conditionSummary)
+        ])
       ])
     });
   }
@@ -402,8 +457,8 @@ export const nodeStyles = `
 .node-gateway .custom-node-content {
   position: absolute;
   transform: rotate(-45deg);
-  width: 100%;
-  height: 100%;
+  width: 120%;
+  height: 120%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -627,22 +682,40 @@ export const nodeStyles = `
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.node-gateway .node-badge {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%) rotate(-45deg);
-  background-color: #fff7ed;
-  border: 1px solid #fdba74;
-  z-index: 10;
-  font-size: 11px;
-  padding: 2px 8px;
+.node-gateway .node-description {
+  text-align: center;
+  margin-bottom: 4px;
+  font-size: 10px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.node-gateway .node-conditions {
+  display: flex;
+  font-size: 10px;
+  color: #666;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.node-gateway .node-conditions-label {
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.node-gateway .node-conditions-value {
   white-space: nowrap;
-  margin-top: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  max-width: 80px;
 }
 
 .node-gateway .material-icons {
-  font-size: 24px;
+  font-size: 18px;
   color: #f97316;
   margin-bottom: 4px;
 }

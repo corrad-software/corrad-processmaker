@@ -10,6 +10,8 @@ import GatewayConditionManager from '~/components/process-flow/GatewayConditionM
 import ApiNodeConfiguration from '~/components/process-flow/ApiNodeConfiguration.vue';
 import VariableManager from '~/components/process-flow/VariableManager.vue';
 import { onBeforeRouteLeave } from 'vue-router';
+import FormNodeConfiguration from '~/components/process-flow/FormNodeConfiguration.vue';
+import TaskNodeConfiguration from '~/components/process-flow/TaskNodeConfiguration.vue';
 
 // Define page meta
 definePageMeta({
@@ -624,6 +626,66 @@ const onConditionsUpdated = (conditions) => {
     updateNodeInStore();
   }
 };
+
+// Handle API node update
+const handleApiNodeUpdate = (updatedData) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'api') {
+    // Make sure to update the label both in data and at the root level
+    const newLabel = updatedData.label || 'API Call';
+    
+    // Update the data
+    selectedNodeData.value.data = {
+      ...updatedData,
+      label: newLabel // Ensure label is in data
+    };
+    
+    // Also update the root label
+    selectedNodeData.value.label = newLabel;
+    
+    // Update the node in store
+    updateNodeInStore();
+  }
+};
+
+// Add this function to handle form node updates
+const handleFormNodeUpdate = (updatedData) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'form') {
+    // Make sure to update the label both in data and at the root level
+    const newLabel = updatedData.label || 'Form Task';
+    
+    // Update the data
+    selectedNodeData.value.data = {
+      ...updatedData,
+      label: newLabel // Ensure label is in data
+    };
+    
+    // Also update the root label
+    selectedNodeData.value.label = newLabel;
+    
+    // Update the node in store
+    updateNodeInStore();
+  }
+};
+
+// Add this function to handle task node updates
+const handleTaskNodeUpdate = (updatedData) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'task') {
+    // Make sure to update the label both in data and at the root level
+    const newLabel = updatedData.label || 'Task';
+    
+    // Update the data
+    selectedNodeData.value.data = {
+      ...updatedData,
+      label: newLabel // Ensure label is in data
+    };
+    
+    // Also update the root label
+    selectedNodeData.value.label = newLabel;
+    
+    // Update the node in store
+    updateNodeInStore();
+  }
+};
 </script>
 
 <template>
@@ -724,27 +786,28 @@ const onConditionsUpdated = (conditions) => {
 
             <!-- Node Type Specific Properties -->
             <div v-if="selectedNodeData.type === 'task'">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-              <input
-                v-model="nodeAssignee"
-                type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <TaskNodeConfiguration
+                :nodeData="selectedNodeData.data"
+                :availableVariables="variableStore.getAllVariables.global"
+                @update="handleTaskNodeUpdate"
               />
             </div>
 
             <!-- Form Selection for Form Nodes -->
             <div v-if="selectedNodeData.type === 'form'">
-              <FormSelector 
-                @select="handleFormSelection"
-                @clear="clearFormSelection"
-                :formId="selectedNodeData.data?.formId"
+              <FormNodeConfiguration 
+                :nodeData="selectedNodeData.data"
+                :availableVariables="variableStore.getAllVariables.global"
+                @update="handleFormNodeUpdate"
               />
             </div>
 
             <!-- API Configuration for API Nodes -->
             <div v-if="selectedNodeData.type === 'api'">
               <ApiNodeConfiguration 
-                :nodeId="selectedNodeData.id"
+                :nodeData="selectedNodeData.data"
+                :availableVariables="gatewayAvailableVariables"
+                @update="handleApiNodeUpdate"
               />
             </div>
 

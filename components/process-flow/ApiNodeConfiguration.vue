@@ -2,7 +2,7 @@
   <div class="api-node-configuration">
     <h3 class="text-lg font-semibold mb-4">API Call Configuration</h3>
     
-    <div class="form-group mb-4">
+    <!-- <div class="form-group mb-4">
       <label for="nodeLabel" class="form-label">Node Label</label>
       <input
         id="nodeLabel"
@@ -10,10 +10,11 @@
         type="text"
         class="form-control"
         placeholder="API Call"
+        @blur="saveChanges"
       />
-    </div>
+    </div> -->
     
-    <div class="form-group mb-4">
+    <!-- <div class="form-group mb-4">
       <label for="nodeDescription" class="form-label">Description</label>
       <textarea
         id="nodeDescription"
@@ -21,8 +22,9 @@
         class="form-control"
         placeholder="API call description"
         rows="2"
+        @blur="saveChanges"
       ></textarea>
-    </div>
+    </div> -->
     
     <div class="form-group mb-4">
       <label for="apiMethod" class="form-label">HTTP Method</label>
@@ -30,6 +32,7 @@
         id="apiMethod"
         v-model="localNodeData.apiMethod"
         class="form-control"
+        @change="saveChanges"
       >
         <option value="GET">GET</option>
         <option value="POST">POST</option>
@@ -47,37 +50,112 @@
         type="text"
         class="form-control"
         placeholder="https://example.com/api/endpoint"
+        @blur="saveChanges"
       />
       <small class="form-text text-muted">
         You can use process variables with curly braces: https://example.com/api/users/{userId}
       </small>
     </div>
     
+    <!-- Variable Insertion for Request Body -->
     <div class="form-group mb-4" v-if="showRequestBody">
       <label for="requestBody" class="form-label">Request Body</label>
-      <textarea
-        id="requestBody"
-        v-model="localNodeData.requestBody"
-        class="form-control font-mono"
-        placeholder='{ "key": "value" }'
-        rows="4"
-      ></textarea>
-      <small class="form-text text-muted">
-        You can use process variables with curly braces: { "userId": "{userId}" }
+      <div class="space-y-2">
+        <div class="flex gap-2">
+          <select
+            class="form-control text-sm"
+            @change="insertVariable($event.target.value, 'requestBody')"
+          >
+            <option value="">Insert Variable...</option>
+            <option
+              v-for="variable in availableVariables"
+              :key="variable.name"
+              :value="variable.name"
+            >
+              {{ variable.label }}
+            </option>
+          </select>
+          <RsButton
+            variant="secondary"
+            size="sm"
+            @click="formatJson('requestBody')"
+            title="Format JSON"
+          >
+            <Icon name="material-symbols:format-align-left" />
+          </RsButton>
+        </div>
+        <textarea
+          id="requestBody"
+          v-model="localNodeData.requestBody"
+          class="form-control font-mono"
+          placeholder='{ "key": "{variableName}" }'
+          rows="6"
+          @blur="saveChanges"
+        ></textarea>
+      </div>
+      <small class="form-text text-muted mt-1">
+        Use variables in curly braces, e.g.: { "userId": "{userId}" }
       </small>
+      
+      <!-- Request Body Preview -->
+      <div v-if="localNodeData.requestBody" class="mt-3 border-t pt-3">
+        <div class="text-sm font-medium text-gray-700 mb-2">Preview with Current Values:</div>
+        <div class="bg-white border rounded p-3">
+          <pre class="text-xs font-mono whitespace-pre-wrap">{{ getPreviewWithValues('requestBody') }}</pre>
+        </div>
+      </div>
     </div>
     
+    <!-- Variable Insertion for Headers -->
     <div class="form-group mb-4">
       <label for="headers" class="form-label">Headers</label>
-      <textarea
-        id="headers"
-        v-model="localNodeData.headers"
-        class="form-control font-mono"
-        placeholder='{ "Content-Type": "application/json" }'
-        rows="3"
-      ></textarea>
+      <div class="space-y-2">
+        <div class="flex gap-2">
+          <select
+            class="form-control text-sm"
+            @change="insertVariable($event.target.value, 'headers')"
+          >
+            <option value="">Insert Variable...</option>
+            <option
+              v-for="variable in availableVariables"
+              :key="variable.name"
+              :value="variable.name"
+            >
+              {{ variable.label }}
+            </option>
+          </select>
+          <RsButton
+            variant="secondary"
+            size="sm"
+            @click="formatJson('headers')"
+            title="Format JSON"
+          >
+            <Icon name="material-symbols:format-align-left" />
+          </RsButton>
+        </div>
+        <textarea
+          id="headers"
+          v-model="localNodeData.headers"
+          class="form-control font-mono"
+          placeholder='{ "Authorization": "Bearer {accessToken}" }'
+          rows="4"
+          @blur="saveChanges"
+        ></textarea>
+      </div>
+      <small class="form-text text-muted mt-1">
+        Use variables in curly braces, e.g.: { "Authorization": "Bearer {accessToken}" }
+      </small>
+      
+      <!-- Headers Preview -->
+      <div v-if="localNodeData.headers" class="mt-3 border-t pt-3">
+        <div class="text-sm font-medium text-gray-700 mb-2">Preview with Current Values:</div>
+        <div class="bg-white border rounded p-3">
+          <pre class="text-xs font-mono whitespace-pre-wrap">{{ getPreviewWithValues('headers') }}</pre>
+        </div>
+      </div>
     </div>
     
+    <!-- Output Variable Selection -->
     <div class="form-group mb-4">
       <label for="outputVariable" class="form-label">Output Variable</label>
       <div class="flex gap-2">
@@ -85,18 +163,17 @@
           id="outputVariable"
           v-model="localNodeData.outputVariable"
           class="form-control flex-grow"
+          @change="saveChanges"
         >
           <option value="" disabled>Select a global variable</option>
           <option value="apiResponse">Create new: apiResponse</option>
-          <optgroup label="Global Variables">
-            <option
-              v-for="variable in availableVariables.global"
-              :key="variable.name"
-              :value="variable.name"
-            >
-              {{ variable.description ? `${variable.name} (${variable.description})` : variable.name }}
-            </option>
-          </optgroup>
+          <option
+            v-for="variable in availableVariables"
+            :key="variable.name"
+            :value="variable.name"
+          >
+            {{ variable.label }}
+          </option>
         </select>
         <button
           @click="createGlobalVariable(localNodeData.outputVariable)"
@@ -111,21 +188,7 @@
       </small>
     </div>
     
-    <div class="form-group mb-4">
-      <label class="form-label d-block">Error Handling</label>
-      <div class="form-check">
-        <input
-          id="continueOnError"
-          v-model="localNodeData.continueOnError"
-          type="checkbox"
-          class="form-check-input"
-        />
-        <label for="continueOnError" class="form-check-label">
-          Continue process execution on error
-        </label>
-      </div>
-    </div>
-    
+    <!-- Error Variable Selection -->
     <div class="form-group mb-4">
       <label for="errorVariable" class="form-label">Error Variable</label>
       <div class="flex gap-2">
@@ -133,18 +196,17 @@
           id="errorVariable"
           v-model="localNodeData.errorVariable"
           class="form-control flex-grow"
+          @change="saveChanges"
         >
           <option value="" disabled>Select a global variable</option>
           <option value="apiError">Create new: apiError</option>
-          <optgroup label="Global Variables">
-            <option
-              v-for="variable in availableVariables.global"
-              :key="variable.name"
-              :value="variable.name"
-            >
-              {{ variable.description ? `${variable.name} (${variable.description})` : variable.name }}
-            </option>
-          </optgroup>
+          <option
+            v-for="variable in availableVariables"
+            :key="variable.name"
+            :value="variable.name"
+          >
+            {{ variable.label }}
+          </option>
         </select>
         <button
           @click="createGlobalVariable(localNodeData.errorVariable, `API error from ${localNodeData.label}`)"
@@ -159,33 +221,82 @@
       </small>
     </div>
     
-    <!-- Test API Call Button -->
-    <div class="form-group mt-6">
-      <RsButton @click="testApiCall" variant="primary" :disabled="!localNodeData.apiUrl">
-        <Icon name="material-symbols:send" class="mr-1" />
-        Test API Call
-      </RsButton>
+    <!-- Test API Call Button and Results -->
+    <div class="form-group mt-6 space-y-4">
+      <div class="flex items-center gap-4">
+        <RsButton @click="testApiCall" variant="primary" :disabled="!localNodeData.apiUrl || isLoading">
+          <Icon name="material-symbols:send" class="mr-1" />
+          {{ isLoading ? 'Testing...' : 'Test API Call' }}
+        </RsButton>
+        <div v-if="isLoading" class="text-gray-600 text-sm flex items-center">
+          <Icon name="material-symbols:sync" class="animate-spin mr-2" />
+          Testing API endpoint...
+        </div>
+      </div>
+
+      <!-- API Test Results -->
+      <div v-if="testResult" :class="[
+        'p-4 rounded-md border',
+        testResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+      ]">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center">
+            <Icon 
+              :name="testResult.success ? 'material-symbols:check-circle' : 'material-symbols:error'" 
+              :class="testResult.success ? 'text-green-500' : 'text-red-500'"
+              class="w-5 h-5 mr-2"
+            />
+            <span :class="testResult.success ? 'text-green-700' : 'text-red-700'" class="font-medium">
+              {{ testResult.success ? 'API Call Successful' : 'API Call Failed' }}
+            </span>
+          </div>
+          <button @click="testResult = null" class="text-gray-400 hover:text-gray-600">
+            <Icon name="material-symbols:close" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <!-- Success Response -->
+        <div v-if="testResult.success" class="mt-3">
+          <div class="text-sm text-gray-600 mb-2">Response stored in variable: {{ localNodeData.outputVariable }}</div>
+          <div class="bg-white border border-green-100 rounded p-3">
+            <pre class="text-xs font-mono whitespace-pre-wrap">{{ JSON.stringify(testResult.data, null, 2) }}</pre>
+          </div>
+        </div>
+
+        <!-- Error Response -->
+        <div v-else class="mt-3">
+          <div class="text-sm text-red-600 mb-2">Error stored in variable: {{ localNodeData.errorVariable }}</div>
+          <div class="bg-white border border-red-100 rounded p-3">
+            <pre class="text-xs font-mono whitespace-pre-wrap text-red-600">{{ JSON.stringify(testResult.error, null, 2) }}</pre>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useProcessBuilderStore } from '@/stores/processBuilder';
 import { useVariableStore } from '@/stores/variableStore';
 
 const props = defineProps({
-  nodeId: {
-    type: String,
+  nodeData: {
+    type: Object,
     required: true
+  },
+  availableVariables: {
+    type: Array,
+    default: () => []
   }
 });
 
-// Get the stores
-const processStore = useProcessBuilderStore();
+const emit = defineEmits(['update']);
+
+// Get the variable store for creating variables
 const variableStore = useVariableStore();
 
-// Local state for node data
+// Local state for node data - create a deep copy to avoid mutation issues
 const localNodeData = ref({
   label: 'API Call',
   description: '',
@@ -205,100 +316,97 @@ const showRequestBody = computed(() => {
 
 // Get available variables for dropdowns
 const availableVariables = computed(() => {
-  const globalVars = variableStore.getAllVariables.global.map(v => ({
+  // Only use global variables, matching VariableManager implementation
+  const globalVars = props.availableVariables?.map(v => ({
     name: v.name || 'unnamed',
     label: v?.description
-      ? `${v.description} (${v.name || 'unnamed'}, global)`
-      : `${v.name || 'unnamed'} (global)`,
+      ? `${v.name} (${v.description})`
+      : v.name,
     type: v.type || 'string',
-    scope: 'global'
-  }));
-  
-  return {
-    global: globalVars
-  };
+    value: v.value
+  })) || [];
+
+  return globalVars;
 });
 
-// Load node data when component mounts or nodeId changes
-watch(() => props.nodeId, () => {
-  loadNodeData();
-}, { immediate: true });
-
-// Watch for changes in local data and emit updates
-watch(localNodeData, (newValue) => {
-  saveChanges();
-}, { deep: true });
-
-// Load node data from the store
-function loadNodeData() {
-  const node = processStore.currentProcess.nodes.find(n => n.id === props.nodeId);
-  if (node && node.data) {
+// Watch for changes from parent props
+watch(() => props.nodeData, (newNodeData) => {
+  if (newNodeData) {
+    // Create a deep copy to break reactivity chains with parent
     localNodeData.value = {
-      label: node.label || 'API Call',
-      description: node.data.description || '',
-      apiMethod: node.data.apiMethod || 'GET',
-      apiUrl: node.data.apiUrl || '',
-      requestBody: node.data.requestBody || '',
-      headers: node.data.headers || '{ "Content-Type": "application/json" }',
-      outputVariable: node.data.outputVariable || 'apiResponse',
-      continueOnError: node.data.continueOnError || false,
-      errorVariable: node.data.errorVariable || 'apiError'
+      label: newNodeData.label || 'API Call',
+      description: newNodeData.description || '',
+      apiMethod: newNodeData.apiMethod || 'GET',
+      apiUrl: newNodeData.apiUrl || '',
+      requestBody: newNodeData.requestBody || '',
+      headers: newNodeData.headers || '{ "Content-Type": "application/json" }',
+      outputVariable: newNodeData.outputVariable || 'apiResponse',
+      continueOnError: newNodeData.continueOnError || false,
+      errorVariable: newNodeData.errorVariable || 'apiError'
     };
   }
-}
+}, { immediate: true, deep: true });
 
 // Function to create a new global variable
 function createGlobalVariable(name, description = '') {
-  variableStore.addVariable({
+  if (!name) return;
+  
+  const newVariable = {
     name,
     type: 'object',
     scope: 'global',
-    value: null,
     description: description || `API response from ${localNodeData.value.label}`
+  };
+
+  // Add the variable using the store's addVariable method
+  variableStore.addVariable(newVariable);
+  
+  // Force a refresh of the component
+  nextTick(() => {
+    saveChanges();
   });
 }
 
-// Save changes to the store
+// Save changes by emitting them to parent
 function saveChanges() {
-  const updates = {
-    label: localNodeData.value.label,
-    data: {
-      ...localNodeData.value,
-      label: localNodeData.value.label // Ensure label is in both places
-    }
-  };
-
-  // Update the node in the store
-  processStore.updateNode(props.nodeId, updates);
+  // Create a clean copy of the data to avoid reactivity issues
+  const nodeDataCopy = JSON.parse(JSON.stringify(localNodeData.value));
   
-  // Ensure variables exist
-  if (localNodeData.value.outputVariable) {
+  // Ensure variables exist before saving
+  if (nodeDataCopy.outputVariable) {
     variableStore.addVariableIfNotExists({
-      name: localNodeData.value.outputVariable,
+      name: nodeDataCopy.outputVariable,
       type: 'object',
       scope: 'global',
       value: null,
-      description: `API response from ${localNodeData.value.label}`
+      description: `API response from ${nodeDataCopy.label}`
     });
   }
   
-  if (localNodeData.value.errorVariable) {
+  if (nodeDataCopy.errorVariable) {
     variableStore.addVariableIfNotExists({
-      name: localNodeData.value.errorVariable,
+      name: nodeDataCopy.errorVariable,
       type: 'object',
       scope: 'global',
       value: null,
-      description: `API error from ${localNodeData.value.label}`
+      description: `API error from ${nodeDataCopy.label}`
     });
   }
+  
+  // Emit the updated data to parent
+  emit('update', nodeDataCopy);
 }
 
-// Test API call function
+// Add these refs for handling the API test state
+const isLoading = ref(false);
+const testResult = ref(null);
+
+// Update the testApiCall function
 async function testApiCall() {
   if (!localNodeData.value.apiUrl) return;
   
-  const isLoading = ref(true);
-  const testResult = ref(null);
+  isLoading.value = true;
+  testResult.value = null;
   
   try {
     // Get process variables for substitution
@@ -307,14 +415,12 @@ async function testApiCall() {
       process: {}
     };
     
-    // Extract variables from the store
-    const allVars = variableStore.getAllVariables;
-    allVars.process.forEach(v => {
-      processVariables.process[v.name] = v.value;
-    });
-    allVars.global.forEach(v => {
-      processVariables.global[v.name] = v.value;
-    });
+    // Extract variables from available variables
+    if (props.availableVariables) {
+      props.availableVariables.forEach(v => {
+        processVariables.global[v.name] = v.value;
+      });
+    }
     
     // Call the test API endpoint
     const response = await fetch('/api/process/test-api-node', {
@@ -327,7 +433,7 @@ async function testApiCall() {
           apiMethod: localNodeData.value.apiMethod,
           apiUrl: localNodeData.value.apiUrl,
           requestBody: localNodeData.value.requestBody,
-          headers: localNodeData.value.headers,
+          headers: JSON.parse(localNodeData.value.headers || '{}'),
           outputVariable: localNodeData.value.outputVariable,
           errorVariable: localNodeData.value.errorVariable,
           continueOnError: localNodeData.value.continueOnError
@@ -337,30 +443,116 @@ async function testApiCall() {
     });
     
     const result = await response.json();
-    testResult.value = result;
     
-    if (result.success && localNodeData.value.outputVariable) {
+    // Store the test result
+    testResult.value = {
+      success: response.ok && !result.error,
+      data: result.data,
+      error: result.error || (response.ok ? null : { message: 'API request failed' })
+    };
+    
+    // Update variables in the store
+    if (testResult.value.success && localNodeData.value.outputVariable) {
       variableStore.updateVariable(
         localNodeData.value.outputVariable,
         { value: result.data },
         'global'
       );
-    } else if (!result.success && localNodeData.value.errorVariable) {
+    } else if (!testResult.value.success && localNodeData.value.errorVariable) {
       variableStore.updateVariable(
         localNodeData.value.errorVariable,
-        { value: result.error },
+        { value: testResult.value.error },
         'global'
       );
     }
   } catch (error) {
+    console.error('API test error:', error);
     testResult.value = {
       success: false,
       error: {
-        message: error.message || 'An error occurred while testing the API call'
+        message: error.message || 'An error occurred while testing the API call',
+        details: error.toString()
       }
     };
+    
+    // Store error in variable
+    if (localNodeData.value.errorVariable) {
+      variableStore.updateVariable(
+        localNodeData.value.errorVariable,
+        { value: testResult.value.error },
+        'global'
+      );
+    }
   } finally {
     isLoading.value = false;
+  }
+}
+
+// Function to insert a variable at cursor position or append to end
+function insertVariable(variableName, field) {
+  if (!variableName) return;
+  
+  const varName = `{${variableName}}`;
+  const textarea = document.getElementById(field);
+  
+  if (textarea.selectionStart || textarea.selectionStart === 0) {
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    
+    localNodeData.value[field] = 
+      textarea.value.substring(0, startPos) +
+      varName +
+      textarea.value.substring(endPos);
+      
+    // Reset cursor position after variable
+    textarea.selectionStart = startPos + varName.length;
+    textarea.selectionEnd = startPos + varName.length;
+  } else {
+    localNodeData.value[field] += varName;
+  }
+  
+  saveChanges();
+}
+
+// Function to format JSON in a field
+function formatJson(field) {
+  try {
+    const value = localNodeData.value[field];
+    if (!value) return;
+    
+    const parsed = JSON.parse(value);
+    localNodeData.value[field] = JSON.stringify(parsed, null, 2);
+    saveChanges();
+  } catch (error) {
+    console.warn(`Failed to format JSON for ${field}:`, error);
+  }
+}
+
+// Function to preview values with actual variable values
+function getPreviewWithValues(field) {
+  try {
+    let text = localNodeData.value[field];
+    if (!text) return '';
+    
+    // Replace all variables with their current values
+    const variablePattern = /{([^}]+)}/g;
+    text = text.replace(variablePattern, (match, varName) => {
+      const variable = availableVariables.value.find(v => v.name === varName);
+      if (variable) {
+        return JSON.stringify(variable.value) || '(undefined)';
+      }
+      return '(undefined)';
+    });
+    
+    // Try to format as JSON if possible
+    try {
+      const parsed = JSON.parse(text);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return text;
+    }
+  } catch (error) {
+    return '(Invalid format)';
   }
 }
 </script>
@@ -368,6 +560,7 @@ async function testApiCall() {
 <style scoped>
 .api-node-configuration {
   padding: 1rem;
+  background-color: #f8f8f8;
 }
 
 .form-group {

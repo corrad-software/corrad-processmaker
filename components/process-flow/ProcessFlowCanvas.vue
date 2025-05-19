@@ -311,48 +311,52 @@ const onDragOver = (event) => {
   event.dataTransfer.dropEffect = 'copy';
 };
 
-// Add a method to update a node in the flow
-const updateNode = (nodeId, updates) => {
-  if (!nodeId) return;
+// Define methods to expose to parent components
+defineExpose({
+  updateNode,
+  addNode,
+  removeNode,
+  fitView
+});
+
+// Update an existing node
+function updateNode(nodeId, newData) {
+  const nodeToUpdate = nodes.value.find(node => node.id === nodeId);
+  if (!nodeToUpdate) return;
   
-  // console.log('ProcessFlowCanvas: Updating node:', nodeId, updates);
-  
-  // Find the node in Vue Flow nodes
-  const nodeIndex = nodes.value.findIndex(n => n.id === nodeId);
-  if (nodeIndex === -1) {
-    console.warn(`Node with ID ${nodeId} not found in flow`);
-    return;
+  // Update the node properties
+  if (newData.label) {
+    nodeToUpdate.label = newData.label;
   }
   
-  // Update the node with new values
-  const node = nodes.value[nodeIndex];
+  // Update the node data
+  if (newData.data) {
+    nodeToUpdate.data = {
+      ...nodeToUpdate.data,
+      ...newData.data
+    };
+  }
   
-  // Ensure label is consistently set in both places
-  const updatedLabel = updates.label || node.label;
-  const updatedData = {
-    ...node.data,
-    ...(updates.data || {}),
-    label: updatedLabel // Ensure label is also in data
-  };
+  // Update node internals to trigger re-render
+  updateNodeInternals([nodeId]);
   
-  // Update the node directly to avoid triggering watchers unnecessarily
-  Object.assign(nodes.value[nodeIndex], {
-    label: updatedLabel,
-    data: updatedData
-  });
-  
-  // Notify Vue Flow to update the node's internals
-  updateNodeInternals(nodeId);
-  
-  // console.log('Node updated:', updatedData);
-  
-  return updatedData;
-};
+  return nodeToUpdate;
+}
 
-// Expose methods to parent components
-defineExpose({
-  updateNode
-});
+// Add a new node to the canvas
+function addNode(node) {
+  addNodes([node]);
+  return node;
+}
+
+// Remove a node from the canvas
+function removeNode(nodeId) {
+  const nodeToRemove = nodes.value.find(node => node.id === nodeId);
+  if (!nodeToRemove) return;
+  
+  removeNodes([nodeToRemove]);
+  return nodeToRemove;
+}
 </script>
 
 <template>
@@ -507,6 +511,7 @@ defineExpose({
 
 :deep(.node-gateway .custom-node-icon .material-icons) {
   color: #FF9800;
+  font-size: 18px;
 }
 
 :deep(.node-script .custom-node-icon .material-icons) {
