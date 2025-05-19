@@ -100,6 +100,26 @@ const availableComponents = [
     }
   },
   {
+    type: 'api',
+    name: 'API Call',
+    category: 'Core',
+    icon: 'material-symbols:api',
+    description: 'Make external API calls',
+    defaultProps: {
+      label: 'API Call',
+      data: {
+        description: 'External API call',
+        apiMethod: 'GET',
+        apiUrl: '',
+        requestBody: '',
+        headers: '{ "Content-Type": "application/json" }',
+        outputVariable: 'apiResponse',
+        continueOnError: false,
+        errorVariable: 'apiError'
+      }
+    }
+  },
+  {
     type: 'gateway',
     name: 'Decision Point',
     category: 'Core',

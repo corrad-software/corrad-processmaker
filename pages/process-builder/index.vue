@@ -7,6 +7,7 @@ import ProcessFlowCanvas from '~/components/process-flow/ProcessFlowCanvas.vue';
 import ProcessBuilderComponents from '~/components/process-flow/ProcessBuilderComponents.vue';
 import FormSelector from '~/components/process-flow/FormSelector.vue';
 import GatewayConditionManager from '~/components/process-flow/GatewayConditionManager.vue';
+import ApiNodeConfiguration from '~/components/process-flow/ApiNodeConfiguration.vue';
 import VariableManager from '~/components/process-flow/VariableManager.vue';
 import { onBeforeRouteLeave } from 'vue-router';
 
@@ -73,6 +74,22 @@ const components = [
     icon: 'description',
     iconColor: 'text-purple-500',
     data: { description: 'Form submission', formName: '' }
+  },
+  {
+    type: 'api',
+    label: 'API Call',
+    icon: 'api',
+    iconColor: 'text-indigo-500',
+    data: { 
+      description: 'External API call',
+      apiMethod: 'GET',
+      apiUrl: '',
+      requestBody: '',
+      headers: '{ "Content-Type": "application/json" }',
+      outputVariable: 'apiResponse',
+      continueOnError: false,
+      errorVariable: 'apiError'
+    }
   },
   {
     type: 'gateway',
@@ -721,6 +738,13 @@ const onConditionsUpdated = (conditions) => {
                 @select="handleFormSelection"
                 @clear="clearFormSelection"
                 :formId="selectedNodeData.data?.formId"
+              />
+            </div>
+
+            <!-- API Configuration for API Nodes -->
+            <div v-if="selectedNodeData.type === 'api'">
+              <ApiNodeConfiguration 
+                :nodeId="selectedNodeData.id"
               />
             </div>
 

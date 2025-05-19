@@ -56,14 +56,6 @@
                 <span class="font-medium text-gray-900">{{
                   variable.name
                 }}</span>
-                <RsBadge
-                  :variant="
-                    variable.scope === 'global' ? 'primary' : 'secondary'
-                  "
-                  size="sm"
-                >
-                  {{ variable.scope }}
-                </RsBadge>
                 <RsBadge variant="outline" size="sm" class="text-gray-500">
                   {{ variable.type }}
                 </RsBadge>
@@ -129,31 +121,15 @@
           label="Type"
           :options="[
             { label: 'String', value: 'string' },
-            { label: 'Number', value: 'number' },
-            { label: 'Boolean', value: 'boolean' },
+            { label: 'Int', value: 'int' },
+            { label: 'Decimal', value: 'decimal' },
             { label: 'Object', value: 'object' },
-            { label: 'Array', value: 'array' },
-            { label: 'Date', value: 'date' },
-            { label: 'File', value: 'file' },
+            { label: 'DateTime', value: 'datetime' },
+            { label: 'Date', value: 'date' }
           ]"
           validation="required"
           :validation-messages="{
             required: 'Variable type is required',
-          }"
-        />
-
-        <FormKit
-          name="scope"
-          v-model="variableForm.scope"
-          type="select"
-          label="Scope"
-          :options="[
-            { label: 'Process', value: 'process' },
-            { label: 'Global', value: 'global' },
-          ]"
-          validation="required"
-          :validation-messages="{
-            required: 'Variable scope is required',
           }"
         />
 
@@ -164,14 +140,6 @@
           label="Description"
           placeholder="Enter variable description"
           :rows="2"
-        />
-
-        <FormKit
-          name="isRequired"
-          v-model="variableForm.isRequired"
-          type="checkbox"
-          label="Required"
-          help="Mark this variable as required"
         />
 
         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-200">
@@ -199,19 +167,14 @@ const editingVariable = ref(null);
 const variableForm = ref({
   name: "",
   type: "string",
-  scope: "process",
+  scope: "global",
   description: "",
-  isRequired: false,
 });
 
 // Computed
 const variables = computed(() => {
-  // This was only returning process variables, let's fix it to return both process and global variables
-  const allVars = [
-    ...variableStore.getAllVariables.process,
-    ...variableStore.getAllVariables.global,
-  ];
-  return allVars;
+  // Only return global variables
+  return variableStore.getAllVariables.global;
 });
 
 // Methods
@@ -223,7 +186,7 @@ const editVariable = (variable) => {
 
 const deleteVariable = (variable) => {
   if (confirm(`Are you sure you want to delete ${variable.name}?`)) {
-    variableStore.deleteVariable(variable.name, variable.scope);
+    variableStore.deleteVariable(variable.name, 'global');
   }
 };
 
@@ -231,9 +194,8 @@ const resetForm = () => {
   variableForm.value = {
     name: "",
     type: "string",
-    scope: "process",
-    description: "",
-    isRequired: false,
+    scope: "global",
+    description: ""
   };
   editingVariable.value = null;
 };
@@ -249,9 +211,8 @@ const saveVariable = async (formData) => {
     const newVariable = {
       name: formData.name,
       type: formData.type,
-      scope: formData.scope,
-      description: formData.description,
-      isRequired: formData.isRequired,
+      scope: "global",
+      description: formData.description
     };
 
     if (editingVariable.value) {
@@ -259,7 +220,7 @@ const saveVariable = async (formData) => {
       variableStore.updateVariable(
         editingVariable.value.name,
         newVariable,
-        newVariable.scope
+        "global"
       );
     } else {
       // Add new variable

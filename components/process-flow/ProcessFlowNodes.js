@@ -271,6 +271,54 @@ export const ScriptNode = markRaw({
   }
 });
 
+// API Call node
+export const ApiCallNode = markRaw({
+  props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      return this.label || (this.data && this.data.label) || 'API Call';
+    },
+    apiUrl() {
+      return this.data?.apiUrl || 'No URL specified';
+    },
+    apiMethod() {
+      return this.data?.apiMethod || 'GET';
+    }
+  },
+  render() {
+    const badgeContent = h('span', { 
+      class: 'node-badge bg-indigo-100 text-indigo-600 px-1 text-xs rounded' 
+    }, 'API');
+    
+    return h(CustomNode, {
+      id: this.id,
+      type: 'api',
+      label: this.nodeLabel,
+      selected: this.selected,
+      data: this.data,
+      onClick: () => this.$emit('node-click', this.id)
+    }, {
+      icon: () => h('i', { class: 'material-icons text-indigo-500' }, 'api'),
+      badge: () => badgeContent,
+      default: () => h('div', { class: 'node-details' }, [
+        h('p', { class: 'node-description' }, this.data?.description || 'External API call'),
+        h('div', { class: 'node-api-info' }, [
+          h('span', { class: 'node-api-label' }, 'URL: '),
+          h('span', { 
+            class: 'node-api-value text-indigo-600 font-medium' 
+          }, this.apiUrl)
+        ]),
+        h('div', { class: 'node-api-method-info' }, [
+          h('span', { class: 'node-api-method-label' }, 'Method: '),
+          h('span', { 
+            class: 'node-api-method-value' 
+          }, this.apiMethod)
+        ])
+      ])
+    });
+  }
+});
+
 // Export the node types object to use with Vue Flow
 export const nodeTypes = markRaw({
   task: TaskNode,
@@ -278,7 +326,8 @@ export const nodeTypes = markRaw({
   end: EndNode,
   gateway: GatewayNode,
   form: FormNode,
-  script: ScriptNode
+  script: ScriptNode,
+  api: ApiCallNode
 });
 
 // Default CSS for the nodes to be imported where needed
@@ -297,7 +346,7 @@ export const nodeStyles = `
 }
 
 /* Base styles for different node types */
-.node-task, .node-form, .node-script {
+.node-task, .node-form, .node-script, .node-api {
   width: 180px;
   background: white;
   border-radius: 4px;
@@ -394,7 +443,8 @@ export const nodeStyles = `
 
 .node-task .custom-node-title,
 .node-form .custom-node-title,
-.node-script .custom-node-title {
+.node-script .custom-node-title,
+.node-api .custom-node-title {
   font-weight: 500;
   font-size: 11px;
   display: flex;
@@ -461,6 +511,8 @@ export const nodeStyles = `
 .node-assignee,
 .node-form-info,
 .node-script-info,
+.node-api-info,
+.node-api-method-info,
 .node-conditions {
   display: flex;
   font-size: 10px;
@@ -470,13 +522,17 @@ export const nodeStyles = `
 
 .node-assignee-label,
 .node-form-label,
-.node-script-label {
+.node-script-label,
+.node-api-label,
+.node-api-method-label {
   font-weight: 500;
   margin-right: 4px;
 }
 
 .node-form-value,
 .node-script-value,
+.node-api-value,
+.node-api-method-value,
 .node-assignee-value {
   white-space: nowrap;
   overflow: hidden;
@@ -507,6 +563,7 @@ export const nodeStyles = `
 .handle-task-input,
 .handle-form-input,
 .handle-script-input,
+.handle-api-input,
 .handle-gateway-input {
   top: -5px !important;
   width: 8px !important;
@@ -517,6 +574,7 @@ export const nodeStyles = `
 .handle-task-output,
 .handle-form-output,
 .handle-script-output,
+.handle-api-output,
 .handle-gateway-output {
   bottom: -5px !important;
   width: 8px !important;
