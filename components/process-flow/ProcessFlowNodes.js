@@ -108,15 +108,28 @@ export const TaskNode = markRaw({
       };
       
       return priorityColors[this.data.priority] || '';
+    },
+    
+    // Helper to get priority label
+    priorityLabel() {
+      if (!this.data || !this.data.priority) return 'None';
+      return this.data.priority.charAt(0).toUpperCase() + this.data.priority.slice(1);
+    },
+    
+    // Helper for due date
+    dueLabel() {
+      if (!this.data || !this.data.dueDateType || this.data.dueDateType === 'none') {
+        return 'Not set';
+      }
+      
+      if (this.data.dueDateType === 'fixed') {
+        return `${this.data.dueDateDays || 0} days`;
+      }
+      
+      return `Variable: ${this.data.dueDateVariable || 'none'}`;
     }
   },
   render() {
-    const badgeContent = this.data?.priority ? 
-      h('span', { 
-        class: `node-badge px-1 text-xs rounded ${this.priorityClass} bg-gray-100`
-      }, this.data.priority.charAt(0).toUpperCase() + this.data.priority.slice(1)) : 
-      null;
-      
     return h(CustomNode, {
       id: this.id,
       type: 'task',
@@ -126,21 +139,22 @@ export const TaskNode = markRaw({
       onClick: () => this.$emit('node-click', this.id)
     }, {
       icon: () => h('i', { class: 'material-icons text-blue-500' }, 'assignment'),
-      badge: () => badgeContent,
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'A general task'),
-        h('div', { class: 'node-assignee flex items-center justify-between text-xs' }, [
-          h('span', { class: 'node-assignee-label' }, 'Assigned:'),
-          h('span', { class: 'node-assignee-value ml-1 font-medium text-blue-600' }, this.assignmentText)
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Assigned:'),
+          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-blue-600' }, this.assignmentText)
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Priority:'),
+          h('span', { 
+            class: `node-rule-detail-value ml-1 font-medium ${this.priorityClass}` 
+          }, this.priorityLabel)
         ]),
         this.data?.dueDateType !== 'none' && this.data?.dueDateType ?
-          h('div', { class: 'node-due-date text-xs mt-1' }, [
-            h('span', { class: 'node-due-date-label' }, 'Due:'),
-            h('span', { class: 'node-due-date-value ml-1' }, 
-              this.data.dueDateType === 'fixed' ? 
-                `${this.data.dueDateDays || 0} days` : 
-                `Variable: ${this.data.dueDateVariable || 'none'}`
-            )
+          h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+            h('span', { class: 'node-rule-detail-label' }, 'Due:'),
+            h('span', { class: 'node-rule-detail-value ml-1 font-medium text-blue-600' }, this.dueLabel)
           ]) : null
       ])
     });
@@ -224,14 +238,13 @@ export const GatewayNode = markRaw({
         .join(', ');
         
       return paths || 'Unconfigured paths';
+    },
+    
+    defaultPath() {
+      return this.data?.defaultPath || 'Default';
     }
   },
   render() {
-    // Create the badge content
-    const badgeContent = h('span', { 
-      class: 'node-badge bg-orange-100 text-orange-600 px-1 text-xs rounded'
-    }, `${this.totalPaths} path${this.totalPaths !== 1 ? 's' : ''}`);
-
     return h(CustomNode, {
       id: this.id,
       type: 'gateway',
@@ -241,12 +254,19 @@ export const GatewayNode = markRaw({
       onClick: () => this.$emit('node-click', this.id)
     }, {
       icon: () => h('i', { class: 'material-icons text-orange-500' }, 'call_split'),
-      badge: () => badgeContent,
       default: () => h('div', { class: 'gateway-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'Decision based on conditions'),
-        h('div', { class: 'node-conditions flex items-center justify-between text-xs' }, [
-          h('span', { class: 'node-conditions-label' }, 'Paths:'),
-          h('span', { class: 'node-conditions-value ml-1 font-medium text-orange-600' }, this.conditionSummary)
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Paths:'),
+          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-orange-600' }, 
+            this.totalPaths === 0 ? 'None' : this.totalPaths
+          )
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Default:'),
+          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-orange-600' }, 
+            this.defaultPath
+          )
         ])
       ])
     });
@@ -269,10 +289,6 @@ export const FormNode = markRaw({
     }
   },
   render() {
-    const badgeContent = this.hasForm ? 
-      h('span', { class: 'node-badge bg-purple-100 text-purple-600 px-1 text-xs rounded' }, 'Form') : 
-      null;
-    
     return h(CustomNode, {
       id: this.id,
       type: 'form',
@@ -282,14 +298,19 @@ export const FormNode = markRaw({
       onClick: () => this.$emit('node-click', this.id)
     }, {
       icon: () => h('i', { class: 'material-icons text-purple-500' }, 'description'),
-      badge: () => badgeContent,
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'Form submission task'),
-        h('div', { class: 'node-form-info' }, [
-          h('span', { class: 'node-form-label' }, 'Form: '),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Form:'),
           h('span', { 
-            class: this.hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
+            class: this.hasForm ? 'node-rule-detail-value ml-1 font-medium text-purple-600' : 'node-rule-detail-value ml-1 italic text-gray-400' 
           }, this.formName)
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Status:'),
+          h('span', { 
+            class: 'node-rule-detail-value ml-1 font-medium text-purple-600' 
+          }, this.hasForm ? 'Configured' : 'Not configured')
         ])
       ])
     });
@@ -303,6 +324,12 @@ export const ScriptNode = markRaw({
     nodeLabel() {
       // Get label from either prop or data, with fallback
       return this.label || (this.data && this.data.label) || 'Script';
+    },
+    scriptLanguage() {
+      return this.data?.language || 'Not specified';
+    },
+    hasScript() {
+      return !!this.data?.script;
     }
   },
   render() {
@@ -314,12 +341,18 @@ export const ScriptNode = markRaw({
       data: this.data,
       onClick: () => this.$emit('node-click', this.id)
     }, {
-      icon: () => h('i', { class: 'material-icons script-icon' }, 'code'),
+      icon: () => h('i', { class: 'material-icons text-gray-500' }, 'code'),
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'Script execution'),
-        h('div', { class: 'node-script-info' }, [
-          h('span', { class: 'node-script-label' }, 'Language: '),
-          h('span', { class: 'node-script-value' }, this.data?.language || 'Not specified')
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Language:'),
+          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-gray-600' }, this.scriptLanguage)
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Script:'),
+          h('span', { 
+            class: 'node-rule-detail-value ml-1 font-medium text-gray-600' 
+          }, this.hasScript ? 'Defined' : 'Not defined')
         ])
       ])
     });
@@ -338,13 +371,12 @@ export const ApiCallNode = markRaw({
     },
     apiMethod() {
       return this.data?.apiMethod || 'GET';
+    },
+    isConfigured() {
+      return !!this.data?.apiUrl;
     }
   },
   render() {
-    const badgeContent = h('span', { 
-      class: 'node-badge bg-indigo-100 text-indigo-600 px-1 text-xs rounded' 
-    }, 'API');
-    
     return h(CustomNode, {
       id: this.id,
       type: 'api',
@@ -354,20 +386,20 @@ export const ApiCallNode = markRaw({
       onClick: () => this.$emit('node-click', this.id)
     }, {
       icon: () => h('i', { class: 'material-icons text-indigo-500' }, 'api'),
-      badge: () => badgeContent,
       default: () => h('div', { class: 'node-details' }, [
         h('p', { class: 'node-description' }, this.data?.description || 'External API call'),
-        h('div', { class: 'node-api-info' }, [
-          h('span', { class: 'node-api-label' }, 'URL: '),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Method:'),
           h('span', { 
-            class: 'node-api-value text-indigo-600 font-medium' 
-          }, this.apiUrl)
-        ]),
-        h('div', { class: 'node-api-method-info' }, [
-          h('span', { class: 'node-api-method-label' }, 'Method: '),
-          h('span', { 
-            class: 'node-api-method-value' 
+            class: 'node-rule-detail-value ml-1 font-medium text-indigo-600' 
           }, this.apiMethod)
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'URL:'),
+          h('span', { 
+            class: this.isConfigured ? 'node-rule-detail-value ml-1 font-medium text-indigo-600' : 'node-rule-detail-value ml-1 italic text-gray-400',
+            style: 'max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'
+          }, this.apiUrl)
         ])
       ])
     });
@@ -769,33 +801,111 @@ export const nodeStyles = `
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  max-width: 90px;
 }
 
-.node-gateway .node-conditions {
+.node-gateway .node-rule-detail {
   display: flex;
   font-size: 10px;
   color: #666;
   align-items: center;
   justify-content: center;
   width: 100%;
+  margin-bottom: 3px;
 }
 
-.node-gateway .node-conditions-label {
+.node-gateway .node-rule-detail-label {
   font-weight: 500;
   margin-right: 4px;
 }
 
-.node-gateway .node-conditions-value {
+.node-gateway .node-rule-detail-value {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 10px;
-  max-width: 80px;
+  max-width: 60px;
+  text-align: center;
 }
 
 .node-gateway .material-icons {
   font-size: 18px;
   color: #f97316;
   margin-bottom: 4px;
+}
+
+/* Update node-specific styles to be more consistent */
+.node-form {
+  width: 180px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-left: 4px solid #9333ea;  /* Purple border to match icon color */
+}
+
+.node-api {
+  width: 180px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-left: 4px solid #6366f1;  /* Indigo border to match icon color */
+}
+
+/* Node details styles for consistency */
+.node-rule-detail {
+  display: flex;
+  font-size: 10px;
+  color: #666;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.node-rule-detail-label {
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.node-rule-detail-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Add task node specific styling to be consistent with business rule */
+.node-task {
+  width: 180px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-left: 4px solid #3b82f6;  /* Blue border to match icon color */
+}
+
+/* Script node styling */
+.node-script {
+  width: 180px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-left: 4px solid #6b7280;  /* Gray border to match icon color */
 }
 `; 

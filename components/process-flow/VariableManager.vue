@@ -3,11 +3,16 @@
     <!-- Header with Add Button -->
     <div class="bg-gray-50 border-b border-gray-200 p-4">
       <div class="flex items-center justify-between">
-        <div>
-          <h3 class="text-lg font-medium text-gray-900">Process Variables</h3>
-          <p class="mt-1 text-sm text-gray-500">
-            Manage variables for your process flow
-          </p>
+        <div class="flex items-start">
+          <div class="mr-4 text-blue-500 flex-shrink-0 mt-1">
+            <Icon name="material-symbols:data-object" class="text-2xl" />
+          </div>
+          <div>
+            <h3 class="text-lg font-medium text-gray-900">Process Variables</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Define and manage global variables to store and pass data within your process
+            </p>
+          </div>
         </div>
         <RsButton
           @click="
@@ -25,56 +30,85 @@
       </div>
     </div>
 
+    <!-- Search Bar -->
+    <div class="px-4 pt-3 pb-2">
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon name="material-symbols:search" class="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          v-model="searchQuery"
+          class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          placeholder="Search variables..."
+        />
+      </div>
+    </div>
+
     <!-- Variable List -->
-    <div class="p-4">
+    <div class="p-4 overflow-auto flex-grow">
       <!-- Empty State -->
-      <div v-if="!variables.length" class="text-center py-8">
+      <div v-if="!variables.length" class="text-center py-10 px-4 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
         <Icon
           name="material-symbols:data-object"
-          class="w-12 h-12 mx-auto mb-3 text-gray-400"
+          class="w-14 h-14 mx-auto mb-3 text-gray-400"
         />
-        <h4 class="text-sm font-medium text-gray-900 mb-1">
-          No Variables Added
+        <h4 class="text-base font-medium text-gray-900 mb-1">
+          No Variables Added Yet
         </h4>
-        <p class="text-sm text-gray-500 mb-4">
-          Add variables to store and manage data in your process
+        <p class="text-sm text-gray-500 mb-4 max-w-md mx-auto">
+          Variables allow you to store and manage data in your process flow. Add your first variable to get started.
         </p>
+        <RsButton
+          @click="
+            () => {
+              resetForm();
+              showAddVariable = true;
+            }
+          "
+          variant="primary"
+          size="md"
+        >
+          <Icon name="material-symbols:add" class="mr-1" />
+          Add First Variable
+        </RsButton>
       </div>
 
       <!-- Variable List -->
-      <div v-else class="space-y-2">
+      <div v-else-if="filteredVariables.length" class="space-y-3">
         <div
-          v-for="variable in variables"
+          v-for="variable in filteredVariables"
           :key="variable.name"
           class="variable-item"
         >
           <div
-            class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200"
+            class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200"
           >
             <div class="flex-1">
               <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-900">{{
-                  variable.name
-                }}</span>
-                <RsBadge variant="outline" size="sm" class="text-gray-500">
+                <span class="font-medium text-gray-900">{{ variable.name }}</span>
+                <RsBadge :variant="getTypeColor(variable.type)" size="sm">
                   {{ variable.type }}
                 </RsBadge>
               </div>
               <p v-if="variable.description" class="mt-1 text-sm text-gray-500">
                 {{ variable.description }}
               </p>
+              <div v-if="variable.value !== undefined" class="mt-2 text-xs font-mono bg-gray-50 p-2 rounded border border-gray-200 max-w-md truncate">
+                {{ formatValue(variable.value, variable.type) }}
+              </div>
             </div>
             <div class="flex items-center gap-2 ml-4">
               <button
                 @click="editVariable(variable)"
-                class="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
                 title="Edit variable"
               >
                 <Icon name="material-symbols:edit" class="w-4 h-4" />
               </button>
               <button
                 @click="deleteVariable(variable)"
-                class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                 title="Delete variable"
               >
                 <Icon name="material-symbols:delete" class="w-4 h-4" />
@@ -82,6 +116,20 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- No search results -->
+      <div v-else class="text-center py-8">
+        <Icon
+          name="material-symbols:search-off"
+          class="w-12 h-12 mx-auto mb-3 text-gray-400"
+        />
+        <h4 class="text-sm font-medium text-gray-900 mb-1">
+          No matching variables found
+        </h4>
+        <p class="text-sm text-gray-500 mb-4">
+          Try using different keywords or <a href="#" @click.prevent="searchQuery = ''" class="text-blue-500">clear your search</a>
+        </p>
       </div>
     </div>
 
@@ -93,6 +141,16 @@
       :hideFooter="true"
       :overlayClose="false"
     >
+      <div class="mb-4 flex items-start" v-if="!editingVariable">
+        <div class="mr-3 text-blue-500 flex-shrink-0 mt-1">
+          <Icon name="material-symbols:data-object" class="text-xl" />
+        </div>
+        <p class="text-sm text-gray-600">
+          Variables store data that can be used throughout your process flow. They can be updated by tasks, used in conditions, 
+          or displayed in forms.
+        </p>
+      </div>
+      
       <FormKit
         type="form"
         @submit="saveVariable"
@@ -103,8 +161,8 @@
           name="name"
           v-model="variableForm.name"
           type="text"
-          label="Name"
-          placeholder="Enter variable name"
+          label="Variable Name"
+          placeholder="Enter variable name (e.g. customerName)"
           validation="required|alpha_numeric|length:3,50"
           :validation-messages="{
             required: 'Variable name is required',
@@ -112,25 +170,20 @@
               'Variable name can only contain letters, numbers, and underscores',
             length: 'Variable name must be between 3 and 50 characters',
           }"
+          help="Use a descriptive name without spaces. Example: totalAmount, customerName, orderStatus"
         />
 
         <FormKit
           name="type"
           v-model="variableForm.type"
           type="select"
-          label="Type"
-          :options="[
-            { label: 'String', value: 'string' },
-            { label: 'Int', value: 'int' },
-            { label: 'Decimal', value: 'decimal' },
-            { label: 'Object', value: 'object' },
-            { label: 'DateTime', value: 'datetime' },
-            { label: 'Date', value: 'date' }
-          ]"
+          label="Data Type"
+          :options="variableTypes"
           validation="required"
           :validation-messages="{
             required: 'Variable type is required',
           }"
+          help="Select the type of data this variable will store"
         />
 
         <FormKit
@@ -138,8 +191,9 @@
           v-model="variableForm.description"
           type="textarea"
           label="Description"
-          placeholder="Enter variable description"
+          placeholder="Enter a description to help others understand what this variable is used for"
           :rows="2"
+          help="A clear description helps others understand the purpose of this variable"
         />
 
         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-200">
@@ -147,7 +201,7 @@
             Cancel
           </RsButton>
           <FormKit type="submit" input-class="rs-button rs-button-primary">
-            {{ editingVariable ? "Update" : "Add" }}
+            {{ editingVariable ? "Update Variable" : "Add Variable" }}
           </FormKit>
         </div>
       </FormKit>
@@ -164,6 +218,7 @@ const variableStore = useVariableStore();
 // State
 const showAddVariable = ref(false);
 const editingVariable = ref(null);
+const searchQuery = ref("");
 const variableForm = ref({
   name: "",
   type: "string",
@@ -171,10 +226,33 @@ const variableForm = ref({
   description: "",
 });
 
+// Variable type options with descriptions
+const variableTypes = [
+  { label: 'String - Text values', value: 'string' },
+  { label: 'Int - Whole numbers', value: 'int' },
+  { label: 'Decimal - Decimal numbers', value: 'decimal' },
+  { label: 'Object - Complex data structure', value: 'object' },
+  { label: 'DateTime - Date and time values', value: 'datetime' },
+  { label: 'Date - Date values only', value: 'date' },
+  { label: 'Boolean - True/False values', value: 'boolean' }
+];
+
 // Computed
 const variables = computed(() => {
   // Only return global variables
   return variableStore.getAllVariables.global;
+});
+
+// Filtered variables based on search query
+const filteredVariables = computed(() => {
+  if (!searchQuery.value) return variables.value;
+  
+  const query = searchQuery.value.toLowerCase();
+  return variables.value.filter(variable => 
+    variable.name.toLowerCase().includes(query) || 
+    (variable.description && variable.description.toLowerCase().includes(query)) ||
+    variable.type.toLowerCase().includes(query)
+  );
 });
 
 // Methods
@@ -185,7 +263,7 @@ const editVariable = (variable) => {
 };
 
 const deleteVariable = (variable) => {
-  if (confirm(`Are you sure you want to delete ${variable.name}?`)) {
+  if (confirm(`Are you sure you want to delete the variable "${variable.name}"? This might affect parts of your process that use this variable.`)) {
     variableStore.deleteVariable(variable.name, 'global');
   }
 };
@@ -234,6 +312,38 @@ const saveVariable = async (formData) => {
     // You might want to show an error message to the user here
   }
 };
+
+// Get badge color based on variable type
+const getTypeColor = (type) => {
+  switch (type) {
+    case 'string': return 'blue';
+    case 'int': 
+    case 'decimal': return 'purple';
+    case 'object': return 'emerald';
+    case 'datetime':
+    case 'date': return 'amber';
+    case 'boolean': return 'indigo';
+    default: return 'gray';
+  }
+};
+
+// Format variable value for display
+const formatValue = (value, type) => {
+  if (value === undefined || value === null) return 'null';
+  
+  switch (type) {
+    case 'object':
+      try {
+        return typeof value === 'string' ? value : JSON.stringify(value);
+      } catch (e) {
+        return String(value);
+      }
+    case 'boolean':
+      return value ? 'true' : 'false';
+    default:
+      return String(value);
+  }
+};
 </script>
 
 <style scoped>
@@ -246,6 +356,30 @@ const saveVariable = async (formData) => {
 }
 
 .variable-item:hover {
-  @apply transform -translate-y-1;
+  @apply transform -translate-y-0.5;
+}
+
+/* Light styling for FormKit form */
+:deep(.formkit-outer) {
+  margin-bottom: 1rem;
+}
+
+:deep(.formkit-label) {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+:deep(.formkit-help) {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+:deep(.formkit-messages) {
+  font-size: 0.75rem;
+  color: #ef4444;
+  margin-top: 0.25rem;
 }
 </style>

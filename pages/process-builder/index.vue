@@ -323,8 +323,9 @@ const handleConditionUpdate = (conditions) => {
         if (edge.source === selectedNodeData.value.id) {
           // Find matching condition group
           const matchingGroup = conditions.find(group => group.output === edge.label);
-          if (!matchingGroup) {
-            // If no matching group found, update edge label to default
+          
+          // If no matching group found, and this isn't the default path, update edge label
+          if (!matchingGroup && edge.label !== selectedNodeData.value.data.defaultPath) {
             return {
               ...edge,
               label: selectedNodeData.value.data.defaultPath || 'Default'
@@ -708,6 +709,14 @@ const handleBusinessRuleUpdate = (data) => {
     updateNodeInStore();
   }
 };
+
+// Add a method to handle default path updates
+const handleDefaultPathUpdate = (path) => {
+  if (selectedNodeData.value && selectedNodeData.value.type === 'gateway') {
+    selectedNodeData.value.data.defaultPath = path;
+    updateNodeInStore();
+  }
+};
 </script>
 
 <template>
@@ -934,7 +943,9 @@ const handleBusinessRuleUpdate = (data) => {
       v-model="showGatewayConfigModal"
       :conditions="selectedNodeData.data.conditions || []"
       :availableVariables="gatewayAvailableVariables"
+      :defaultPath="selectedNodeData.data.defaultPath || 'Default'"
       @update:conditions="handleConditionUpdate"
+      @update:defaultPath="handleDefaultPathUpdate"
     />
     
     <!-- Business Rule Configuration Modal -->

@@ -2,18 +2,51 @@
   <RsModal
     v-model="showModal"
     title="Form Task Configuration"
-    size="lg"
+    size="xl"
     position="center"
     :okCallback="saveAndClose"
     okTitle="Save"
     :cancelCallback="closeModal"
   >
     <template #body>
+      <div class="mb-6">
+        <div class="flex items-start">
+          <div class="mr-4 text-emerald-500 flex-shrink-0 mt-1">
+            <Icon name="material-symbols:format-list-bulleted" class="text-2xl" />
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold mb-1">Configure Form Task</h3>
+            <p class="text-sm text-gray-600">
+              Connect a form to your process flow to collect user input. Form submissions can be used to feed data 
+              into your process or to display information to users.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main configuration area -->
       <FormNodeConfiguration 
-        :nodeData="nodeData" 
+        :nodeData="localNodeData" 
         :availableVariables="availableVariables"
         @update="handleUpdate"
       />
+
+      <!-- Quick Reference Guide -->
+      <div class="mt-6 bg-emerald-50 p-4 rounded-md border border-emerald-100">
+        <h4 class="font-medium text-emerald-700 mb-2 flex items-center">
+          <Icon name="material-symbols:info-outline" class="mr-1" />
+          Quick Reference Guide
+        </h4>
+        <div class="text-sm text-emerald-700">
+          <ul class="list-disc list-inside space-y-1">
+            <li>Select a form from your existing forms or create a new one</li>
+            <li>Map process variables to form fields to pre-fill the form</li>
+            <li>Map form fields to process variables to collect submission data</li>
+            <li>The form will be displayed to users when this task is reached in the process</li>
+            <li>Process execution will continue once the form is submitted</li>
+          </ul>
+        </div>
+      </div>
     </template>
   </RsModal>
 </template>
@@ -21,6 +54,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import FormNodeConfiguration from './FormNodeConfiguration.vue';
+import { Icon } from '#components';
 
 const props = defineProps({
   modelValue: {
@@ -69,4 +103,11 @@ function saveAndClose() {
 function closeModal() {
   showModal.value = false;
 }
-</script> 
+</script>
+
+<style scoped>
+code {
+  font-family: monospace;
+  border-radius: 0.25rem;
+}
+</style> 

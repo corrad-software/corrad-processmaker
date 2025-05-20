@@ -2,18 +2,51 @@
   <RsModal
     v-model="showModal"
     title="API Call Configuration"
-    size="lg"
+    size="xl"
     position="center"
     :okCallback="saveAndClose"
     okTitle="Save"
     :cancelCallback="closeModal"
   >
     <template #body>
+      <div class="mb-6">
+        <div class="flex items-start">
+          <div class="mr-4 text-indigo-500 flex-shrink-0 mt-1">
+            <Icon name="material-symbols:api" class="text-2xl" />
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold mb-1">Configure API Call</h3>
+            <p class="text-sm text-gray-600">
+              Set up an external API call to integrate with third-party services or fetch data from other systems.
+              The API response will be stored in a process variable for later use.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main configuration area -->
       <ApiNodeConfiguration 
-        :nodeData="nodeData" 
+        :nodeData="localNodeData" 
         :availableVariables="availableVariables"
         @update="handleUpdate"
       />
+
+      <!-- Quick Reference Guide -->
+      <div class="mt-6 bg-blue-50 p-4 rounded-md border border-blue-100">
+        <h4 class="font-medium text-blue-700 mb-2 flex items-center">
+          <Icon name="material-symbols:info-outline" class="mr-1" />
+          Quick Reference Guide
+        </h4>
+        <div class="text-sm text-blue-700">
+          <ul class="list-disc list-inside space-y-1">
+            <li>Variable placeholders can be used with <code class="bg-blue-100 px-1">{variableName}</code> syntax</li>
+            <li>API responses are stored in your chosen output variable</li>
+            <li>Error handling allows your process to recover from failed API calls</li>
+            <li>You can test API calls directly from this configuration panel</li>
+            <li>Response data structure depends on the API you're calling</li>
+          </ul>
+        </div>
+      </div>
     </template>
   </RsModal>
 </template>
@@ -21,6 +54,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import ApiNodeConfiguration from './ApiNodeConfiguration.vue';
+import { Icon } from '#components';
 
 const props = defineProps({
   modelValue: {
@@ -69,4 +103,11 @@ function saveAndClose() {
 function closeModal() {
   showModal.value = false;
 }
-</script> 
+</script>
+
+<style scoped>
+code {
+  font-family: monospace;
+  border-radius: 0.25rem;
+}
+</style> 

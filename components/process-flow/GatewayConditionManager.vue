@@ -306,204 +306,267 @@ const groupedConditionText = (group) => {
     return `${c.operator.toUpperCase()} ${c.text}`;
   }).join(' ');
 };
+
+// Add the following helper method to the existing script
+const getValuePlaceholder = (condition) => {
+  const varType = condition.valueType?.toLowerCase();
+  if (varType === 'number') return 'Enter a number';
+  if (varType === 'date') return 'Select a date';
+  if (varType === 'string') return 'Enter text value';
+  return 'Enter value';
+};
+
+// Add a method to get friendly path summary
+const getPathSummary = (group) => {
+  if (!group.conditions || group.conditions.length === 0) {
+    return 'No conditions defined';
+  }
+  
+  if (group.conditions.length === 1) {
+    return conditionText(group.conditions[0]);
+  }
+  
+  // Build readable text with individual operators
+  return group.conditions.map((condition, index) => {
+    const text = conditionText(condition);
+    if (index === 0) return text;
+    return `${condition.logicalOperator.toUpperCase()} ${text}`;
+  }).join(' ');
+};
 </script>
 
 <template>
   <div class="gateway-condition-manager">
-    <div class="mb-4">
-      <div class="flex justify-between items-center mb-3">
-        <h3 class="text-sm font-medium text-gray-700">Decision Point Conditions</h3>
-        <button 
-          @click="addConditionGroup" 
-          class="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600 flex items-center"
-        >
-          <Icon name="material-symbols:add" class="w-3.5 h-3.5 mr-1" />
-          Add Path
-        </button>
+    <!-- Empty state message when no paths are defined -->
+    <div v-if="localConditions.length === 0" class="text-center p-6 border-2 border-dashed border-orange-200 rounded-lg bg-orange-50">
+      <div class="text-orange-500 mb-2">
+        <Icon name="material-symbols:call-split" class="w-12 h-12 mx-auto" />
       </div>
-      
-      <div v-if="localConditions.length === 0" class="text-gray-500 text-sm italic mb-2">
-        No conditions defined. Default path will be taken.
-      </div>
-      
-      <div v-else class="conditions-list space-y-3 mb-4">
-        <!-- One condition group per outgoing path -->
+      <h3 class="text-lg font-medium text-gray-700 mb-2">No Decision Paths Defined</h3>
+      <p class="text-sm text-gray-600 mb-4">
+        Your process will always follow the default path: <span class="font-semibold">{{ defaultPath }}</span>
+      </p>
+      <button 
+        @click="addConditionGroup" 
+        class="px-4 py-2 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 transition flex items-center mx-auto"
+      >
+        <Icon name="material-symbols:add" class="w-4 h-4 mr-1" />
+        Add Your First Path
+      </button>
+    </div>
+    
+    <!-- Decision paths list -->
+    <div v-else class="conditions-list space-y-4">
+      <!-- Path cards - one per outgoing path -->
+      <div 
+        v-for="(group, groupIndex) in localConditions" 
+        :key="group.id"
+        class="condition-group border-2 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200"
+        :class="{'border-orange-300 bg-orange-50': !isGroupCollapsed(group.id), 'border-gray-200': isGroupCollapsed(group.id)}"
+        :data-collapsed="isGroupCollapsed(group.id)"
+      >
+        <!-- Path header -->
         <div 
-          v-for="(group, groupIndex) in localConditions" 
-          :key="group.id"
-          class="condition-group border-2 rounded-md bg-orange-50"
-          :data-collapsed="isGroupCollapsed(group.id)"
-          @click.stop="isGroupCollapsed(group.id) ? toggleGroupCollapse(group.id) : null"
+          class="group p-3 border-b flex items-center justify-between cursor-pointer"
+          :class="{'bg-orange-100 border-orange-200': !isGroupCollapsed(group.id), 'bg-gray-50 border-gray-200 hover:bg-gray-100': isGroupCollapsed(group.id)}"
+          @click="toggleGroupCollapse(group.id)"
         >
-          <!-- Group header (always visible) -->
-          <div class="p-3 border-b border-orange-200 flex items-center justify-between bg-orange-100">
-            <div class="flex-1 mr-2">
-              <div class="text-xs font-medium mb-1">
-                Path Name:
-                <span v-if="isGroupCollapsed(group.id)" class="ml-1 text-orange-600">
-                  ({{ group.conditions.length }} condition{{ group.conditions.length !== 1 ? 's' : '' }})
-                </span>
-              </div>
+          <div class="flex items-center space-x-2">
+            <div class="text-orange-500">
+              <Icon name="material-symbols:alt-route" class="w-5 h-5" />
+            </div>
+            <div class="font-medium">Path {{ groupIndex + 1 }}</div>
+            <div 
+              v-if="group.output" 
+              class="text-sm rounded-full px-2 py-0.5 bg-orange-100 text-orange-700 border border-orange-200"
+            >
+              {{ group.output }}
+            </div>
+          </div>
+          
+          <div class="flex items-center">
+            <!-- Condition count badge -->
+            <div class="text-xs text-gray-500 bg-white px-2 py-0.5 rounded-full border mr-2">
+              {{ group.conditions.length }} condition{{ group.conditions.length !== 1 ? 's' : '' }}
+            </div>
+            
+            <!-- Collapse/expand button -->
+            <button
+              class="p-1 text-gray-500 hover:text-gray-700 group-hover:text-orange-600"
+              :title="isGroupCollapsed(group.id) ? 'Expand' : 'Collapse'"
+            >
+              <Icon 
+                :name="isGroupCollapsed(group.id) ? 'material-symbols:chevron-right' : 'material-symbols:expand-more'" 
+                class="w-5 h-5"
+              />
+            </button>
+            
+            <!-- Delete button -->
+            <button 
+              @click.stop="removeConditionGroup(groupIndex)"
+              class="p-1 text-gray-400 hover:text-red-500"
+              title="Remove path"
+            >
+              <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        <!-- Path details when expanded -->
+        <div v-if="!isGroupCollapsed(group.id)" class="path-details">
+          <!-- Path name -->
+          <div class="p-4 bg-white border-b border-orange-100">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Path Name</label>
+            <div class="flex">
               <input 
                 type="text"
-                :value="group.output"
-                @input="updateConditionGroup(groupIndex, 'output', $event.target.value)"
-                @blur="saveChanges"
-                class="w-full p-2 border rounded text-xs"
+                v-model="group.output"
+                @blur="updateConditionGroup(groupIndex, 'output', group.output); saveChanges()"
+                class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
                 placeholder="Path label (e.g. 'Yes', 'Approved')"
               />
             </div>
-            
-            <div class="flex items-center">
-              <!-- Collapse/expand button -->
-              <button
-                @click="toggleGroupCollapse(group.id); $event.stopPropagation();"
-                class="p-1 text-gray-500 hover:text-gray-700 mr-2"
-                :title="isGroupCollapsed(group.id) ? 'Expand' : 'Collapse'"
-              >
-                <Icon 
-                  :name="isGroupCollapsed(group.id) ? 'material-symbols:expand-more' : 'material-symbols:expand-less'" 
-                  class="w-5 h-5"
-                />
-              </button>
-              
-              <!-- Delete button -->
-              <button 
-                @click="removeConditionGroup(groupIndex); $event.stopPropagation();"
-                class="p-1 text-gray-400 hover:text-red-500"
-                title="Remove path"
-              >
-                <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
-              </button>
-            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              This name will appear on the connection line leaving this decision point.
+            </p>
           </div>
           
-          <!-- Collapsible content -->
-          <div v-if="!isGroupCollapsed(group.id)" class="p-3">
-            <!-- Individual conditions in this group -->
-            <div class="space-y-3">
+          <!-- Conditions list -->
+          <div class="p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h4 class="text-sm font-medium text-gray-700">Conditions for This Path</h4>
+              <button 
+                @click.stop="addConditionToGroup(groupIndex)"
+                class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200 border border-gray-300 flex items-center"
+              >
+                <Icon name="material-symbols:add" class="w-3 h-3 mr-1" />
+                Add Condition
+              </button>
+            </div>
+            
+            <!-- Individual conditions -->
+            <div class="space-y-4">
               <div 
                 v-for="(condition, conditionIndex) in group.conditions" 
                 :key="condition.id"
-                class="condition-item p-3 border border-orange-200 rounded-md bg-white relative"
+                class="condition-item p-3 border rounded-md bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
               >
-                <button 
-                  v-if="group.conditions.length > 1"
-                  @click.stop="removeConditionFromGroup(groupIndex, conditionIndex)"
-                  class="absolute top-1 right-1 text-gray-400 hover:text-red-500"
-                  title="Remove condition"
-                >
-                  <Icon name="material-symbols:close" class="w-4 h-4" />
-                </button>
-                
-                <!-- Logical operator selector before each condition except the first one -->
-                <div v-if="conditionIndex > 0" class="mb-2 pb-2 border-b border-gray-200">
-                  <select
-                    :value="condition.logicalOperator || 'and'"
-                    @change="updateCondition(groupIndex, conditionIndex, 'logicalOperator', $event.target.value)"
-                    @blur="saveChanges"
-                    class="w-full text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50"
+                <!-- Condition header with remove button -->
+                <div class="flex justify-between items-center mb-2">
+                  <h5 class="text-xs font-medium">Condition {{ conditionIndex + 1 }}</h5>
+                  <button 
+                    v-if="group.conditions.length > 1"
+                    @click.stop="removeConditionFromGroup(groupIndex, conditionIndex)"
+                    class="text-gray-400 hover:text-red-500"
+                    title="Remove condition"
                   >
-                    <option value="and">AND (Both conditions must be true)</option>
-                    <option value="or">OR (Either condition can be true)</option>
-                  </select>
+                    <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                  </button>
                 </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <!-- Variable -->
-                  <select 
-                    :value="condition.variable"
-                    @change="updateCondition(groupIndex, conditionIndex, 'variable', $event.target.value)"
-                    @blur="saveChanges"
-                    class="w-full p-2 border rounded text-xs"
-                  >
-                    <option 
-                      v-for="variable in availableVariables" 
-                      :key="variable.name" 
-                      :value="variable.name"
-                    >
-                      {{ variable.label || variable.name || 'Unnamed variable' }}
-                    </option>
-                  </select>
-                  
-                  <!-- Operator -->
-                  <select 
-                    :value="condition.operator"
-                    @change="updateCondition(groupIndex, conditionIndex, 'operator', $event.target.value)"
-                    @blur="saveChanges"
-                    class="w-full p-2 border rounded text-xs"
-                  >
-                    <option 
-                      v-for="operator in getOperatorsForType(
-                        props.availableVariables.find(v => v.name === condition.variable)?.type || 'string'
-                      )" 
-                      :key="operator.value" 
-                      :value="operator.value"
-                    >
-                      {{ operator.label }}
-                    </option>
-                  </select>
-                  
-                  <!-- Value -->
-                  <input 
-                    v-if="condition.valueType !== 'boolean'"
-                    :type="getInputTypeForVarType(condition.valueType)"
-                    :value="condition.value"
-                    @input="updateCondition(groupIndex, conditionIndex, 'value', $event.target.value)"
-                    @blur="saveChanges"
-                    class="w-full p-2 border rounded text-xs"
-                    :placeholder="'Value'"
-                  />
-                  <div v-else class="w-full p-2 border rounded flex items-center">
-                    <input 
-                      type="checkbox"
-                      :checked="condition.value === true || condition.value === 'true'"
-                      @change="updateCondition(groupIndex, conditionIndex, 'value', $event.target.checked)"
-                      @blur="saveChanges"
-                      class="mr-2"
-                    />
-                    <span class="text-xs">{{ condition.value === true || condition.value === 'true' ? 'Yes' : 'No' }}</span>
+                <!-- Logical operator for conditions after the first one -->
+                <div v-if="conditionIndex > 0" class="mb-3 py-2 px-3 bg-gray-50 rounded-md border">
+                  <div class="text-xs text-gray-500 mb-1">Combine with previous condition using:</div>
+                  <div class="flex space-x-2">
+                    <label class="inline-flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        :checked="condition.logicalOperator === 'and'"
+                        @change="updateCondition(groupIndex, conditionIndex, 'logicalOperator', 'and')"
+                        class="form-radio text-orange-500 focus:ring-orange-500 h-4 w-4"
+                      />
+                      <span class="ml-1 text-sm">AND</span>
+                    </label>
+                    <label class="inline-flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        :checked="condition.logicalOperator === 'or'"
+                        @change="updateCondition(groupIndex, conditionIndex, 'logicalOperator', 'or')"
+                        class="form-radio text-orange-500 focus:ring-orange-500 h-4 w-4"
+                      />
+                      <span class="ml-1 text-sm">OR</span>
+                    </label>
                   </div>
                 </div>
-              </div>
-              
-              <!-- Add another condition button -->
-              <div class="text-center">
-                <button 
-                  @click.stop="addConditionToGroup(groupIndex)"
-                  class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200 border border-gray-300 flex items-center mx-auto"
-                >
-                  <Icon name="material-symbols:add" class="w-3 h-3 mr-1" />
-                  Add Another Condition
-                </button>
+                
+                <!-- Condition builder -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <!-- Variable -->
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Variable</label>
+                    <select 
+                      v-model="condition.variable"
+                      @change="updateCondition(groupIndex, conditionIndex, 'variable', condition.variable)"
+                      class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
+                    >
+                      <option 
+                        v-for="variable in availableVariables" 
+                        :key="variable.name" 
+                        :value="variable.name"
+                      >
+                        {{ variable.label || variable.name }}
+                      </option>
+                    </select>
+                  </div>
+                  
+                  <!-- Operator -->
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Operator</label>
+                    <select 
+                      v-model="condition.operator"
+                      @change="updateCondition(groupIndex, conditionIndex, 'operator', condition.operator)"
+                      class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
+                    >
+                      <option 
+                        v-for="operator in getOperatorsForType(
+                          availableVariables.find(v => v.name === condition.variable)?.type || 'string'
+                        )" 
+                        :key="operator.value" 
+                        :value="operator.value"
+                      >
+                        {{ operator.label }}
+                      </option>
+                    </select>
+                  </div>
+                  
+                  <!-- Value -->
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Value</label>
+                    <input 
+                      v-if="condition.valueType !== 'boolean'"
+                      :type="getInputTypeForVarType(condition.valueType)"
+                      v-model="condition.value"
+                      @blur="saveChanges"
+                      class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
+                      :placeholder="getValuePlaceholder(condition)"
+                    />
+                    <div v-else class="flex items-center h-[38px] p-2 border rounded-md shadow-sm bg-white">
+                      <input 
+                        type="checkbox"
+                        v-model="condition.value"
+                        class="form-checkbox text-orange-500 focus:ring-orange-500"
+                      />
+                      <span class="ml-2 text-sm">{{ condition.value ? 'Yes/True' : 'No/False' }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           
-          <!-- Condition summary (always visible, even when collapsed) -->
-          <div class="p-2 bg-orange-100 rounded-b-md border-t border-orange-200 text-xs text-orange-800">
-            <span class="font-medium">Outcome:</span> 
-            <span v-if="group.conditions.length === 1">
-              If {{ conditionText(group.conditions[0]) }}
-            </span>
-            <span v-else>
-              If {{ groupedConditionText(group) }}
-            </span>
-            <span class="font-medium"> → follow path "{{ group.output || 'Unlabeled path' }}"</span>
+          <!-- Summary of path conditions -->
+          <div class="bg-orange-50 border-t border-orange-100 p-3">
+            <div class="text-sm text-gray-700 flex items-center">
+              <span class="font-medium text-orange-700 mr-2">Path Summary:</span>
+              {{ getPathSummary(group) }}
+            </div>
           </div>
         </div>
-      </div>
-      
-      <!-- Default path -->
-      <div class="default-path p-3 border rounded-md bg-gray-50">
-        <div class="text-xs font-medium mb-1">Default Path (when no conditions match):</div>
-        <input 
-          type="text"
-          v-model="defaultPath"
-          @blur="saveChanges"
-          class="w-full p-2 border rounded text-xs"
-          placeholder="Default path label (e.g. 'No', 'Rejected')"
-        />
+        
+        <!-- Path summary when collapsed -->
+        <div v-if="isGroupCollapsed(group.id)" class="p-3 bg-white border-t border-gray-100 text-sm">
+          <span class="font-medium">If</span> {{ getPathSummary(group) }}
+        </div>
       </div>
     </div>
   </div>
@@ -511,37 +574,14 @@ const groupedConditionText = (group) => {
 
 <style scoped>
 .gateway-condition-manager {
-  font-size: 0.875rem;
+  @apply space-y-4;
 }
 
-.condition-group {
-  border-color: #fdba74;
-  transition: all 0.2s;
+.form-radio {
+  @apply text-orange-500 focus:ring-orange-500;
 }
 
-.condition-group:hover {
-  border-color: #f97316;
-}
-
-.condition-item {
-  transition: all 0.2s;
-}
-
-.condition-item:hover {
-  border-color: #f97316;
-}
-
-/* Adding new styles for collapsed state */
-.condition-group[data-collapsed="true"]:hover {
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.condition-group[data-collapsed="true"] {
-  background-color: #ffedd5;
-}
-
-.condition-group[data-collapsed="true"] .p-3.border-b {
-  border-bottom: none;
+.form-checkbox {
+  @apply text-orange-500 focus:ring-orange-500;
 }
 </style> 

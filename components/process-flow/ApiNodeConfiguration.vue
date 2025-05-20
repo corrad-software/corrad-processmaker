@@ -1,228 +1,276 @@
 <template>
   <div class="api-node-configuration">
-    <!-- <h3 class="text-lg font-semibold mb-4">API Call Configuration</h3> -->
-    
-    <!-- <div class="form-group mb-4">
-      <label for="nodeLabel" class="form-label">Node Label</label>
-      <input
-        id="nodeLabel"
-        v-model="localNodeData.label"
-        type="text"
-        class="form-control"
-        placeholder="API Call"
-        @blur="saveChanges"
-      />
-    </div> -->
-    
-    <!-- <div class="form-group mb-4">
-      <label for="nodeDescription" class="form-label">Description</label>
-      <textarea
-        id="nodeDescription"
-        v-model="localNodeData.description"
-        class="form-control"
-        placeholder="API call description"
-        rows="2"
-        @blur="saveChanges"
-      ></textarea>
-    </div> -->
-    
-    <div class="form-group mb-4">
-      <label for="apiMethod" class="form-label">HTTP Method</label>
-      <select
-        id="apiMethod"
-        v-model="localNodeData.apiMethod"
-        class="form-control"
-        @change="saveChanges"
-      >
-        <option value="GET">GET</option>
-        <option value="POST">POST</option>
-        <option value="PUT">PUT</option>
-        <option value="PATCH">PATCH</option>
-        <option value="DELETE">DELETE</option>
-      </select>
-    </div>
-    
-    <div class="form-group mb-4">
-      <label for="apiUrl" class="form-label">API URL</label>
-      <input
-        id="apiUrl"
-        v-model="localNodeData.apiUrl"
-        type="text"
-        class="form-control"
-        placeholder="https://example.com/api/endpoint"
-        @blur="saveChanges"
-      />
-      <small class="form-text text-muted">
-        You can use process variables with curly braces: https://example.com/api/users/{userId}
-      </small>
-    </div>
-    
-    <!-- Variable Insertion for Request Body -->
-    <div class="form-group mb-4" v-if="showRequestBody">
-      <label for="requestBody" class="form-label">Request Body</label>
-      <div class="space-y-2">
-        <div class="flex gap-2">
+    <!-- Step 1: Basic configuration -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-indigo-600">1</span>
+        </div>
+        <h4 class="font-medium">Basic Configuration</h4>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- HTTP Method -->
+        <div>
+          <label for="apiMethod" class="block text-sm font-medium text-gray-700 mb-1">HTTP Method</label>
           <select
-            class="form-control text-sm"
-            @change="insertVariable($event.target.value, 'requestBody')"
+            id="apiMethod"
+            v-model="localNodeData.apiMethod"
+            class="w-full p-2 border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm"
+            @change="saveChanges"
           >
-            <option value="">Insert Variable...</option>
-            <option
-              v-for="variable in availableVariables"
-              :key="variable.name"
-              :value="variable.name"
-            >
-              {{ variable.label }}
-            </option>
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
           </select>
-          <RsButton
-            variant="secondary"
-            size="sm"
-            @click="formatJson('requestBody')"
-            title="Format JSON"
-          >
-            <Icon name="material-symbols:format-align-left" />
-          </RsButton>
+          <p class="mt-1 text-xs text-gray-500">
+            The HTTP method determines how the API call interacts with the endpoint.
+          </p>
         </div>
-        <textarea
-          id="requestBody"
-          v-model="localNodeData.requestBody"
-          class="form-control font-mono"
-          placeholder='{ "key": "{variableName}" }'
-          rows="6"
-          @blur="saveChanges"
-        ></textarea>
-      </div>
-      <small class="form-text text-muted mt-1">
-        Use variables in curly braces, e.g.: { "userId": "{userId}" }
-      </small>
-      
-      <!-- Request Body Preview -->
-      <div v-if="localNodeData.requestBody" class="mt-3 border-t pt-3">
-        <div class="text-sm font-medium text-gray-700 mb-2">Preview with Current Values:</div>
-        <div class="bg-white border rounded p-3">
-          <pre class="text-xs font-mono whitespace-pre-wrap">{{ getPreviewWithValues('requestBody') }}</pre>
+        
+        <!-- API URL -->
+        <div>
+          <label for="apiUrl" class="block text-sm font-medium text-gray-700 mb-1">API URL</label>
+          <input
+            id="apiUrl"
+            v-model="localNodeData.apiUrl"
+            type="text"
+            class="w-full p-2 border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm"
+            placeholder="https://example.com/api/endpoint"
+            @blur="saveChanges"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            Use variables with <code class="bg-gray-100 px-1">{variableName}</code> syntax, e.g.: <code class="bg-gray-100 px-1">https://api.example.com/users/{userId}</code>
+          </p>
         </div>
       </div>
     </div>
     
-    <!-- Variable Insertion for Headers -->
-    <div class="form-group mb-4">
-      <label for="headers" class="form-label">Headers</label>
-      <div class="space-y-2">
-        <div class="flex gap-2">
-          <select
-            class="form-control text-sm"
-            @change="insertVariable($event.target.value, 'headers')"
-          >
-            <option value="">Insert Variable...</option>
-            <option
-              v-for="variable in availableVariables"
-              :key="variable.name"
-              :value="variable.name"
+    <!-- Step 2: Headers and Body -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-indigo-600">2</span>
+        </div>
+        <h4 class="font-medium">Request Configuration</h4>
+      </div>
+      
+      <!-- Headers -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Headers</label>
+        <div class="bg-white p-3 border rounded-md shadow-sm">
+          <div class="flex gap-2 mb-2">
+            <select
+              class="form-select text-sm flex-grow"
+              @change="insertVariable($event.target.value, 'headers')"
             >
-              {{ variable.label }}
-            </option>
-          </select>
-          <RsButton
-            variant="secondary"
-            size="sm"
-            @click="formatJson('headers')"
-            title="Format JSON"
-          >
-            <Icon name="material-symbols:format-align-left" />
-          </RsButton>
+              <option value="">Insert Variable...</option>
+              <option
+                v-for="variable in availableVariables"
+                :key="variable.name"
+                :value="variable.name"
+              >
+                {{ variable.label }}
+              </option>
+            </select>
+            <RsButton
+              variant="secondary"
+              size="sm"
+              @click="formatJson('headers')"
+              title="Format JSON"
+              class="flex-shrink-0"
+            >
+              <Icon name="material-symbols:format-align-left" />
+              Format
+            </RsButton>
+          </div>
+          <textarea
+            id="headers"
+            v-model="localNodeData.headers"
+            class="w-full p-2 border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm font-mono"
+            placeholder='{ "Authorization": "Bearer {accessToken}" }'
+            rows="4"
+            @blur="saveChanges"
+          ></textarea>
+          <p class="mt-1 text-xs text-gray-500">
+            Set HTTP headers as a JSON object. Use variables with <code class="bg-gray-100 px-1">{variableName}</code> syntax.
+          </p>
+          
+          <!-- Headers Preview -->
+          <div v-if="localNodeData.headers" class="mt-3 pt-3 border-t border-gray-200">
+            <div class="text-xs font-medium text-gray-700 mb-1">Preview with Current Values:</div>
+            <div class="bg-gray-50 border rounded p-2">
+              <pre class="text-xs font-mono whitespace-pre-wrap">{{ getPreviewWithValues('headers') }}</pre>
+            </div>
+          </div>
         </div>
-        <textarea
-          id="headers"
-          v-model="localNodeData.headers"
-          class="form-control font-mono"
-          placeholder='{ "Authorization": "Bearer {accessToken}" }'
-          rows="4"
-          @blur="saveChanges"
-        ></textarea>
       </div>
-      <small class="form-text text-muted mt-1">
-        Use variables in curly braces, e.g.: { "Authorization": "Bearer {accessToken}" }
-      </small>
       
-      <!-- Headers Preview -->
-      <div v-if="localNodeData.headers" class="mt-3 border-t pt-3">
-        <div class="text-sm font-medium text-gray-700 mb-2">Preview with Current Values:</div>
-        <div class="bg-white border rounded p-3">
-          <pre class="text-xs font-mono whitespace-pre-wrap">{{ getPreviewWithValues('headers') }}</pre>
+      <!-- Request Body - show only for POST, PUT, PATCH -->
+      <div v-if="showRequestBody" class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Request Body</label>
+        <div class="bg-white p-3 border rounded-md shadow-sm">
+          <div class="flex gap-2 mb-2">
+            <select
+              class="form-select text-sm flex-grow"
+              @change="insertVariable($event.target.value, 'requestBody')"
+            >
+              <option value="">Insert Variable...</option>
+              <option
+                v-for="variable in availableVariables"
+                :key="variable.name"
+                :value="variable.name"
+              >
+                {{ variable.label }}
+              </option>
+            </select>
+            <RsButton
+              variant="secondary"
+              size="sm"
+              @click="formatJson('requestBody')"
+              title="Format JSON"
+              class="flex-shrink-0"
+            >
+              <Icon name="material-symbols:format-align-left" />
+              Format
+            </RsButton>
+          </div>
+          <textarea
+            id="requestBody"
+            v-model="localNodeData.requestBody"
+            class="w-full p-2 border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm font-mono"
+            placeholder='{ "key": "value", "userId": "{userId}" }'
+            rows="6"
+            @blur="saveChanges"
+          ></textarea>
+          <p class="mt-1 text-xs text-gray-500">
+            Request body to send with the API call. Use variables with <code class="bg-gray-100 px-1">{variableName}</code> syntax.
+          </p>
+          
+          <!-- Request Body Preview -->
+          <div v-if="localNodeData.requestBody" class="mt-3 pt-3 border-t border-gray-200">
+            <div class="text-xs font-medium text-gray-700 mb-1">Preview with Current Values:</div>
+            <div class="bg-gray-50 border rounded p-2">
+              <pre class="text-xs font-mono whitespace-pre-wrap">{{ getPreviewWithValues('requestBody') }}</pre>
+            </div>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- Output Variable Selection -->
-    <div class="form-group mb-4">
-      <label for="outputVariable" class="form-label">Output Variable</label>
-      <div class="flex gap-2">
-        <select
-          id="outputVariable"
-          v-model="localNodeData.outputVariable"
-          class="form-control flex-grow"
-          @change="saveChanges"
-        >
-          <option value="" disabled>Select a global variable</option>
-          <option value="apiResponse">Create new: apiResponse</option>
-          <option
-            v-for="variable in availableVariables"
-            :key="variable.name"
-            :value="variable.name"
-          >
-            {{ variable.label }}
-          </option>
-        </select>
-        <button
-          @click="createGlobalVariable(localNodeData.outputVariable)"
-          class="flex-shrink-0 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          title="Create a new global variable"
-        >
-          <Icon name="material-symbols:add" />
-        </button>
+    <!-- Step 3: Response Handling -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-indigo-600">3</span>
+        </div>
+        <h4 class="font-medium">Response Handling</h4>
       </div>
-      <small class="form-text text-muted">
-        API response will be stored in this global variable
-      </small>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Output Variable -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Output Variable</label>
+          <div class="flex gap-2">
+            <select
+              v-model="localNodeData.outputVariable"
+              class="w-full p-2 border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm"
+              @change="saveChanges"
+            >
+              <option value="" disabled>Select a global variable</option>
+              <option value="apiResponse">Create new: apiResponse</option>
+              <option
+                v-for="variable in availableVariables"
+                :key="variable.name"
+                :value="variable.name"
+              >
+                {{ variable.label }}
+              </option>
+            </select>
+            <RsButton
+              @click="createGlobalVariable(localNodeData.outputVariable)"
+              variant="primary"
+              size="sm"
+              title="Create a new global variable"
+              class="flex-shrink-0"
+            >
+              <Icon name="material-symbols:add" class="mr-1" />
+              Create
+            </RsButton>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">
+            API response will be stored in this global variable for use in later steps
+          </p>
+        </div>
+        
+        <!-- Error Variable -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Error Variable</label>
+          <div class="flex gap-2">
+            <select
+              v-model="localNodeData.errorVariable"
+              class="w-full p-2 border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 text-sm"
+              @change="saveChanges"
+            >
+              <option value="" disabled>Select a global variable</option>
+              <option value="apiError">Create new: apiError</option>
+              <option
+                v-for="variable in availableVariables"
+                :key="variable.name"
+                :value="variable.name"
+              >
+                {{ variable.label }}
+              </option>
+            </select>
+            <RsButton
+              @click="createGlobalVariable(localNodeData.errorVariable, `API error from ${localNodeData.label}`)"
+              variant="primary"
+              size="sm"
+              title="Create a new global variable"
+              class="flex-shrink-0"
+            >
+              <Icon name="material-symbols:add" class="mr-1" />
+              Create
+            </RsButton>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">
+            Any API errors will be stored in this variable for error handling
+          </p>
+        </div>
+      </div>
+      
+      <!-- Continue on Error -->
+      <div class="mt-4">
+        <label class="flex items-center">
+          <input
+            type="checkbox"
+            v-model="localNodeData.continueOnError"
+            class="form-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+            @change="saveChanges"
+          />
+          <span class="ml-2 text-sm">Continue workflow execution even if API call fails</span>
+        </label>
+        <p class="mt-1 pl-6 text-xs text-gray-500">
+          When enabled, the process will continue to the next step even if this API call fails
+        </p>
+      </div>
     </div>
     
-    <!-- Error Variable Selection -->
-    <div class="form-group mb-4">
-      <label for="errorVariable" class="form-label">Error Variable</label>
-      <div class="flex gap-2">
-        <select
-          id="errorVariable"
-          v-model="localNodeData.errorVariable"
-          class="form-control flex-grow"
-          @change="saveChanges"
-        >
-          <option value="" disabled>Select a global variable</option>
-          <option value="apiError">Create new: apiError</option>
-          <option
-            v-for="variable in availableVariables"
-            :key="variable.name"
-            :value="variable.name"
-          >
-            {{ variable.label }}
-          </option>
-        </select>
-        <button
-          @click="createGlobalVariable(localNodeData.errorVariable, `API error from ${localNodeData.label}`)"
-          class="flex-shrink-0 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          title="Create a new global variable"
-        >
-          <Icon name="material-symbols:add" />
-        </button>
+    <!-- Step 4: Test API Call -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-indigo-600">4</span>
+        </div>
+        <h4 class="font-medium">Test API Call</h4>
       </div>
-      <small class="form-text text-muted">
-        API errors will be stored in this global variable
-      </small>
-    </div>
-    
-    <!-- Test API Call Button and Results -->
-    <div class="form-group mt-6 space-y-4">
+      
+      <p class="text-sm text-gray-600 mb-3">
+        Test your API configuration to verify it works as expected before saving
+      </p>
+      
       <div class="flex items-center gap-4">
         <RsButton @click="testApiCall" variant="primary" :disabled="!localNodeData.apiUrl || isLoading">
           <Icon name="material-symbols:send" class="mr-1" />
@@ -235,10 +283,9 @@
       </div>
 
       <!-- API Test Results -->
-      <div v-if="testResult" :class="[
-        'p-4 rounded-md border',
-        testResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-      ]">
+      <div v-if="testResult" class="mt-4 p-4 rounded-md border"
+        :class="testResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'"
+      >
         <div class="flex items-start justify-between">
           <div class="flex items-center">
             <Icon 
@@ -257,16 +304,16 @@
 
         <!-- Success Response -->
         <div v-if="testResult.success" class="mt-3">
-          <div class="text-sm text-gray-600 mb-2">Response stored in variable: {{ localNodeData.outputVariable }}</div>
-          <div class="bg-white border border-green-100 rounded p-3">
+          <div class="text-sm text-gray-600 mb-2">Response stored in variable: <code class="bg-green-100 px-1">{{ localNodeData.outputVariable }}</code></div>
+          <div class="bg-white border border-green-100 rounded p-3 max-h-60 overflow-auto">
             <pre class="text-xs font-mono whitespace-pre-wrap">{{ JSON.stringify(testResult.data, null, 2) }}</pre>
           </div>
         </div>
 
         <!-- Error Response -->
         <div v-else class="mt-3">
-          <div class="text-sm text-red-600 mb-2">Error stored in variable: {{ localNodeData.errorVariable }}</div>
-          <div class="bg-white border border-red-100 rounded p-3">
+          <div class="text-sm text-red-600 mb-2">Error stored in variable: <code class="bg-red-100 px-1">{{ localNodeData.errorVariable }}</code></div>
+          <div class="bg-white border border-red-100 rounded p-3 max-h-60 overflow-auto">
             <pre class="text-xs font-mono whitespace-pre-wrap text-red-600">{{ JSON.stringify(testResult.error, null, 2) }}</pre>
           </div>
         </div>
@@ -558,46 +605,16 @@ function getPreviewWithValues(field) {
 </script>
 
 <style scoped>
-.api-node-configuration {
-  padding: 1rem;
-  background-color: #f8f8f8;
+.form-checkbox {
+  @apply text-indigo-600 focus:ring-indigo-500;
 }
 
-.form-group {
-  margin-bottom: 1rem;
+.form-select {
+  @apply border rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 p-2;
 }
 
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  border: 1px solid #ced4da;
-  border-radius: 0.25rem;
-}
-
-.form-text {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-}
-
-.form-check {
-  display: flex;
-  align-items: center;
-}
-
-.form-check-input {
-  margin-right: 0.5rem;
-}
-
-.font-mono {
+code {
   font-family: monospace;
+  border-radius: 0.25rem;
 }
 </style> 

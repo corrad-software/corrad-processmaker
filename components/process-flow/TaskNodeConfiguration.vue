@@ -353,10 +353,10 @@ function saveChanges() {
 </script>
 
 <style scoped>
-.task-node-configuration {
+/* .task-node-configuration {
   padding: 1rem;
   background-color: #f8f8f8;
-}
+} */
 
 .form-group {
   margin-bottom: 1rem;

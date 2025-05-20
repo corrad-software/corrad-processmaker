@@ -26,55 +26,222 @@
       ></textarea>
     </div> -->
     
-    <!-- Form Selection -->
-    <div class="form-group mb-4">
-      <FormSelector 
-        :formId="localNodeData.formId"
-        @select="handleFormSelection"
-        @clear="clearFormSelection"
-      />
+    <!-- Step 1: Form Selection -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-emerald-600">1</span>
+        </div>
+        <h4 class="font-medium">Form Selection</h4>
+      </div>
+      
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <p class="text-sm text-gray-600 mb-3">
+            Select an existing form or create a new one to use in this task.
+          </p>
+          <!-- Form Selector Component -->
+          <div class="bg-white p-3 border rounded-md shadow-sm">
+            <FormSelector 
+              :formId="localNodeData.formId"
+              @select="handleFormSelection"
+              @clear="clearFormSelection"
+            />
+          </div>
+        </div>
+      </div>
     </div>
     
-    <!-- Form Data Mapping Section -->
-    <div v-if="localNodeData.formId" class="form-group mb-6">
-      <div class="border-t border-gray-200 my-4 pt-4">
-        <h4 class="text-base font-medium mb-4">Form Data Mapping</h4>
+    <!-- Step 2: Form Data Mapping (only if form is selected) -->
+    <div v-if="localNodeData.formId" class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-emerald-600">2</span>
+        </div>
+        <h4 class="font-medium">Form Data Mapping</h4>
+      </div>
+      
+      <p class="text-sm text-gray-600 mb-4">
+        Configure how data flows between your process and the form.
+      </p>
         
-        <!-- Input Variables -->
-        <div class="mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <label class="form-label">Input Variables (Prefill Form)</label>
-            <button 
-              @click="addInputMapping()" 
-              class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 flex items-center"
-            >
-              <Icon name="material-symbols:add" class="w-3.5 h-3.5 mr-1" />
-              Add Mapping
-            </button>
+      <!-- Input Variables Mapping (Process → Form) -->
+      <div class="mb-5">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h5 class="text-sm font-medium flex items-center">
+              <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mr-2 text-xs">
+                <Icon name="material-symbols:arrow-outward" />
+              </span>
+              Input Variables (Process → Form)
+            </h5>
+            <p class="text-xs text-gray-500 ml-7">Map process variables to pre-fill form fields</p>
           </div>
-          
-          <div v-if="!localNodeData.inputMappings || localNodeData.inputMappings.length === 0" class="text-sm text-gray-500 italic mb-2">
+          <RsButton 
+            @click="addInputMapping()" 
+            variant="secondary"
+            size="sm"
+            class="btn-sm-emerald"
+          >
+            <Icon name="material-symbols:add" class="mr-1" /> Add Mapping
+          </RsButton>
+        </div>
+        
+        <!-- No input mappings placeholder -->
+        <div v-if="!localNodeData.inputMappings || localNodeData.inputMappings.length === 0" 
+             class="py-4 text-center text-gray-500 text-sm border border-dashed rounded-md bg-white">
+          <p class="mb-2">
             No input mappings defined. Form will not be prefilled with process data.
-          </div>
-          
-          <div v-else class="space-y-2">
-            <div v-for="(mapping, index) in localNodeData.inputMappings" :key="'input-' + index" class="p-3 border rounded-md bg-blue-50">
-              <div class="flex justify-between mb-2">
-                <h5 class="text-sm font-medium">Mapping #{{ index + 1 }}</h5>
-                <button @click="removeInputMapping(index)" class="text-red-500 hover:text-red-700">
-                  <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
-                </button>
+          </p>
+          <RsButton 
+            @click="addInputMapping()" 
+            variant="secondary"
+            size="sm"
+            class="btn-sm-emerald"
+          >
+            <Icon name="material-symbols:add" class="mr-1" /> Add First Mapping
+          </RsButton>
+        </div>
+        
+        <div v-else class="space-y-3">
+          <div v-for="(mapping, index) in localNodeData.inputMappings" :key="'input-' + index" 
+               class="p-4 border rounded-md bg-blue-50">
+            <div class="flex justify-between mb-3">
+              <h5 class="text-sm font-medium flex items-center">
+                <Icon name="material-symbols:arrow-outward" class="text-blue-600 mr-1" />
+                Process Variable to Form Field #{{ index + 1 }}
+              </h5>
+              <button 
+                @click="removeInputMapping(index)" 
+                class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                title="Remove mapping"
+              >
+                <Icon name="material-symbols:delete-outline" />
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Process Variable</label>
+                <select 
+                  v-model="mapping.processVariable" 
+                  class="form-select"
+                  @change="saveChanges"
+                >
+                  <option value="" disabled>Select a process variable</option>
+                  <option
+                    v-for="variable in availableVariables"
+                    :key="variable.name"
+                    :value="variable.name"
+                  >
+                    {{ variable.label }}
+                  </option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500">
+                  The source variable containing the data
+                </p>
               </div>
               
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs mb-1">Process Variable</label>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Form Field Name</label>
+                <input 
+                  v-model="mapping.formField" 
+                  type="text" 
+                  class="form-control"
+                  placeholder="e.g., first_name"
+                  @blur="saveChanges"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  The target field ID in the form
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Output Variables Mapping (Form → Process) -->
+      <div class="mb-3">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h5 class="text-sm font-medium flex items-center">
+              <span class="w-5 h-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center mr-2 text-xs">
+                <Icon name="material-symbols:arrow-back" />
+              </span>
+              Output Variables (Form → Process)
+            </h5>
+            <p class="text-xs text-gray-500 ml-7">Store form submission data in process variables</p>
+          </div>
+          <RsButton 
+            @click="addOutputMapping()" 
+            variant="secondary"
+            size="sm"
+            class="btn-sm-emerald"
+          >
+            <Icon name="material-symbols:add" class="mr-1" /> Add Mapping
+          </RsButton>
+        </div>
+        
+        <!-- No output mappings placeholder -->
+        <div v-if="!localNodeData.outputMappings || localNodeData.outputMappings.length === 0" 
+             class="py-4 text-center text-gray-500 text-sm border border-dashed rounded-md bg-white">
+          <p class="mb-2">
+            No output mappings defined. Form data will not be stored in process variables.
+          </p>
+          <RsButton 
+            @click="addOutputMapping()" 
+            variant="secondary"
+            size="sm"
+            class="btn-sm-emerald"
+          >
+            <Icon name="material-symbols:add" class="mr-1" /> Add First Mapping
+          </RsButton>
+        </div>
+        
+        <div v-else class="space-y-3">
+          <div v-for="(mapping, index) in localNodeData.outputMappings" :key="'output-' + index" 
+               class="p-4 border rounded-md bg-green-50">
+            <div class="flex justify-between mb-3">
+              <h5 class="text-sm font-medium flex items-center">
+                <Icon name="material-symbols:arrow-back" class="text-green-600 mr-1" />
+                Form Field to Process Variable #{{ index + 1 }}
+              </h5>
+              <button 
+                @click="removeOutputMapping(index)" 
+                class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                title="Remove mapping"
+              >
+                <Icon name="material-symbols:delete-outline" />
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Form Field Name</label>
+                <input 
+                  v-model="mapping.formField" 
+                  type="text" 
+                  class="form-control"
+                  placeholder="e.g., first_name"
+                  @blur="saveChanges"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  The source field ID in the form
+                </p>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Process Variable</label>
+                <div class="flex items-center gap-2">
                   <select 
                     v-model="mapping.processVariable" 
-                    class="w-full p-2 border rounded text-sm"
+                    class="form-select"
                     @change="saveChanges"
                   >
                     <option value="" disabled>Select a variable</option>
+                    <option :value="'create_new_' + getVariableNameFromFormField(mapping.formField)">
+                      Create new variable
+                    </option>
                     <option
                       v-for="variable in availableVariables"
                       :key="variable.name"
@@ -83,91 +250,20 @@
                       {{ variable.label }}
                     </option>
                   </select>
+                  <RsButton
+                    v-if="mapping.processVariable && mapping.processVariable.startsWith('create_new_')"
+                    @click="createVariableFromMapping(mapping)"
+                    variant="primary"
+                    size="sm"
+                    title="Create this variable"
+                    class="flex-shrink-0 btn-add-var"
+                  >
+                    <Icon name="material-symbols:add" />
+                  </RsButton>
                 </div>
-                
-                <div>
-                  <label class="block text-xs mb-1">Form Field</label>
-                  <input 
-                    v-model="mapping.formField" 
-                    type="text" 
-                    class="w-full p-2 border rounded text-sm"
-                    placeholder="form_field_name"
-                    @blur="saveChanges"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Output Variables -->
-        <div class="mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <label class="form-label">Output Variables (Form Submissions)</label>
-            <button 
-              @click="addOutputMapping()" 
-              class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 flex items-center"
-            >
-              <Icon name="material-symbols:add" class="w-3.5 h-3.5 mr-1" />
-              Add Mapping
-            </button>
-          </div>
-          
-          <div v-if="!localNodeData.outputMappings || localNodeData.outputMappings.length === 0" class="text-sm text-gray-500 italic mb-2">
-            No output mappings defined. Form data will not be stored in process variables.
-          </div>
-          
-          <div v-else class="space-y-2">
-            <div v-for="(mapping, index) in localNodeData.outputMappings" :key="'output-' + index" class="p-3 border rounded-md bg-green-50">
-              <div class="flex justify-between mb-2">
-                <h5 class="text-sm font-medium">Mapping #{{ index + 1 }}</h5>
-                <button @click="removeOutputMapping(index)" class="text-red-500 hover:text-red-700">
-                  <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
-                </button>
-              </div>
-              
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs mb-1">Form Field</label>
-                  <input 
-                    v-model="mapping.formField" 
-                    type="text" 
-                    class="w-full p-2 border rounded text-sm"
-                    placeholder="form_field_name"
-                    @blur="saveChanges"
-                  />
-                </div>
-                
-                <div>
-                  <label class="block text-xs mb-1">Process Variable</label>
-                  <div class="flex items-center gap-2">
-                    <select 
-                      v-model="mapping.processVariable" 
-                      class="w-full p-2 border rounded text-sm"
-                      @change="saveChanges"
-                    >
-                      <option value="" disabled>Select a variable</option>
-                      <option :value="'create_new_' + getVariableNameFromFormField(mapping.formField)">
-                        Create new variable
-                      </option>
-                      <option
-                        v-for="variable in availableVariables"
-                        :key="variable.name"
-                        :value="variable.name"
-                      >
-                        {{ variable.label }}
-                      </option>
-                    </select>
-                    <button
-                      v-if="mapping.processVariable && mapping.processVariable.startsWith('create_new_')"
-                      @click="createVariableFromMapping(mapping)"
-                      class="shrink-0 px-2 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                      title="Create this variable"
-                    >
-                      <Icon name="material-symbols:add" class="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+                <p class="mt-1 text-xs text-gray-500">
+                  The target variable to store form data
+                </p>
               </div>
             </div>
           </div>
@@ -181,6 +277,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { useVariableStore } from '@/stores/variableStore';
 import FormSelector from './FormSelector.vue';
+import { Icon } from '#components';
 
 const props = defineProps({
   nodeData: {
@@ -350,10 +447,10 @@ function saveChanges() {
 </script>
 
 <style scoped>
-.form-node-configuration {
+/* .form-node-configuration {
   padding: 1rem;
   background-color: #f8f8f8;
-}
+} */
 
 .form-group {
   margin-bottom: 1rem;
@@ -378,5 +475,21 @@ function saveChanges() {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.75rem;
+}
+
+.form-control {
+  @apply block w-full p-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm;
+}
+
+.form-select {
+  @apply block w-full p-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm;
+}
+
+.btn-sm-emerald {
+  @apply bg-white hover:bg-gray-50 text-emerald-700 border-emerald-300 hover:border-emerald-400 focus:ring-emerald-500;
+}
+
+.btn-add-var {
+  @apply bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500;
 }
 </style> 
