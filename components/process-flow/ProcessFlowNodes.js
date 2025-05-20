@@ -374,6 +374,84 @@ export const ApiCallNode = markRaw({
   }
 });
 
+// Business Rule node
+export const BusinessRuleNode = markRaw({
+  props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'Business Rule';
+    },
+    
+    ruleConditionSummary() {
+      // First try to use the new ruleGroups structure
+      if (this.data && this.data.ruleGroups && Array.isArray(this.data.ruleGroups)) {
+        // Count total conditions across all rule groups
+        const totalConditions = this.data.ruleGroups.reduce((count, group) => {
+          return count + (Array.isArray(group.conditions) ? group.conditions.length : 0);
+        }, 0);
+        
+        return totalConditions === 0 ? 'No conditions' : 
+               totalConditions === 1 ? '1 condition' : 
+               `${totalConditions} conditions`;
+      }
+      
+      // Fallback to old structure for backward compatibility
+      if (this.data && this.data.conditions && Array.isArray(this.data.conditions)) {
+        const count = this.data.conditions.length;
+        return count === 1 ? '1 condition' : `${count} conditions`;
+      }
+      
+      return 'No conditions defined';
+    },
+    
+    ruleActionSummary() {
+      // First try to use the new ruleGroups structure
+      if (this.data && this.data.ruleGroups && Array.isArray(this.data.ruleGroups)) {
+        // Count total actions across all rule groups
+        const totalActions = this.data.ruleGroups.reduce((count, group) => {
+          return count + (Array.isArray(group.actions) ? group.actions.length : 0);
+        }, 0);
+        
+        return totalActions === 0 ? 'No actions' : 
+               totalActions === 1 ? '1 action' : 
+               `${totalActions} actions`;
+      }
+      
+      // Fallback to old structure for backward compatibility
+      if (this.data && this.data.actions && Array.isArray(this.data.actions)) {
+        const count = this.data.actions.length;
+        return count === 1 ? '1 action' : `${count} actions`;
+      }
+      
+      return 'No actions defined';
+    }
+  },
+  render() {
+    return h(CustomNode, {
+      id: this.id,
+      type: 'business-rule',
+      label: this.nodeLabel,
+      selected: this.selected,
+      data: this.data,
+      onClick: () => this.$emit('node-click', this.id)
+    }, {
+      icon: () => h('i', { class: 'material-icons text-purple-600' }, 'rule'),
+      default: () => h('div', { class: 'node-details' }, [
+        h('p', { class: 'node-description' }, this.data?.description || 'Applies business rules to process data'),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Conditions:'),
+          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-purple-600' }, this.ruleConditionSummary)
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Actions:'),
+          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-purple-600' }, this.ruleActionSummary)
+        ])
+      ])
+    });
+  }
+});
+
 // Export the node types object to use with Vue Flow
 export const nodeTypes = markRaw({
   task: TaskNode,
@@ -382,6 +460,7 @@ export const nodeTypes = markRaw({
   gateway: GatewayNode,
   form: FormNode,
   script: ScriptNode,
+  'business-rule': BusinessRuleNode,
   api: ApiCallNode
 });
 

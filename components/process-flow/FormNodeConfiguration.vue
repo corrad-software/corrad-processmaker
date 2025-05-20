@@ -1,6 +1,6 @@
 <template>
   <div class="form-node-configuration">
-    <h3 class="text-lg font-semibold mb-4">Form Task Configuration</h3>
+    <!-- <h3 class="text-lg font-semibold mb-4">Form Task Configuration</h3> -->
     
     <!-- <div class="form-group mb-4">
       <label for="nodeLabel" class="form-label">Node Label</label>

@@ -120,6 +120,22 @@ const availableComponents = [
     }
   },
   {
+    type: 'business-rule',
+    name: 'Business Rule',
+    category: 'Core',
+    icon: 'material-symbols:rule',
+    description: 'Apply business rules to process data',
+    defaultProps: {
+      label: 'Business Rule',
+      data: {
+        description: 'Applies business rules to process data',
+        conditions: [],
+        actions: [],
+        priority: 'medium'
+      }
+    }
+  },
+  {
     type: 'gateway',
     name: 'Decision Point',
     category: 'Core',

@@ -7,11 +7,16 @@ import ProcessFlowCanvas from '~/components/process-flow/ProcessFlowCanvas.vue';
 import ProcessBuilderComponents from '~/components/process-flow/ProcessBuilderComponents.vue';
 import FormSelector from '~/components/process-flow/FormSelector.vue';
 import GatewayConditionManager from '~/components/process-flow/GatewayConditionManager.vue';
+import GatewayConditionManagerModal from '~/components/process-flow/GatewayConditionManagerModal.vue';
 import ApiNodeConfiguration from '~/components/process-flow/ApiNodeConfiguration.vue';
+import ApiNodeConfigurationModal from '~/components/process-flow/ApiNodeConfigurationModal.vue';
 import VariableManager from '~/components/process-flow/VariableManager.vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import FormNodeConfiguration from '~/components/process-flow/FormNodeConfiguration.vue';
+import FormNodeConfigurationModal from '~/components/process-flow/FormNodeConfigurationModal.vue';
 import TaskNodeConfiguration from '~/components/process-flow/TaskNodeConfiguration.vue';
+import BusinessRuleNodeConfiguration from '~/components/process-flow/BusinessRuleNodeConfiguration.vue';
+import BusinessRuleNodeConfigurationModal from '~/components/process-flow/BusinessRuleNodeConfigurationModal.vue';
 
 // Define page meta
 definePageMeta({
@@ -53,6 +58,12 @@ const navigationConfirmed = ref(false);
 
 // Add a ref for the ProcessFlowCanvas component
 const processFlowCanvas = ref(null);
+
+// Add state for node configuration modals
+const showFormConfigModal = ref(false);
+const showApiConfigModal = ref(false);
+const showGatewayConfigModal = ref(false);
+const showBusinessRuleConfigModal = ref(false);
 
 // Component definitions
 const components = [
@@ -686,6 +697,17 @@ const handleTaskNodeUpdate = (updatedData) => {
     updateNodeInStore();
   }
 };
+
+// Update handler for business rule node
+const handleBusinessRuleUpdate = (data) => {
+  if (selectedNodeData.value) {
+    selectedNodeData.value.data = {
+      ...selectedNodeData.value.data,
+      ...data
+    };
+    updateNodeInStore();
+  }
+};
 </script>
 
 <template>
@@ -795,29 +817,30 @@ const handleTaskNodeUpdate = (updatedData) => {
 
             <!-- Form Selection for Form Nodes -->
             <div v-if="selectedNodeData.type === 'form'">
-              <FormNodeConfiguration 
-                :nodeData="selectedNodeData.data"
-                :availableVariables="variableStore.getAllVariables.global"
-                @update="handleFormNodeUpdate"
-              />
+              <RsButton @click="showFormConfigModal = true" variant="primary" class="w-full">
+                Configure Form Task
+              </RsButton>
             </div>
 
             <!-- API Configuration for API Nodes -->
             <div v-if="selectedNodeData.type === 'api'">
-              <ApiNodeConfiguration 
-                :nodeData="selectedNodeData.data"
-                :availableVariables="gatewayAvailableVariables"
-                @update="handleApiNodeUpdate"
-              />
+              <RsButton @click="showApiConfigModal = true" variant="primary" class="w-full">
+                Configure API Call
+              </RsButton>
             </div>
 
             <!-- Gateway Conditions -->
             <div v-if="selectedNodeData.type === 'gateway'">
-              <GatewayConditionManager
-                :conditions="selectedNodeData.data.conditions"
-                @update:conditions="handleConditionUpdate"
-                :availableVariables="gatewayAvailableVariables"
-              />
+              <RsButton @click="showGatewayConfigModal = true" variant="primary" class="w-full">
+                Configure Decision Paths
+              </RsButton>
+            </div>
+            
+            <!-- Business Rule Configuration -->
+            <div v-if="selectedNodeData.type === 'business-rule'">
+              <RsButton @click="showBusinessRuleConfigModal = true" variant="primary" class="w-full">
+                Configure Business Rule
+              </RsButton>
             </div>
           </div>
         </div>
@@ -886,6 +909,43 @@ const handleTaskNodeUpdate = (updatedData) => {
         </div>
       </template>
     </RsModal>
+    
+    <!-- Form Task Configuration Modal -->
+    <FormNodeConfigurationModal
+      v-if="selectedNodeData && selectedNodeData.type === 'form'"
+      v-model="showFormConfigModal"
+      :nodeData="selectedNodeData.data"
+      :availableVariables="variableStore.getAllVariables.global"
+      @update="handleFormNodeUpdate"
+    />
+    
+    <!-- API Call Configuration Modal -->
+    <ApiNodeConfigurationModal
+      v-if="selectedNodeData && selectedNodeData.type === 'api'"
+      v-model="showApiConfigModal"
+      :nodeData="selectedNodeData.data"
+      :availableVariables="gatewayAvailableVariables"
+      @update="handleApiNodeUpdate"
+    />
+    
+    <!-- Gateway/Decision Point Configuration Modal -->
+    <GatewayConditionManagerModal
+      v-if="selectedNodeData && selectedNodeData.type === 'gateway'"
+      v-model="showGatewayConfigModal"
+      :conditions="selectedNodeData.data.conditions || []"
+      :availableVariables="gatewayAvailableVariables"
+      @update:conditions="handleConditionUpdate"
+    />
+    
+    <!-- Business Rule Configuration Modal -->
+    <BusinessRuleNodeConfigurationModal
+      v-if="selectedNodeData && selectedNodeData.type === 'business-rule'"
+      v-model="showBusinessRuleConfigModal"
+      :nodeId="selectedNodeData.id"
+      :nodeData="selectedNodeData.data"
+      :availableVariables="gatewayAvailableVariables"
+      @update="handleBusinessRuleUpdate"
+    />
   </div>
 </template>
 
@@ -940,6 +1000,13 @@ const handleTaskNodeUpdate = (updatedData) => {
   min-width: 160px;
   background: white;
   border: 1px solid #ddd;
+}
+
+:deep(.node-business-rule) {
+  min-width: 160px;
+  background: white;
+  border: 1px solid #ddd;
+  border-left: 4px solid #9333ea;  /* Purple border to match our icon color */
 }
 
 :deep(.node-details) {
