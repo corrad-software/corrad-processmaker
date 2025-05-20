@@ -59,11 +59,25 @@ Activities represent work performed in a process:
   - Has both input and output handles
   - Properties: Assignee, description
 
-- **Form Task** (Purple Icon)
+- **Form Task** (Emerald Icon)
   - A task that requires form data
   - Has both input and output handles
-  - Properties: Form selection, description
+  - Step-by-step configuration workflow
+  - Properties: Form selection, data mapping
   - Connects to forms created in the Form Builder
+  - Visualizes bidirectional data flow
+
+- **API Task** (Indigo Icon)
+  - Automated task that makes API calls
+  - Has both input and output handles
+  - Step-by-step configuration workflow
+  - Properties: Endpoint, method, headers, request/response mapping
+
+- **Business Rule Task** (Purple Icon)
+  - Executes custom business rules and logic
+  - Has both input and output handles
+  - Step-by-step configuration workflow
+  - Properties: Rule conditions, actions, and variables
 
 - **Script Task** (Grey Icon)
   - Automated task that executes code
@@ -78,8 +92,53 @@ Decision points control flow divergence and convergence:
   - Has both input and output handles
   - Shows the number of configured paths in a badge
   - Displays path names within the diamond
+  - Enhanced configuration with visual flow indicators
   - Properties: Conditions, default path, description
   - Connection labels automatically match condition paths
+
+## Node Configuration UI
+
+All node configuration components follow a consistent design pattern for improved usability:
+
+### Common UI Elements
+- **Modal Headers**: Clear titles with descriptive text and appropriate icons
+- **Step Indicators**: Numbered workflow steps for complex configurations
+- **Quick Reference**: Help text and examples for common use cases
+- **Color-Coding**: Consistent color themes for each node type
+  - Purple for Business Rules
+  - Indigo for API Tasks
+  - Emerald for Form Tasks
+  - Blue for Variables
+
+### Form Task Configuration
+1. **Form Selection**: Choose from available forms or create a new one
+2. **Data Mapping**: Bidirectional mapping between process variables and form fields
+3. **Options**: Configure submission behavior and user experience
+
+### Business Rule Configuration
+1. **Rule Definition**: Create conditions based on process variables
+2. **Actions**: Define what happens when conditions are met
+3. **Testing**: Validate rules against sample data
+
+### API Task Configuration
+1. **Endpoint Definition**: Configure API URL, method, and authentication
+2. **Request Mapping**: Map process variables to API request parameters
+3. **Response Mapping**: Extract data from API responses into process variables
+
+### Decision Point Configuration
+1. **Path Creation**: Add multiple decision paths
+2. **Condition Building**: Create boolean conditions for each path
+3. **Default Path**: Configure fallback path when no conditions are met
+
+## Working with Variables
+
+The Variable Manager provides a central location to define and manage global process variables:
+
+- **Variable Types**: String, Int, Decimal, Object, DateTime, Date, Boolean
+- **Search**: Quickly find variables with the search functionality
+- **Organization**: Variables displayed in cards with type indicators
+- **Editing**: Easily edit or delete variables as needed
+- **Empty State**: Clear guidance when no variables exist
 
 ## Working with the Process Canvas
 
@@ -197,6 +256,96 @@ The Process Builder integrates with the Form Builder to allow forms to be attach
 
 ---
 
-For technical details about implementation and integration, please refer to the [Process Builder Technical Documentation](PROCESS_BUILDER_TECHNICAL_APPENDIX.md).
+For technical details about implementation and integration, please refer to the [Process Builder Technical Documentation](TECHNICAL_GUIDE.md).
 
-Last updated: June 10, 2024 
+Last updated: July 10, 2024 
+
+## Working with Business Rules
+
+Business Rules allow you to implement conditional logic in your process flows without writing code. They are essential for creating dynamic, data-driven processes.
+
+### Creating Business Rules
+
+To add business rule logic to your process:
+
+1. **Add a Business Rule Node**
+   - Drag the Business Rule component (purple icon) from the palette onto the canvas
+   - Connect it to the appropriate nodes in your process flow
+
+2. **Configure the Business Rule**
+   - Click on the Business Rule node to open its configuration panel
+   - Follow the three-step configuration process:
+
+#### Step 1: Select Variables
+- Choose which process variables will be used in your rule conditions
+- These variables must be defined in the Variable Manager before use
+- You can filter and search for variables by name or type
+- If you need a new variable, you can create one directly from this screen
+
+#### Step 2: Create Rule Conditions
+- Add one or more rules, each with its own set of conditions
+- For each condition, specify:
+  - The variable to evaluate
+  - The operator (equals, not equals, greater than, etc.)
+  - The comparison value
+- Multiple conditions within a rule are combined with AND logic
+- Multiple rules are evaluated independently (OR logic between rules)
+
+#### Step 3: Define Actions
+- For each rule, specify the action to take when its conditions are met
+- Action types include:
+  - Setting variable values
+  - Executing predefined functions
+  - Triggering process events
+- Configure action parameters based on the selected action type
+- Actions execute in the order they are defined
+
+### Testing Business Rules
+
+Before saving your business rules, you can test them with sample data:
+
+1. Click the "Test Rules" button at the bottom of the configuration panel
+2. Enter test values for each variable used in your conditions
+3. See which rules would trigger with the provided values
+4. Review the actions that would execute
+
+### Best Practices for Business Rules
+
+1. **Keep Rules Simple**
+   - Create multiple simple rules instead of one complex rule
+   - Name rules clearly to describe their purpose
+
+2. **Use Consistent Naming**
+   - Follow a naming convention for your variables
+   - Use descriptive names that indicate the variable's purpose
+
+3. **Document Your Logic**
+   - Add descriptions to rules to explain their business purpose
+   - Comment on complex conditions to clarify the logic
+
+4. **Test Thoroughly**
+   - Validate rules with various test cases
+   - Check edge cases and boundary conditions
+
+5. **Consider Performance**
+   - Rules are evaluated in the order they appear
+   - Place frequently triggered rules at the top for efficiency
+
+### Example Use Cases
+
+Business rules are useful in many scenarios, including:
+
+1. **Customer Segmentation**
+   - Route customers to different paths based on attributes like account size or loyalty status
+
+2. **Data Validation**
+   - Verify that data meets specific criteria before proceeding
+
+3. **Dynamic Assignment**
+   - Assign tasks to different teams based on request category, priority, or workload
+
+4. **Automated Decisions**
+   - Automatically approve or reject requests based on predefined criteria
+
+5. **Conditional Notifications**
+   - Send notifications only when specific conditions are met 

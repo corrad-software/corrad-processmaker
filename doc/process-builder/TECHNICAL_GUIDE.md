@@ -2,7 +2,7 @@
 
 This document provides technical implementation details for developers working with the Process Builder system.
 
-> For user documentation and usage guidelines, please refer to [Process Builder Documentation](PROCESS_BUILDER_DOCUMENTATION.md)
+> For user documentation and usage guidelines, please refer to [Process Builder Documentation](USER_GUIDE.md)
 
 ## Architecture Overview
 
@@ -13,6 +13,7 @@ This document provides technical implementation details for developers working w
 - **UI Framework**: Tailwind CSS
 - **Icons**: Material Design Icons
 - **Validation**: Zod
+- **Form Components**: FormKit
 
 ### Key Dependencies
 ```json
@@ -22,6 +23,7 @@ This document provides technical implementation details for developers working w
   "@vue-flow/controls": "^1.1.2",
   "@vue-flow/minimap": "^1.5.3",
   "@pinia/nuxt": "^0.4.11",
+  "@formkit/nuxt": "^1.5.5",
   "uuid": "^10.0.0",
   "zod": "^3.22.2"
 }
@@ -39,9 +41,14 @@ components/
 │   ├── ProcessFlowCanvas.vue     # Flow canvas
 │   ├── ProcessFlowNodes.js       # Custom node types
 │   ├── FormSelector.vue          # Form selection component
-│   └── GatewayConditionManager.vue # Gateway conditions UI
+│   ├── GatewayConditionManager.vue # Gateway conditions UI
+│   ├── ApiNodeConfiguration.vue  # API node configuration
+│   ├── FormNodeConfiguration.vue # Form node configuration
+│   ├── BusinessRuleConfiguration.vue # Business rule configuration
+│   └── VariableManager.vue       # Process variables manager
 stores/
-└── processBuilder.js       # State management
+├── processBuilder.js       # State management
+└── variableStore.js        # Variable state management
 composables/
 └── useProcessValidation.js # Process validation
 types/
@@ -207,665 +214,765 @@ export const nodeTypes = markRaw({
 });
 ```
 
-3. **FormSelector.vue**
-```vue
-<script setup>
-import { ref, onMounted } from 'vue';
+## Enhanced Node Configuration Components
 
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: null
-  }
+The following components implement the improved UI/UX for node configuration:
+
+### 1. VariableManager.vue
+
+The Variable Manager allows users to create, edit, and manage global process variables.
+
+```vue
+<template>
+  <div class="variable-manager">
+    <!-- Header with Add Button -->
+    <div class="bg-gray-50 border-b border-gray-200 p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-start">
+          <div class="mr-4 text-blue-500 flex-shrink-0 mt-1">
+            <Icon name="material-symbols:data-object" class="text-2xl" />
+          </div>
+          <div>
+            <h3 class="text-lg font-medium text-gray-900">Process Variables</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Define and manage global variables to store and pass data within your process
+            </p>
+          </div>
+        </div>
+        <RsButton
+          @click="() => { resetForm(); showAddVariable = true; }"
+          variant="primary"
+          size="sm"
+        >
+          <Icon name="material-symbols:add" class="mr-1" />
+          Add Variable
+        </RsButton>
+      </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="px-4 pt-3 pb-2">
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon name="material-symbols:search" class="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          v-model="searchQuery"
+          class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          placeholder="Search variables..."
+        />
+      </div>
+    </div>
+
+    <!-- Variable List with Empty States -->
+    <div class="p-4 overflow-auto flex-grow">
+      <!-- Empty State -->
+      <div v-if="!variables.length" class="text-center py-10 px-4 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
+        <!-- ... empty state UI ... -->
+      </div>
+
+      <!-- Variable List -->
+      <div v-else-if="filteredVariables.length" class="space-y-3">
+        <!-- Variable Card Design -->
+        <div
+          v-for="variable in filteredVariables"
+          :key="variable.name"
+          class="variable-item"
+        >
+          <!-- ... variable card UI ... -->
+        </div>
+      </div>
+
+      <!-- No search results -->
+      <div v-else class="text-center py-8">
+        <!-- ... no results UI ... -->
+      </div>
+    </div>
+
+    <!-- Add/Edit Variable Modal -->
+    <RsModal
+      v-model="showAddVariable"
+      :title="editingVariable ? 'Edit Variable' : 'Add Variable'"
+      size="md"
+      :hideFooter="true"
+      :overlayClose="false"
+    >
+      <!-- ... modal content with FormKit ... -->
+    </RsModal>
+  </div>
+</template>
+```
+
+### 2. BusinessRuleConfiguration.vue
+
+The Business Rule Configuration component provides a stepped workflow for configuring rule nodes.
+
+```vue
+<template>
+  <div>
+    <!-- Header with descriptive info -->
+    <div class="bg-purple-50 p-4 border-b border-purple-200">
+      <div class="flex items-start">
+        <div class="mr-4 text-purple-500 flex-shrink-0 mt-1">
+          <Icon name="material-symbols:rule" class="text-2xl" />
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-gray-900">Business Rule Configuration</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            Define conditional logic to control process flow based on data values
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step-by-step configuration -->
+    <div class="p-4">
+      <!-- Progress steps -->
+      <div class="flex items-center mb-6">
+        <div class="flex-1">
+          <button
+            @click="activeStep = 1"
+            :class="['step-button', activeStep === 1 ? 'active-step' : '']"
+          >
+            <span class="step-number">1</span>
+            <span class="step-text">Define Variables</span>
+          </button>
+        </div>
+        <div class="step-connector"></div>
+        <div class="flex-1">
+          <button
+            @click="activeStep = 2"
+            :class="['step-button', activeStep === 2 ? 'active-step' : '']"
+          >
+            <span class="step-number">2</span>
+            <span class="step-text">Create Rules</span>
+          </button>
+        </div>
+        <div class="step-connector"></div>
+        <div class="flex-1">
+          <button
+            @click="activeStep = 3"
+            :class="['step-button', activeStep === 3 ? 'active-step' : '']"
+          >
+            <span class="step-number">3</span>
+            <span class="step-text">Define Actions</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step content -->
+      <div v-if="activeStep === 1">
+        <!-- Variable selection UI -->
+        <div class="space-y-4">
+          <h4 class="font-medium text-gray-900">Select Process Variables</h4>
+          <p class="text-sm text-gray-500">Choose variables to use in your business rules</p>
+          
+          <div class="variable-selector border border-gray-200 rounded-md p-4 bg-white">
+            <!-- Variable list with checkboxes -->
+            <div v-for="variable in availableVariables" :key="variable.name" class="py-2 flex items-center">
+              <input 
+                type="checkbox" 
+                :id="variable.name" 
+                v-model="selectedVariables" 
+                :value="variable.name"
+                class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <label :for="variable.name" class="ml-2 text-sm text-gray-700 flex items-center">
+                {{ variable.name }}
+                <RsBadge :variant="getTypeColor(variable.type)" size="sm" class="ml-2">
+                  {{ variable.type }}
+                </RsBadge>
+              </label>
+            </div>
+            
+            <!-- Empty state -->
+            <div v-if="!availableVariables.length" class="text-center py-4">
+              <p class="text-sm text-gray-500 mb-2">No variables available</p>
+              <RsButton @click="openVariableManager" size="sm" variant="tertiary">
+                <Icon name="material-symbols:add" class="mr-1" />
+                Add Variables
+              </RsButton>
+            </div>
+          </div>
+          
+          <!-- Navigation buttons -->
+          <div class="flex justify-end mt-4">
+            <RsButton @click="activeStep = 2" variant="primary" :disabled="!selectedVariables.length">
+              Continue
+              <Icon name="material-symbols:arrow-forward" class="ml-1" />
+            </RsButton>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else-if="activeStep === 2">
+        <!-- Rule creation UI -->
+        <div class="space-y-4">
+          <h4 class="font-medium text-gray-900">Create Conditional Rules</h4>
+          <p class="text-sm text-gray-500">Define the conditions that will trigger specific actions</p>
+          
+          <!-- Rule builder -->
+          <div class="rules-builder bg-white border border-gray-200 rounded-md p-4">
+            <div v-for="(rule, index) in rules" :key="index" class="rule-group mb-4 p-3 bg-purple-50 rounded-md border border-purple-200">
+              <!-- Rule header -->
+              <div class="flex justify-between items-center mb-2">
+                <h5 class="font-medium text-purple-700">Rule {{ index + 1 }}</h5>
+                <button @click="removeRule(index)" class="text-gray-400 hover:text-red-500">
+                  <Icon name="material-symbols:delete" class="w-4 h-4" />
+                </button>
+              </div>
+              
+              <!-- Condition builder -->
+              <div class="space-y-2">
+                <div v-for="(condition, condIndex) in rule.conditions" :key="condIndex" class="flex items-center gap-2">
+                  <select 
+                    v-model="condition.variable" 
+                    class="form-select rounded-md text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <option value="" disabled>Select variable</option>
+                    <option v-for="v in selectedVariables" :key="v" :value="v">{{ v }}</option>
+                  </select>
+                  
+                  <select 
+                    v-model="condition.operator" 
+                    class="form-select rounded-md text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <option value="" disabled>Select operator</option>
+                    <option value="equals">equals</option>
+                    <option value="notEquals">not equals</option>
+                    <option value="greaterThan">greater than</option>
+                    <option value="lessThan">less than</option>
+                    <option value="contains">contains</option>
+                  </select>
+                  
+                  <input 
+                    v-model="condition.value" 
+                    type="text" 
+                    placeholder="Value" 
+                    class="form-input rounded-md text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500 flex-1"
+                  />
+                  
+                  <button @click="removeCondition(rule, condIndex)" class="text-gray-400 hover:text-red-500 p-1">
+                    <Icon name="material-symbols:remove" class="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <button @click="addCondition(rule)" class="text-purple-600 hover:text-purple-700 text-sm flex items-center">
+                  <Icon name="material-symbols:add" class="w-4 h-4 mr-1" />
+                  Add condition
+                </button>
+              </div>
+            </div>
+            
+            <button @click="addRule" class="mt-2 text-purple-600 hover:text-purple-700 text-sm flex items-center">
+              <Icon name="material-symbols:add" class="w-4 h-4 mr-1" />
+              Add Rule
+            </button>
+          </div>
+          
+          <!-- Navigation buttons -->
+          <div class="flex justify-between mt-4">
+            <RsButton @click="activeStep = 1" variant="tertiary">
+              <Icon name="material-symbols:arrow-back" class="mr-1" />
+              Back
+            </RsButton>
+            <RsButton @click="activeStep = 3" variant="primary" :disabled="!hasValidRules">
+              Continue
+              <Icon name="material-symbols:arrow-forward" class="ml-1" />
+            </RsButton>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else-if="activeStep === 3">
+        <!-- Action definition UI -->
+        <div class="space-y-4">
+          <h4 class="font-medium text-gray-900">Define Actions</h4>
+          <p class="text-sm text-gray-500">Specify what happens when rules are triggered</p>
+          
+          <!-- Actions configuration -->
+          <div class="actions-config bg-white border border-gray-200 rounded-md p-4">
+            <div v-for="(rule, index) in rules" :key="index" class="mb-4 p-3 bg-purple-50 rounded-md border border-purple-200">
+              <h5 class="font-medium text-purple-700 mb-2">Rule {{ index + 1 }} Actions</h5>
+              
+              <!-- Action type selection -->
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                <select 
+                  v-model="rule.actionType" 
+                  class="form-select w-full rounded-md text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                >
+                  <option value="setVariable">Set Variable Value</option>
+                  <option value="executeFunction">Execute Function</option>
+                  <option value="triggerEvent">Trigger Event</option>
+                </select>
+              </div>
+              
+              <!-- Action config based on type -->
+              <div v-if="rule.actionType === 'setVariable'" class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Target Variable</label>
+                  <select 
+                    v-model="rule.targetVariable" 
+                    class="form-select w-full rounded-md text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <option value="" disabled>Select variable</option>
+                    <option v-for="v in availableVariables" :key="v.name" :value="v.name">{{ v.name }}</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">New Value</label>
+                  <input 
+                    v-model="rule.targetValue" 
+                    type="text" 
+                    placeholder="Value expression" 
+                    class="form-input w-full rounded-md text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+              
+              <!-- Other action type configurations -->
+            </div>
+          </div>
+          
+          <!-- Navigation buttons -->
+          <div class="flex justify-between mt-4">
+            <RsButton @click="activeStep = 2" variant="tertiary">
+              <Icon name="material-symbols:arrow-back" class="mr-1" />
+              Back
+            </RsButton>
+            <RsButton @click="saveRules" variant="primary" :disabled="!isFormValid">
+              <Icon name="material-symbols:save" class="mr-1" />
+              Save Rules
+            </RsButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch } from 'vue';
+import { useVariableStore } from '~/stores/variableStore';
+
+const variableStore = useVariableStore();
+const activeStep = ref(1);
+const selectedVariables = ref([]);
+const rules = ref([]);
+
+// Get available variables from the store
+const availableVariables = computed(() => {
+  return variableStore.getAllVariables.global || [];
 });
 
-const emit = defineEmits(['update:modelValue', 'select']);
-
-const forms = ref([]);
-const loading = ref(false);
-const error = ref(null);
-
-// Load available forms from the API
-const loadForms = async () => {
-  loading.value = true;
-  error.value = null;
+// Computed property to check if rules are valid
+const hasValidRules = computed(() => {
+  if (!rules.value.length) return false;
   
-  try {
-    const response = await fetch('/api/forms');
-    if (!response.ok) throw new Error('Failed to load forms');
-    
-    const data = await response.json();
-    forms.value = data.forms || [];
-  } catch (err) {
-    error.value = err.message;
-    console.error('Error loading forms:', err);
-  } finally {
-    loading.value = false;
+  return rules.value.every(rule => {
+    return rule.conditions.length > 0 && 
+           rule.conditions.every(c => c.variable && c.operator && c.value !== '');
+  });
+});
+
+// Computed property to check if form is valid for submission
+const isFormValid = computed(() => {
+  if (!hasValidRules.value) return false;
+  
+  return rules.value.every(rule => {
+    if (rule.actionType === 'setVariable') {
+      return rule.targetVariable && rule.targetValue !== '';
+    }
+    // Add validation for other action types
+    return true;
+  });
+});
+
+// Add a new rule
+const addRule = () => {
+  rules.value.push({
+    conditions: [{ variable: '', operator: '', value: '' }],
+    actionType: 'setVariable',
+    targetVariable: '',
+    targetValue: ''
+  });
+};
+
+// Remove a rule
+const removeRule = (index) => {
+  rules.value.splice(index, 1);
+};
+
+// Add a condition to a rule
+const addCondition = (rule) => {
+  rule.conditions.push({ variable: '', operator: '', value: '' });
+};
+
+// Remove a condition from a rule
+const removeCondition = (rule, index) => {
+  rule.conditions.splice(index, 1);
+};
+
+// Open variable manager
+const openVariableManager = () => {
+  // Implementation to open the variable manager modal
+};
+
+// Get color for variable type badge
+const getTypeColor = (type) => {
+  switch (type) {
+    case 'string': return 'blue';
+    case 'int': 
+    case 'decimal': return 'purple';
+    case 'object': return 'emerald';
+    case 'datetime':
+    case 'date': return 'amber';
+    case 'boolean': return 'indigo';
+    default: return 'gray';
   }
 };
 
-// Select a form
-const selectForm = (form) => {
-  emit('update:modelValue', form.formID);
-  emit('select', form);
+// Save the rules
+const saveRules = () => {
+  // Emit event with rule configuration
+  emit('save', {
+    rules: rules.value,
+    variables: selectedVariables.value
+  });
 };
 
-// Clear form selection
-const clearSelection = () => {
-  emit('update:modelValue', null);
-  emit('select', null);
+// Initialize with existing configuration if available
+const init = (config) => {
+  if (config) {
+    selectedVariables.value = config.variables || [];
+    rules.value = config.rules || [];
+    activeStep.value = 1; // Reset to first step
+  }
 };
 
-// Load forms on component mount
+// Initialize on component mount if props are provided
 onMounted(() => {
-  loadForms();
+  if (props.initialConfig) {
+    init(props.initialConfig);
+  }
 });
 </script>
+
+### 3. GatewayConditionManager.vue
+
+The Gateway Condition Manager provides an enhanced UI for decision point configuration.
+
+```vue
+<template>
+  <div>
+    <!-- Header with descriptive info -->
+    <div class="bg-orange-50 p-4 border-b border-orange-200">
+      <div class="flex items-start">
+        <div class="mr-4 text-orange-500 flex-shrink-0 mt-1">
+          <Icon name="material-symbols:call-split" class="text-2xl" />
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-gray-900">Decision Point Configuration</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            Create multiple paths with conditions to direct process flow
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Path management -->
+    <div class="p-4">
+      <!-- Path list with conditions -->
+      <div class="space-y-4">
+        <div v-for="(path, index) in paths" :key="index" class="path-item">
+          <!-- Path configuration UI -->
+        </div>
+      </div>
+
+      <!-- Add new path -->
+      <div class="mt-4">
+        <RsButton @click="addPath" variant="secondary" size="sm">
+          <Icon name="material-symbols:add" class="mr-1" />
+          Add Path
+        </RsButton>
+      </div>
+
+      <!-- Default path configuration -->
+      <div class="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200">
+        <h4 class="font-medium text-gray-700 mb-2">Default Path</h4>
+        <p class="text-sm text-gray-500 mb-4">
+          This path will be followed when no other path conditions are met
+        </p>
+        <!-- Default path settings -->
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+### 4. ApiNodeConfiguration.vue
+
+The API Node Configuration component provides a stepped interface for configuring API calls.
+
+```vue
+<template>
+  <div>
+    <!-- Header with descriptive info -->
+    <div class="bg-indigo-50 p-4 border-b border-indigo-200">
+      <div class="flex items-start">
+        <div class="mr-4 text-indigo-500 flex-shrink-0 mt-1">
+          <Icon name="material-symbols:api" class="text-2xl" />
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-gray-900">API Configuration</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            Configure external API calls to integrate with other systems
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step-by-step configuration -->
+    <div class="p-4">
+      <!-- Progress steps -->
+      <div class="flex items-center mb-6">
+        <!-- Step indicators -->
+      </div>
+
+      <!-- Step content -->
+      <div v-if="activeStep === 1">
+        <!-- Endpoint configuration -->
+      </div>
+      <div v-else-if="activeStep === 2">
+        <!-- Request mapping -->
+      </div>
+      <div v-else-if="activeStep === 3">
+        <!-- Response mapping -->
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+### 5. FormNodeConfiguration.vue
+
+The Form Node Configuration component provides a stepped interface for configuring form interactions.
+
+```vue
+<template>
+  <div>
+    <!-- Header with descriptive info -->
+    <div class="bg-emerald-50 p-4 border-b border-emerald-200">
+      <div class="flex items-start">
+        <div class="mr-4 text-emerald-500 flex-shrink-0 mt-1">
+          <Icon name="material-symbols:database-form" class="text-2xl" />
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-gray-900">Form Configuration</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            Connect process flow with user forms for data collection and display
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step-by-step configuration -->
+    <div class="p-4">
+      <!-- Progress steps -->
+      <div class="flex items-center mb-6">
+        <!-- Step indicators -->
+      </div>
+
+      <!-- Step content -->
+      <div v-if="activeStep === 1">
+        <!-- Form selection -->
+      </div>
+      <div v-else-if="activeStep === 2">
+        <!-- Data mapping -->
+      </div>
+      <div v-else-if="activeStep === 3">
+        <!-- Options configuration -->
+      </div>
+    </div>
+  </div>
+</template>
 ```
 
 ## State Management
 
-### Process Builder Store
-```typescript
-export const useProcessBuilderStore = defineStore('processBuilder', {
+The project uses Pinia for state management. Key stores include:
+
+### variableStore.js
+
+```javascript
+import { defineStore } from 'pinia';
+
+export const useVariableStore = defineStore('variables', {
   state: () => ({
-    processes: [],
-    currentProcess: null,
-    selectedNodeId: null,
-    selectedEdgeId: null,
-    history: [],
-    historyIndex: -1,
-    unsavedChanges: false
+    variables: {
+      global: [],
+      local: {}
+    }
   }),
   
   getters: {
-    selectedNode: (state) => {
-      if (!state.currentProcess || !state.selectedNodeId) return null;
-      return state.currentProcess.nodes.find(node => node.id === state.selectedNodeId);
-    },
-    
-    selectedEdge: (state) => {
-      if (!state.currentProcess || !state.selectedEdgeId) return null;
-      return state.currentProcess.edges.find(edge => edge.id === state.selectedEdgeId);
-    },
-    
-    hasUnsavedChanges: (state) => {
-      return state.unsavedChanges;
+    getAllVariables: (state) => state.variables,
+    getVariableByName: (state) => (name, scope = 'global') => {
+      if (scope === 'global') {
+        return state.variables.global.find(v => v.name === name);
+      } else {
+        return state.variables.local[scope]?.find(v => v.name === name);
+      }
     }
   },
   
   actions: {
-    createProcess(name, description) {
-      const process = {
-        id: uuidv4(),
-        name,
-        description,
-        nodes: [],
-        edges: [],
-        createdAt: new Date().toISOString()
-      };
-      this.processes.push(process);
-      this.currentProcess = JSON.parse(JSON.stringify(process)); // Deep clone
-      this.clearHistory();
-      this.unsavedChanges = false;
-    },
-    
-    addNode(node) {
-      if (!this.currentProcess) return;
-
-      const newNode = {
-        id: node.id || uuidv4(),
-        type: node.type,
-        label: node.label || 'New Node',
-        position: node.position || { x: 0, y: 0 },
-        data: node.data || {}
-      };
-
-      this.currentProcess.nodes.push(newNode);
-      this.selectedNodeId = newNode.id;
-      this.saveToHistory('Add node');
-      this.unsavedChanges = true;
-
-      return newNode;
-    },
-    
-    updateNode(nodeId, updates) {
-      if (!this.currentProcess) return;
-
-      const node = this.currentProcess.nodes.find(n => n.id === nodeId);
-      if (node) {
-        Object.assign(node, updates);
-        this.saveToHistory('Update node');
-        this.unsavedChanges = true;
-      }
-    },
-    
-    deleteNode(nodeId) {
-      if (!this.currentProcess) return;
-
-      const index = this.currentProcess.nodes.findIndex(n => n.id === nodeId);
-      if (index !== -1) {
-        // Remove the node
-        this.currentProcess.nodes.splice(index, 1);
-        
-        // Remove any edges connected to this node
-        const edgesToRemove = this.currentProcess.edges.filter(
-          edge => edge.source === nodeId || edge.target === nodeId
-        );
-        
-        edgesToRemove.forEach(edge => {
-          const edgeIndex = this.currentProcess.edges.findIndex(e => e.id === edge.id);
-          if (edgeIndex !== -1) {
-            this.currentProcess.edges.splice(edgeIndex, 1);
-          }
-        });
-
-        // Clear selection if the deleted node was selected
-        if (this.selectedNodeId === nodeId) {
-          this.selectedNodeId = null;
-        }
-
-        this.saveToHistory('Delete node');
-        this.unsavedChanges = true;
-        
-        return true;
-      }
+    addVariable(variable) {
+      const { scope = 'global' } = variable;
       
-      return false;
-    }
-  }
-});
-```
-
-## Node Types and Styles
-
-### Node Configuration
-```typescript
-interface NodeConfig {
-  type: 'start' | 'end' | 'task' | 'form' | 'script' | 'gateway';
-  label: string;
-  icon: string;
-  iconColor: string;
-  data: {
-    description?: string;
-    assignee?: string;
-    formId?: string;
-    formName?: string;
-    language?: string;
-    conditions?: Condition[];
-    defaultPath?: string;
-  };
-}
-
-const nodeConfigs: Record<string, NodeConfig> = {
-  start: {
-    type: 'start',
-    label: 'Start',
-    icon: 'play_circle_filled',
-    iconColor: 'text-green-500',
-    data: { description: 'Process starts here' }
-  },
-  task: {
-    type: 'task',
-    label: 'Task',
-    icon: 'assignment',
-    iconColor: 'text-blue-500',
-    data: { description: 'Task node', assignee: '' }
-  },
-  form: {
-    type: 'form',
-    label: 'Form Task',
-    icon: 'description',
-    iconColor: 'text-purple-500',
-    data: { 
-      description: 'Form submission task',
-      formId: null,
-      formName: null,
-      formUuid: null
-    }
-  },
-  // Additional node configurations...
-};
-```
-
-## Connection Handling
-
-### Connection Logic
-```typescript
-// Connection validation
-function validateConnection(connection: Connection): boolean {
-  if (!connection.source || !connection.target) return false;
-  if (connection.source === connection.target) return false;
-  
-  const sourceNode = nodes.value.find(n => n.id === connection.source);
-  const targetNode = nodes.value.find(n => n.id === connection.target);
-  
-  if (!sourceNode || !targetNode) return false;
-  
-  // Prevent connecting to start node's input or from end node's output
-  if (targetNode.type === 'start') return false;
-  if (sourceNode.type === 'end') return false;
-  
-  return true;
-}
-
-// Create new connection
-function createConnection(connection: Connection): Edge {
-  return {
-    id: `${connection.source}-${connection.target}`,
-    source: connection.source,
-    target: connection.target,
-    type: 'smoothstep',
-    animated: true,
-    style: { stroke: '#555' }
-  };
-}
-```
-
-## Form Integration
-
-### Form Task Implementation
-```typescript
-// Form task node implementation
-const FormNode = markRaw({
-  props: ['id', 'type', 'label', 'selected', 'data'],
-  computed: {
-    nodeLabel() {
-      return this.label || (this.data && this.data.label) || 'Form Task';
+      if (scope === 'global') {
+        this.variables.global.push(variable);
+      } else {
+        if (!this.variables.local[scope]) {
+          this.variables.local[scope] = [];
+        }
+        this.variables.local[scope].push(variable);
+      }
     },
-    formName() {
-      return this.data?.formName || 'None selected';
-    },
-    hasForm() {
-      return !!(this.data?.formId && this.data?.formName);
-    }
-  },
-  render() {
-    const badgeContent = this.hasForm ? 
-      h('span', { class: 'node-badge bg-purple-100 text-purple-600 px-1 text-xs rounded' }, 'Form') : 
-      null;
     
-    return h(CustomNode, {
-      id: this.id,
-      type: 'form',
-      label: this.nodeLabel,
-      selected: this.selected,
-      data: this.data,
-      onClick: () => this.$emit('node-click', this.id)
-    }, {
-      icon: () => h('i', { class: 'material-icons text-purple-500' }, 'description'),
-      badge: () => badgeContent,
-      default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'Form submission task'),
-        h('div', { class: 'node-form-info' }, [
-          h('span', { class: 'node-form-label' }, 'Form: '),
-          h('span', { 
-            class: this.hasForm ? 'node-form-value text-purple-600 font-medium' : 'node-form-value text-gray-400 italic' 
-          }, this.formName)
-        ])
-      ])
-    });
+    updateVariable(name, updatedVariable, scope = 'global') {
+      if (scope === 'global') {
+        const index = this.variables.global.findIndex(v => v.name === name);
+        if (index !== -1) {
+          this.variables.global[index] = { ...updatedVariable };
+        }
+      } else {
+        if (this.variables.local[scope]) {
+          const index = this.variables.local[scope].findIndex(v => v.name === name);
+          if (index !== -1) {
+            this.variables.local[scope][index] = { ...updatedVariable };
+          }
+        }
+      }
+    },
+    
+    deleteVariable(name, scope = 'global') {
+      if (scope === 'global') {
+        this.variables.global = this.variables.global.filter(v => v.name !== name);
+      } else if (this.variables.local[scope]) {
+        this.variables.local[scope] = this.variables.local[scope].filter(v => v.name !== name);
+      }
+    }
   }
 });
 ```
 
-### Form Selection in Process Builder
-```vue
-<!-- Form selection in process properties panel -->
-<div v-if="selectedNodeData.type === 'form'" class="space-y-3">
-  <FormSelector
-    v-model="selectedNodeData.data.formId" 
-    @select="handleFormSelection"
-    @clear="clearFormSelection"
-    :formId="selectedNodeData.data?.formId"
-  />
+## UI Component Styling
+
+The project uses Tailwind CSS for styling with consistent patterns:
+
+### Color Theming by Component Type
+
+Each node type has a consistent color theme:
+
+- **Business Rules**: Purple
+- **API Tasks**: Indigo
+- **Form Tasks**: Emerald
+- **Decision Points**: Orange
+- **Variables**: Blue
+
+### Common Visual Elements
+
+1. **Modal Headers**:
+```html
+<div class="bg-{color}-50 p-4 border-b border-{color}-200">
+  <div class="flex items-start">
+    <div class="mr-4 text-{color}-500 flex-shrink-0 mt-1">
+      <Icon name="material-symbols:{icon}" class="text-2xl" />
+    </div>
+    <div>
+      <h3 class="text-lg font-medium text-gray-900">{Title}</h3>
+      <p class="mt-1 text-sm text-gray-500">{Description}</p>
+    </div>
+  </div>
 </div>
-
-<script setup>
-// Form selection handler
-const handleFormSelection = (form) => {
-  if (selectedNodeData.value) {
-    // Update all form-related data
-    selectedNodeData.value.data = {
-      ...selectedNodeData.value.data,
-      formId: form.formID,
-      formName: form.formName,
-      formUuid: form.formUUID,
-      label: form.formName,
-      description: `Form: ${form.formName}`
-    };
-    
-    // Also update the node's root label
-    selectedNodeData.value.label = form.formName;
-    
-    // Update the node in store to trigger reactivity
-    updateNodeInStore();
-  }
-};
-
-// Clear form selection
-const clearFormSelection = () => {
-  if (selectedNodeData.value) {
-    selectedNodeData.value.data = {
-      ...selectedNodeData.value.data,
-      formId: null,
-      formName: '',
-      formUuid: null,
-      label: 'Form Task',
-      description: 'Form submission task'
-    };
-    
-    // Reset the node's root label
-    selectedNodeData.value.label = 'Form Task';
-    
-    // Update the node in store
-    updateNodeInStore();
-  }
-};
-</script>
 ```
 
-## Decision Point/Gateway Node
-
-### Gateway Node Implementation
-```typescript
-// Decision/Gateway node
-export const GatewayNode = markRaw({
-  props: ['id', 'type', 'label', 'selected', 'data'],
-  computed: {
-    nodeLabel() {
-      return this.label || (this.data && this.data.label) || 'Decision Point';
-    },
-    
-    totalPaths() {
-      return Array.isArray(this.data?.conditions) ? this.data.conditions.length : 0;
-    },
-    
-    totalConditions() {
-      if (!Array.isArray(this.data?.conditions)) return 0;
-      
-      return this.data.conditions.reduce((total, group) => {
-        return total + (Array.isArray(group.conditions) ? group.conditions.length : 0);
-      }, 0);
-    },
-    
-    conditionSummary() {
-      if (this.totalPaths === 0) return 'No paths';
-      
-      const paths = this.data.conditions
-        .map(group => group.output || 'Unlabeled')
-        .filter(Boolean)
-        .join(', ');
-        
-      return paths || 'Unconfigured paths';
-    }
-  },
-  render() {
-    // Create the badge content
-    const badgeContent = h('span', { 
-      class: 'node-badge bg-orange-100 text-orange-600 px-1 text-xs rounded absolute -top-5 left-1/2 transform -translate-x-1/2 whitespace-nowrap'
-    }, `${this.totalPaths} path${this.totalPaths !== 1 ? 's' : ''}`);
-
-    return h(CustomNode, {
-      id: this.id,
-      type: 'gateway',
-      label: this.nodeLabel,
-      selected: this.selected,
-      data: this.data,
-      onClick: () => this.$emit('node-click', this.id)
-    }, {
-      icon: () => h('i', { class: 'material-icons text-orange-500' }, 'call_split'),
-      badge: () => badgeContent,
-      default: () => h('div', { class: 'gateway-details' }, [
-        h('div', { class: 'node-conditions-value' }, this.conditionSummary)
-      ])
-    });
-  }
-});
+2. **Step Indicators**:
+```html
+<div class="flex items-center mb-6">
+  <div class="flex-1">
+    <button
+      @click="activeStep = 1"
+      :class="['step-button', activeStep === 1 ? 'active-step' : '']"
+    >
+      <span class="step-number">1</span>
+      <span class="step-text">{Step Name}</span>
+    </button>
+  </div>
+  <div class="step-connector"></div>
+  <!-- Additional steps -->
+</div>
 ```
 
-### Gateway Node Styling
-```css
-/* Gateway specific styles */
-.node-gateway {
-  width: 120px !important;
-  height: 120px !important;
-  background: white;
-  transform: rotate(45deg);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: 2px solid #f97316;
-  position: relative;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.node-gateway:hover {
-  border-color: #ea580c;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.node-gateway .custom-node-content {
-  position: absolute;
-  transform: rotate(-45deg);
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-}
-
-.node-gateway .custom-node-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: #333;
-  margin: 0;
-  text-align: center;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-.node-gateway .gateway-details {
-  width: 100%;
-  text-align: center;
-  margin-top: 4px;
-}
-
-.node-gateway .node-conditions-value {
-  font-size: 11px;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.node-gateway .material-icons {
-  font-size: 24px;
-  color: #f97316;
-  margin-bottom: 4px;
-}
-
-.node-gateway .node-badge {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%) rotate(-45deg);
-  background-color: #fff7ed;
-  border: 1px solid #fdba74;
-  z-index: 10;
-  font-size: 11px;
-  padding: 2px 8px;
-  white-space: nowrap;
-  margin-top: 8px;
-}
-
-/* Position handles correctly for gateway node */
-.handle-gateway-input {
-  transform: translateY(-42px) !important;
-  background-color: #f97316 !important;
-  border: 2px solid white !important;
-  width: 12px !important;
-  height: 12px !important;
-}
-
-.handle-gateway-output {
-  transform: translateY(42px) !important;
-  background-color: #f97316 !important;
-  border: 2px solid white !important;
-  width: 12px !important;
-  height: 12px !important;
-}
+3. **Empty States**:
+```html
+<div class="text-center py-10 px-4 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
+  <Icon
+    name="material-symbols:{icon}"
+    class="w-14 h-14 mx-auto mb-3 text-gray-400"
+  />
+  <h4 class="text-base font-medium text-gray-900 mb-1">
+    {Empty State Title}
+  </h4>
+  <p class="text-sm text-gray-500 mb-4 max-w-md mx-auto">
+    {Empty State Description}
+  </p>
+  <RsButton
+    @click="primaryAction"
+    variant="primary"
+    size="md"
+  >
+    <Icon name="material-symbols:add" class="mr-1" />
+    {Action Text}
+  </RsButton>
+</div>
 ```
 
-### Gateway Condition Management
-```typescript
-// Handle condition update
-const handleConditionUpdate = (conditions) => {
-  if (selectedNodeData.value && selectedNodeData.value.type === 'gateway') {
-    // Update conditions in the node data
-    selectedNodeData.value.data = {
-      ...selectedNodeData.value.data,
-      conditions: conditions
-    };
-    
-    // Update edges with new condition outputs
-    if (processStore.currentProcess?.edges) {
-      const updatedEdges = processStore.currentProcess.edges.map(edge => {
-        if (edge.source === selectedNodeData.value.id) {
-          // Find matching condition group
-          const matchingGroup = conditions.find(group => group.output === edge.label);
-          if (!matchingGroup) {
-            // If no matching group found, update edge label to default
-            return {
-              ...edge,
-              label: selectedNodeData.value.data.defaultPath || 'Default'
-            };
-          }
-        }
-        return edge;
-      });
-      
-      // Update edges in store
-      processStore.currentProcess.edges = updatedEdges;
-    }
-    
-    // Update the node in store
-    updateNodeInStore();
-  }
-};
-```
+## Best Practices for Development
 
-## Event Handling
+When developing new components or enhancing existing ones:
 
-### Node Events
-```typescript
-// Node selection
-function onNodeClick({ node }): void {
-  try {
-    // Create a plain object copy of the node to avoid reactivity issues
-    const nodeData = {
-      id: node.id,
-      type: node.type,
-      data: node.data ? JSON.parse(JSON.stringify(node.data)) : {},
-      position: node.dimensions ? { 
-        x: node.dimensions.x || 0, 
-        y: node.dimensions.y || 0 
-      } : { x: 0, y: 0 }
-    };
+1. **Consistent Design Pattern**:
+   - Follow the established design patterns for node configurations
+   - Use the same structure for headers, step indicators, and action buttons
+   - Maintain the color coding system for different node types
 
-    selectedNode.value = nodeData;
-    emit('nodeSelected', nodeData);
-  } catch (error) {
-    console.error('Error processing node data:', error);
-  }
-}
+2. **Responsive Components**:
+   - Ensure all components work on various screen sizes
+   - Use responsive utilities from Tailwind
+   - Test on mobile and desktop views
 
-// Node deletion
-function onNodeDelete(event): void {
-  // Check if we have a node in the event
-  if (event && event.node) {
-    removeNodes([event.node]);
-    emit('nodesChange', nodes.value);
-  }
-}
+3. **State Management**:
+   - Store node configuration in the appropriate Pinia store
+   - Use reactive Vue 3 patterns with `ref`, `computed`, etc.
+   - Implement proper validation before saving
 
-// Handle delete key press
-function onDeleteKeyPress(): void {
-  const { getSelectedNodes, getSelectedEdges } = flowInstance.value;
-  const selectedNodes = getSelectedNodes();
-  const selectedEdges = getSelectedEdges();
-  
-  if (selectedNodes.length > 0) {
-    removeNodes(selectedNodes);
-    emit('nodesChange', nodes.value);
-  }
-  
-  if (selectedEdges.length > 0) {
-    removeEdges(selectedEdges);
-    emit('edgesChange', edges.value);
-  }
-}
-```
+4. **Accessibility**:
+   - Ensure all UI elements are keyboard accessible
+   - Use semantic HTML elements
+   - Maintain proper focus management in modals
 
-### Edge Events
-```typescript
-// Edge selection
-function onEdgeClick(event, edge): void {
-  // Create a simplified copy of the edge data
-  const edgeData = {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    label: edge.label || '',
-    sourceNode: nodes.value.find(node => node.id === edge.source),
-    targetNode: nodes.value.find(node => node.id === edge.target)
-  };
-  
-  emit('edgeSelected', edgeData);
-}
-
-// Edge deletion
-function onEdgeDelete(event): void {
-  if (event && event.edge) {
-    removeEdges([event.edge]);
-    emit('edgesChange', edges.value);
-  }
-}
-```
-
-## Development Guidelines
-
-### Best Practices
-1. Use Vue Flow's built-in features instead of custom implementations
-2. Handle all node/edge updates through the store
-3. Maintain proper typings for all components
-4. Follow Vue 3 Composition API patterns
-5. Implement proper validation for all process changes
-
-### Performance Considerations
-1. Use `markRaw` for node components
-2. Minimize reactive wrapping of node data
-3. Use proper key bindings for lists
-4. Implement efficient node filtering
-5. Optimize canvas rendering
-
-### Error Handling
-1. Validate all connections before creation
-2. Handle edge cases in node operations
-3. Provide meaningful error messages
-4. Implement proper error boundaries
-5. Log errors appropriately
+5. **Data Flow Visualization**:
+   - Use visual indicators to show data flow direction
+   - Provide clear feedback on how variables are used
+   - Highlight connections between nodes
 
 ---
 
-For user documentation and usage guidelines, please refer to [Process Builder Documentation](PROCESS_BUILDER_DOCUMENTATION.md).
+For user documentation and usage guidelines, please refer to [Process Builder Documentation](USER_GUIDE.md).
 
-Last updated: June 10, 2024 
+Last updated: July 10, 2024 
