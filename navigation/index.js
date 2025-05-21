@@ -108,4 +108,34 @@ export default [
       },
     ],
   },
+  {
+    header: "Process Execution",
+    description: "Execute and manage process workflows",
+    child: [
+      {
+        title: "Execution Dashboard",
+        path: "/execution",
+        icon: "ic:outline-dashboard",
+        child: [],
+      },
+      {
+        title: "New Case",
+        path: "/execution/new-case",
+        icon: "material-symbols:add-circle-outline",
+        child: [],
+      },
+      {
+        title: "Task Inbox",
+        path: "/execution/inbox",
+        icon: "material-symbols:inbox",
+        child: [],
+      },
+      {
+        title: "Case History",
+        path: "/execution/history",
+        icon: "material-symbols:history",
+        child: [],
+      },
+    ],
+  },
 ];

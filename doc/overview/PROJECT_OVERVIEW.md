@@ -68,6 +68,27 @@ The Form Builder complements the Process Builder, enabling users to create forms
 - Form versioning and management
 - Integration with processes
 
+### Process Execution
+
+The Process Execution module provides the end-user interface for interacting with deployed workflow processes. Key features include:
+
+- Execution Dashboard for process overview
+  - Task statistics and metrics
+  - Recent tasks and processes
+- Task Inbox for managing assigned tasks
+  - Task filtering and search
+  - Status indicators and due dates
+- New Case interface for initiating processes
+  - Process catalog with descriptions
+  - Categorized process listing
+- Case History for tracking process instances
+  - Historical record of completed processes
+  - Timeline visualization of process steps
+- Task Detail interface for completing tasks
+  - Dynamic form rendering
+  - Case context and variables
+  - Process timeline visualization
+
 ## User Flows
 
 ### Process Design and Execution
@@ -91,6 +112,15 @@ The Form Builder complements the Process Builder, enabling users to create forms
 5. The form becomes available for use in processes
 6. When a form task is encountered in a process, the assigned user sees the form
 7. Form submissions store data in the process variables
+
+### Process Participation
+
+1. User logs into the system and views their task inbox
+2. User opens and completes assigned tasks
+3. User submits task forms with required data
+4. Process advances based on task completion
+5. User can view process history and status
+6. User can initiate new process instances
 
 ## Data Flow
 

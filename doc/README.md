@@ -20,6 +20,10 @@ The documentation is organized into the following sections:
 - [User Guide](./form-builder/USER_GUIDE.md) - How to use the Form Builder
 - [Technical Guide](./form-builder/TECHNICAL_GUIDE.md) - Technical details of the Form Builder implementation
 
+### Process Execution
+- [User Guide](./process-execution/USER_GUIDE.md) - How to use the Process Execution interface
+- [Technical Guide](./process-execution/TECHNICAL_GUIDE.md) - Technical details of the Process Execution implementation
+
 ## Getting Started
 
 New to the project? We recommend reading the documentation in this order:
