@@ -1,4 +1,6 @@
 <script setup>
+import { ref, provide, useSlots, onMounted, watch } from 'vue';
+
 const props = defineProps({
   variant: {
     type: String,
@@ -20,19 +22,75 @@ const props = defineProps({
     type: String,
     default: "left",
   },
+  tabs: {
+    type: Array,
+    default: null,
+  },
+  modelValue: {
+    type: String,
+    default: null,
+  },
 });
+
+const emit = defineEmits(['update:modelValue']);
 
 // Slots
 const slots = useSlots();
 
-const tabs = ref(slots.default().map((tab) => tab.props));
-const selectedTitle = ref(tabs.value[0]["title"]);
+// Handle cases where slots.default might not exist or not be a function
+const tabs = ref([]);
+const selectedTitle = ref('');
 
-tabs.value.forEach((tab) => {
-  if (typeof tab.active !== "undefined") {
-    selectedTitle.value = tab.title;
+// Initialize tabs from slots or props
+onMounted(() => {
+  if (props.tabs) {
+    // If tabs are provided via props (new pattern)
+    tabs.value = props.tabs;
+    selectedTitle.value = props.modelValue || props.tabs[0]?.key || props.tabs[0]?.label || '';
+  } else if (slots.default && typeof slots.default === 'function') {
+    // If tabs are provided via slots (original pattern)
+    try {
+      const slotContent = slots.default();
+      if (slotContent && Array.isArray(slotContent)) {
+        tabs.value = slotContent.map((tab) => tab.props).filter(Boolean);
+        selectedTitle.value = tabs.value[0]?.title || '';
+        
+        // Check for active tab
+        tabs.value.forEach((tab) => {
+          if (typeof tab.active !== "undefined") {
+            selectedTitle.value = tab.title;
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Error processing tab slots:', error);
+      tabs.value = [];
+    }
   }
 });
+
+// Watch for changes in modelValue
+watch(() => props.modelValue, (newValue) => {
+  if (newValue && newValue !== selectedTitle.value) {
+    selectedTitle.value = newValue;
+  }
+});
+
+// Watch for changes in selectedTitle and emit update
+watch(selectedTitle, (newValue) => {
+  if (props.modelValue !== undefined) {
+    emit('update:modelValue', newValue);
+  }
+});
+
+// Helper function to get the correct key/title from tab object
+const getTabKey = (tab) => {
+  return tab.key || tab.title || tab.label || '';
+};
+
+const getTabLabel = (tab) => {
+  return tab.label || tab.title || tab.key || '';
+};
 
 provide("selectedTitle", selectedTitle);
 </script>
@@ -69,10 +127,10 @@ provide("selectedTitle", selectedTitle);
             border: type === 'border',
             'border-horizontal': type === 'border' && !vertical,
             'border-horizontal-active':
-              selectedTitle === val.title && type === 'border' && !vertical,
+              selectedTitle === getTabKey(val) && type === 'border' && !vertical,
             'border-vertical': type === 'border' && vertical,
             'border-vertical-active':
-              selectedTitle === val.title && type === 'border' && vertical,
+              selectedTitle === getTabKey(val) && type === 'border' && vertical,
 
             // Variant Color for Border Type
             'border-hover-primary': type === 'border' && variant == 'primary',
@@ -85,34 +143,34 @@ provide("selectedTitle", selectedTitle);
 
             // Variant Color for Border Type Active
             'border-active-primary':
-              selectedTitle === val.title &&
+              selectedTitle === getTabKey(val) &&
               type === 'border' &&
               variant == 'primary',
             'border-active-secondary':
-              selectedTitle === val.title &&
+              selectedTitle === getTabKey(val) &&
               type === 'border' &&
               variant == 'secondary',
             'border-active-info':
-              selectedTitle === val.title &&
+              selectedTitle === getTabKey(val) &&
               type === 'border' &&
               variant == 'info',
             'border-active-success':
-              selectedTitle === val.title &&
+              selectedTitle === getTabKey(val) &&
               type === 'border' &&
               variant == 'success',
             'border-active-warning':
-              selectedTitle === val.title &&
+              selectedTitle === getTabKey(val) &&
               type === 'border' &&
               variant == 'warning',
             'border-active-danger':
-              selectedTitle === val.title &&
+              selectedTitle === getTabKey(val) &&
               type === 'border' &&
               variant == 'danger',
           }"
           role="presentation"
           v-for="(val, index) in tabs"
           :key="index"
-          @click="selectedTitle = val.title"
+          @click="selectedTitle = getTabKey(val)"
         >
           <a
             class="tab-item-link"
@@ -120,9 +178,9 @@ provide("selectedTitle", selectedTitle);
               default: type === 'default' && !vertical,
               'default-vertical': type === 'default' && vertical,
               'default-active':
-                selectedTitle === val.title && type === 'default' && !vertical,
+                selectedTitle === getTabKey(val) && type === 'default' && !vertical,
               'default-vertical-active':
-                selectedTitle === val.title && type === 'default' && vertical,
+                selectedTitle === getTabKey(val) && type === 'default' && vertical,
 
               // Variant hover for default type
               'default-hover-primary':
@@ -138,27 +196,27 @@ provide("selectedTitle", selectedTitle);
 
               // Variant Color for default type Active
               'default-primary':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'default' &&
                 variant == 'primary',
               'default-secondary':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'default' &&
                 variant == 'secondary',
               'default-info':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'default' &&
                 variant == 'info',
               'default-success':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'default' &&
                 variant == 'success',
               'default-warning':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'default' &&
                 variant == 'warning',
               'default-danger':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'default' &&
                 variant == 'danger',
 
@@ -175,27 +233,27 @@ provide("selectedTitle", selectedTitle);
 
               // Variant Color for card type Active
               'link-card-primary-active':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'card' &&
                 variant == 'primary',
               'link-card-secondary-active':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'card' &&
                 variant == 'secondary',
               'link-card-info-active':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'card' &&
                 variant == 'info',
               'link-card-success-active':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'card' &&
                 variant == 'success',
               'link-card-warning-active':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'card' &&
                 variant == 'warning',
               'link-card-danger-active':
-                selectedTitle === val.title &&
+                selectedTitle === getTabKey(val) &&
                 type === 'card' &&
                 variant == 'danger',
 
@@ -203,7 +261,7 @@ provide("selectedTitle", selectedTitle);
               'link-justify-center': justify == 'center',
               'link-justify-right': justify == 'right',
             }"
-            >{{ val.title }}</a
+            >{{ getTabLabel(val) }}</a
           >
         </li>
       </ul>
@@ -223,7 +281,17 @@ provide("selectedTitle", selectedTitle);
           'content-border-danger': type === 'border' && variant === 'danger',
         }"
       >
-        <slot></slot>
+        <!-- New pattern: Named slots for each tab -->
+        <template v-if="props.tabs">
+          <div v-for="tab in props.tabs" :key="tab.key" v-show="selectedTitle === tab.key">
+            <slot :name="tab.key"></slot>
+          </div>
+        </template>
+        
+        <!-- Old pattern: Default slot with RsTabItem components -->
+        <template v-else>
+          <slot></slot>
+        </template>
       </div>
     </div>
   </client-only>
