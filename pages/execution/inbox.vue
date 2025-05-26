@@ -166,7 +166,7 @@ const refreshTasks = () => {
     <!-- Task List -->
     <rs-card>
       <template #header>
-        <div class="flex justify-between items-center p-5">
+        <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Your Tasks</h2>
           <div class="flex items-center space-x-2">
             <rs-button
@@ -184,7 +184,7 @@ const refreshTasks = () => {
         </div>
       </template>
       <template #body>
-        <div class="px-5 pb-5">
+        <div class="">
           <rs-table
             :data="filteredTasks"
             :options="tableOptions"

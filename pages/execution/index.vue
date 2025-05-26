@@ -86,7 +86,7 @@ const optionsAdvanced = {
       <!-- Pending Tasks -->
       <rs-card>
         <template #body>
-          <div class="pt-5 pb-3 px-5 flex items-center gap-4">
+          <div class="pt-5 flex items-center gap-4">
             <div
               class="p-5 flex justify-center items-center bg-yellow-100 rounded-2xl"
             >
@@ -110,7 +110,7 @@ const optionsAdvanced = {
       <!-- Active Cases -->
       <rs-card>
         <template #body>
-          <div class="pt-5 pb-3 px-5 flex items-center gap-4">
+          <div class="pt-5 flex items-center gap-4">
             <div
               class="p-5 flex justify-center items-center bg-blue-100 rounded-2xl"
             >
@@ -134,7 +134,7 @@ const optionsAdvanced = {
       <!-- Completed Cases -->
       <rs-card>
         <template #body>
-          <div class="pt-5 pb-3 px-5 flex items-center gap-4">
+          <div class="pt-5 flex items-center gap-4">
             <div
               class="p-5 flex justify-center items-center bg-green-100 rounded-2xl"
             >
@@ -158,7 +158,7 @@ const optionsAdvanced = {
       <!-- Overdue Tasks -->
       <rs-card>
         <template #body>
-          <div class="pt-5 pb-3 px-5 flex items-center gap-4">
+          <div class="pt-5 flex items-center gap-4">
             <div
               class="p-5 flex justify-center items-center bg-red-100 rounded-2xl"
             >
@@ -184,7 +184,7 @@ const optionsAdvanced = {
     <!-- Recent Tasks -->
     <rs-card class="mb-6">
       <template #header>
-        <div class="flex justify-between items-center p-5">
+        <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Recent Tasks</h2>
           <rs-button variant="primary" size="sm" to="/execution/inbox">
             View All Tasks
@@ -192,7 +192,7 @@ const optionsAdvanced = {
         </div>
       </template>
       <template #body>
-        <div class="px-5 pb-5">
+        <div class="">
           <rs-table
             :data="recentTasks"
             :options="tableOptions"
@@ -236,7 +236,7 @@ const optionsAdvanced = {
     <!-- Recent Processes -->
     <rs-card>
       <template #header>
-        <div class="flex justify-between items-center p-5">
+        <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Recent Processes</h2>
           <rs-button variant="primary" size="sm" to="/execution/history">
             View All Processes
@@ -244,7 +244,7 @@ const optionsAdvanced = {
         </div>
       </template>
       <template #body>
-        <div class="px-5 pb-5">
+        <div class="">
           <rs-table
             :data="recentProcesses"
             :options="tableOptions"

@@ -134,12 +134,6 @@ const refreshCases = () => {
 <template>
   <div>
     <LayoutsBreadcrumb />
-    
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Case History</h1>
-      <p class="text-gray-600">View your case history and completed processes.</p>
-    </div>
-
     <!-- Filters and Search -->
     <rs-card class="mb-6">
       <template #body>
@@ -187,7 +181,7 @@ const refreshCases = () => {
     <!-- Case History Table -->
     <rs-card>
       <template #header>
-        <div class="flex justify-between items-center p-5">
+        <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold">Your Cases</h2>
           <div class="flex items-center space-x-2">
             <rs-button 
@@ -205,7 +199,7 @@ const refreshCases = () => {
         </div>
       </template>
       <template #body>
-        <div class="px-5 pb-5">
+        <div class="">
           <rs-table
             :data="filteredCases"
             :options="tableOptions"
