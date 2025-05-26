@@ -29,6 +29,13 @@ const OtpClassification = {
   message: "formkit-message-otp",
 };
 
+const switchClassification = {
+  label: "formkit-label-switch",
+  inner: "formkit-inner-switch",
+  input: "formkit-input-switch",
+  message: "formkit-message-switch",
+};
+
 const colorClassification = {
   label: "formkit-label-color",
   input: "formkit-input-color",
@@ -86,6 +93,7 @@ export default {
   week: textClassification,
   otp: OtpClassification,
   mask: textClassification,
+  switch: switchClassification,
   dropzone: {
     ...textClassification,
     inner: "formkit-inner-dropzone",

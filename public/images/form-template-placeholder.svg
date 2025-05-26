@@ -1,0 +1,7 @@
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#f1f5f9" />
+  <rect x="40" y="40" width="320" height="30" rx="4" fill="#e2e8f0" />
+  <rect x="40" y="85" width="320" height="30" rx="4" fill="#e2e8f0" />
+  <rect x="40" y="130" width="150" height="30" rx="4" fill="#e2e8f0" />
+  <text x="200" y="20" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">Form Template</text>
+</svg> 

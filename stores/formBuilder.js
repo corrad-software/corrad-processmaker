@@ -24,14 +24,16 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       onSubmit: false,
       onValidation: false
     },
-    scriptMode: 'safe' // 'safe' or 'advanced'
+    scriptMode: 'safe', // 'safe' or 'advanced'
+    
+    // Form preview data
+    previewFormData: {},
   }),
   
   getters: {
     selectedComponent: (state) => {
-      return state.selectedComponentId 
-        ? state.formComponents.find(c => c.id === state.selectedComponentId)
-        : null;
+      if (!state.selectedComponentId) return null;
+      return state.formComponents.find(c => c.id === state.selectedComponentId);
     },
     
     formConfig: (state) => {
@@ -56,6 +58,10 @@ export const useFormBuilderStore = defineStore('formBuilder', {
         ...entry,
         isCurrent: index === state.currentHistoryIndex
       }));
+    },
+    
+    getPreviewFormData: (state) => {
+      return state.previewFormData;
     }
   },
   
@@ -163,6 +169,9 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     },
     
     addComponent(component) {
+      // Add debugging
+      console.log('FormStore: Adding component', component.type);
+      
       // Store the state before the change for history
       const beforeComponents = [...this.formComponents];
       
@@ -170,34 +179,189 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       const { gridColumn, rowIndex, width } = this.findOptimalGridPlacement();
       
       const newComponentId = uuidv4();
-      const newComponent = {
-        ...component,
-        id: newComponentId,
-        props: {
-          ...component.defaultProps,
-          name: `${component.type}_${this.formComponents.length + 1}`,
-          label: `${component.name} ${this.formComponents.length + 1}`,
-          width: width,
-          gridColumn: gridColumn
+      
+      // Log the incoming component structure
+      console.log('Component before processing:', JSON.stringify({
+        type: component.type,
+        name: component.name,
+        hasDefaultProps: !!component.defaultProps,
+        defaultPropsKeys: component.defaultProps ? Object.keys(component.defaultProps) : []
+      }));
+      
+      try {
+        // Create a deep copy of the default props to avoid reference issues
+        const defaultProps = component.defaultProps ? JSON.parse(JSON.stringify(component.defaultProps)) : {};
+        
+        // Ensure the component has necessary grid properties
+        defaultProps.width = defaultProps.width || width;
+        defaultProps.gridColumn = defaultProps.gridColumn || gridColumn;
+        
+        // Generate a default name based on component type if not provided
+        if (!defaultProps.name) {
+          defaultProps.name = `${component.type}_${this.formComponents.length + 1}`;
         }
-      };
-      
-      this.formComponents.push(newComponent);
-      // Explicitly select the new component
-      this.selectedComponentId = newComponentId;
-      this.hasUnsavedChanges = true;
-      
-      // Record the action in history
-      this.recordHistory('add_component', {
-        componentType: component.type,
-        componentId: newComponentId,
-        componentName: newComponent.props.label,
-        beforeState: {
-          components: beforeComponents,
-          selectedComponentId: null // Was null before adding
-        },
-        newComponent: newComponent
-      });
+        
+        // Generate a default label based on component name if not provided
+        if (!defaultProps.label && !['heading', 'paragraph', 'divider'].includes(component.type)) {
+          defaultProps.label = `${component.name} ${this.formComponents.length + 1}`;
+        }
+        
+        // Handle special component types
+        switch (component.type) {
+          case 'image-preview':
+            // Ensure all required image preview properties
+            defaultProps.imageUrl = defaultProps.imageUrl || 'https://placehold.co/600x400';
+            defaultProps.altText = defaultProps.altText || 'Preview image';
+            defaultProps.caption = defaultProps.caption || '';
+            defaultProps.showZoom = defaultProps.showZoom !== undefined ? defaultProps.showZoom : true;
+            defaultProps.showCaption = defaultProps.showCaption !== undefined ? defaultProps.showCaption : true;
+            defaultProps.maxWidth = defaultProps.maxWidth || '100%';
+            defaultProps.height = defaultProps.height || 'auto';
+            break;
+            
+          case 'repeating-group':
+            // Ensure all required repeating group properties
+            defaultProps.minItems = defaultProps.minItems !== undefined ? defaultProps.minItems : 1;
+            defaultProps.maxItems = defaultProps.maxItems !== undefined ? defaultProps.maxItems : 10;
+            defaultProps.buttonText = defaultProps.buttonText || 'Add Item';
+            defaultProps.removeText = defaultProps.removeText || 'Remove';
+            defaultProps.fields = defaultProps.fields || [
+              { type: 'text', name: 'field_1', label: 'Field 1', placeholder: 'Enter value' }
+            ];
+            break;
+            
+          case 'dynamic-list':
+            // Ensure all required dynamic list properties
+            defaultProps.placeholder = defaultProps.placeholder || 'Enter item';
+            defaultProps.buttonText = defaultProps.buttonText || 'Add Item';
+            defaultProps.minItems = defaultProps.minItems !== undefined ? defaultProps.minItems : 0;
+            defaultProps.maxItems = defaultProps.maxItems !== undefined ? defaultProps.maxItems : 20;
+            defaultProps.defaultItems = Array.isArray(defaultProps.defaultItems) ? defaultProps.defaultItems : ['Item 1', 'Item 2'];
+            break;
+
+          case 'info-display':
+            // Ensure all required info display properties
+            defaultProps.title = defaultProps.title || 'Information';
+            defaultProps.layout = defaultProps.layout || 'vertical';
+            defaultProps.showBorder = defaultProps.showBorder !== undefined ? defaultProps.showBorder : true;
+            defaultProps.backgroundColor = defaultProps.backgroundColor || '#f8fafc';
+            defaultProps.fields = Array.isArray(defaultProps.fields) ? defaultProps.fields : [
+              { label: 'Info Item', value: 'Value', key: 'item_1' }
+            ];
+            break;
+            
+          case 'file':
+            // Ensure all required file upload properties
+            defaultProps.accept = defaultProps.accept || '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+            break;
+            
+          case 'heading':
+            // Ensure all required heading properties
+            defaultProps.value = defaultProps.value || 'Heading';
+            defaultProps.level = defaultProps.level || 2;
+            break;
+            
+          case 'paragraph':
+            // Ensure all required paragraph properties
+            defaultProps.value = defaultProps.value || 'Paragraph text';
+            break;
+            
+          case 'select':
+          case 'radio':
+          case 'checkbox':
+            // Ensure options array exists
+            if (!Array.isArray(defaultProps.options) || defaultProps.options.length === 0) {
+              defaultProps.options = [
+                { label: 'Option 1', value: 'option_1' },
+                { label: 'Option 2', value: 'option_2' }
+              ];
+            }
+            break;
+            
+          case 'range':
+            // Ensure all required range properties
+            defaultProps.min = defaultProps.min !== undefined ? defaultProps.min : 0;
+            defaultProps.max = defaultProps.max !== undefined ? defaultProps.max : 100;
+            defaultProps.step = defaultProps.step !== undefined ? defaultProps.step : 1;
+            defaultProps.value = defaultProps.value !== undefined ? defaultProps.value : 50;
+            break;
+            
+          case 'color':
+            // Ensure color has a default value
+            defaultProps.value = defaultProps.value || '#3b82f6';
+            break;
+            
+          case 'switch':
+            // Ensure switch has a default value
+            defaultProps.value = defaultProps.value !== undefined ? defaultProps.value : false;
+            break;
+            
+          case 'hidden':
+            // Ensure hidden field has a value
+            defaultProps.value = defaultProps.value || '';
+            break;
+            
+          case 'button':
+            // Ensure all required button properties
+            defaultProps.buttonType = defaultProps.buttonType || 'button';
+            defaultProps.variant = defaultProps.variant || 'primary';
+            defaultProps.size = defaultProps.size || 'md';
+            defaultProps.disabled = defaultProps.disabled !== undefined ? defaultProps.disabled : false;
+            defaultProps.onClick = defaultProps.onClick || '';
+            break;
+            
+          case 'mask':
+            // Ensure all required mask properties
+            defaultProps.mask = defaultProps.mask || '###-###-####';
+            break;
+            
+          case 'otp':
+            // Ensure all required OTP properties
+            defaultProps.digits = defaultProps.digits !== undefined ? defaultProps.digits : 6;
+            break;
+            
+          case 'dropzone':
+            // Ensure all required dropzone properties
+            defaultProps.accept = defaultProps.accept || 'image/*,.pdf,.doc,.docx';
+            defaultProps.multiple = defaultProps.multiple !== undefined ? defaultProps.multiple : true;
+            defaultProps.maxSize = defaultProps.maxSize !== undefined ? defaultProps.maxSize : 5242880; // 5MB
+            defaultProps.maxFiles = defaultProps.maxFiles !== undefined ? defaultProps.maxFiles : 5;
+            break;
+            
+          case 'switch':
+            // Ensure switch has a default value
+            defaultProps.value = defaultProps.value !== undefined ? defaultProps.value : false;
+            break;
+        }
+        
+        const newComponent = {
+          ...component,
+          id: newComponentId,
+          props: defaultProps
+        };
+        
+        this.formComponents.push(newComponent);
+        // Explicitly select the new component
+        this.selectedComponentId = newComponentId;
+        this.hasUnsavedChanges = true;
+        
+        // Record the action in history
+        this.recordHistory('add_component', {
+          componentType: component.type,
+          componentId: newComponentId,
+          componentName: newComponent.props.label || newComponent.type,
+          beforeState: {
+            components: beforeComponents,
+            selectedComponentId: null // Was null before adding
+          },
+          newComponent: newComponent
+        });
+        
+        console.log('Component successfully added:', newComponent.type, newComponent.id);
+      } catch (error) {
+        console.error('Error adding component:', error);
+        console.error('Problematic component:', component);
+      }
     },
     
     // Find optimal placement for a new component in the grid
@@ -424,6 +588,11 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     
     resetUnsavedChanges() {
       this.hasUnsavedChanges = false;
+    },
+    
+    // Update preview form data
+    updatePreviewFormData(data) {
+      this.previewFormData = { ...data };
     },
     
     // Get forms from the backend

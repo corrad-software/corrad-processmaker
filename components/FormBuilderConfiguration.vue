@@ -116,6 +116,237 @@
               help="Size of the heading"
             />
             
+            <!-- Image Preview Settings -->
+            <template v-if="component.type === 'image-preview'">
+              <FormKit
+                v-if="showField('imageUrl')"
+                type="text"
+                label="Image URL"
+                name="imageUrl"
+                v-model="configModel.imageUrl"
+                help="URL of the image to display"
+              />
+              
+              <FormKit
+                v-if="showField('altText')"
+                type="text"
+                label="Alt Text"
+                name="altText"
+                v-model="configModel.altText"
+                help="Alternative text for accessibility"
+              />
+              
+              <FormKit
+                v-if="showField('caption')"
+                type="text"
+                label="Caption"
+                name="caption"
+                v-model="configModel.caption"
+                help="Caption displayed below the image"
+              />
+              
+              <FormKit
+                v-if="showField('maxWidth')"
+                type="text"
+                label="Max Width"
+                name="maxWidth"
+                v-model="configModel.maxWidth"
+                help="Maximum width of the image (px or %)"
+              />
+              
+              <FormKit
+                v-if="showField('height')"
+                type="text"
+                label="Height"
+                name="height"
+                v-model="configModel.height"
+                help="Height of the image (px or auto)"
+              />
+              
+              <div v-if="showField('showZoom')" class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Display Options</label>
+                <div class="space-y-2">
+                  <label class="flex items-center">
+                    <input type="checkbox" v-model="configModel.showZoom" class="mr-2 h-4 w-4 rounded border-gray-300">
+                    <span class="text-sm text-gray-700">Enable zoom on click</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input type="checkbox" v-model="configModel.showCaption" class="mr-2 h-4 w-4 rounded border-gray-300">
+                    <span class="text-sm text-gray-700">Show caption</span>
+                  </label>
+                </div>
+              </div>
+            </template>
+
+            <!-- Dynamic List Settings -->
+            <template v-if="component.type === 'dynamic-list'">
+              <FormKit
+                v-if="showField('buttonText')"
+                type="text"
+                label="Add Button Text"
+                name="buttonText"
+                v-model="configModel.buttonText"
+                help="Text for the add item button"
+              />
+              
+              <div class="grid grid-cols-2 gap-3">
+                <FormKit
+                  v-if="showField('minItems')"
+                  type="number"
+                  label="Min Items"
+                  name="minItems"
+                  v-model="configModel.minItems"
+                  help="Minimum number of items"
+                  min="0"
+                />
+                
+                <FormKit
+                  v-if="showField('maxItems')"
+                  type="number"
+                  label="Max Items"
+                  name="maxItems"
+                  v-model="configModel.maxItems"
+                  help="Maximum number of items"
+                  min="1"
+                />
+              </div>
+              
+              <div v-if="showField('defaultItems')">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Default Items</label>
+                <div class="border rounded-md p-3 bg-gray-50 space-y-2">
+                  <div v-for="(item, index) in configModel.defaultItems" :key="index" class="flex items-center">
+                    <input
+                      type="text"
+                      v-model="configModel.defaultItems[index]"
+                      class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <button 
+                      @click="configModel.defaultItems.splice(index, 1)"
+                      class="ml-2 text-red-500 hover:text-red-700"
+                      type="button"
+                    >
+                      <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                    </button>
+                  </div>
+                  <button 
+                    @click="configModel.defaultItems.push('')"
+                    class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                    type="button"
+                  >
+                    <Icon name="material-symbols:add-circle-outline" class="w-4 h-4 mr-1" />
+                    Add Default Item
+                  </button>
+                </div>
+              </div>
+            </template>
+            
+            <!-- Repeating Group Settings -->
+            <template v-if="component.type === 'repeating-group'">
+              <div class="grid grid-cols-2 gap-3">
+                <FormKit
+                  v-if="showField('minItems')"
+                  type="number"
+                  label="Min Items"
+                  name="minItems"
+                  v-model="configModel.minItems"
+                  help="Minimum number of groups"
+                  min="0"
+                />
+                
+                <FormKit
+                  v-if="showField('maxItems')"
+                  type="number"
+                  label="Max Items"
+                  name="maxItems"
+                  v-model="configModel.maxItems"
+                  help="Maximum number of groups"
+                  min="1"
+                />
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3">
+                <FormKit
+                  v-if="showField('buttonText')"
+                  type="text"
+                  label="Add Button Text"
+                  name="buttonText"
+                  v-model="configModel.buttonText"
+                  help="Text for the add button"
+                />
+                
+                <FormKit
+                  v-if="showField('removeText')"
+                  type="text"
+                  label="Remove Button Text"
+                  name="removeText"
+                  v-model="configModel.removeText"
+                  help="Text for the remove button"
+                />
+              </div>
+              
+              <div v-if="showField('fields')">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Group Fields</label>
+                <div class="border rounded-md p-3 bg-gray-50 space-y-3">
+                  <div v-for="(field, index) in configModel.fields" :key="index" class="border p-3 rounded bg-white">
+                    <div class="flex justify-between items-center mb-2">
+                      <h4 class="font-medium text-sm">Field {{ index + 1 }}</h4>
+                      <button 
+                        @click="configModel.fields.splice(index, 1)"
+                        class="text-red-500 hover:text-red-700"
+                        type="button"
+                      >
+                        <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                      <FormKit
+                        type="select"
+                        label="Field Type"
+                        :options="[
+                          { label: 'Text', value: 'text' },
+                          { label: 'Number', value: 'number' },
+                          { label: 'Email', value: 'email' },
+                          { label: 'Select', value: 'select' },
+                          { label: 'Date', value: 'date' }
+                        ]"
+                        v-model="field.type"
+                      />
+                      
+                      <FormKit
+                        type="text"
+                        label="Field Name"
+                        v-model="field.name"
+                      />
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                      <FormKit
+                        type="text"
+                        label="Field Label"
+                        v-model="field.label"
+                      />
+                      
+                      <FormKit
+                        type="text"
+                        label="Placeholder"
+                        v-model="field.placeholder"
+                      />
+                    </div>
+                  </div>
+                  
+                  <button 
+                    @click="addGroupField"
+                    class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                    type="button"
+                  >
+                    <Icon name="material-symbols:add-circle-outline" class="w-4 h-4 mr-1" />
+                    Add Field
+                  </button>
+                </div>
+              </div>
+            </template>
+            
             <!-- Options For Select/Radio/Checkbox -->
             <div v-if="showField('options')">
               <div class="flex justify-between items-center mb-1">
@@ -173,6 +404,61 @@
               v-model="configModel.accept"
               help="File types, e.g. '.jpg,.png,image/*'"
             />
+            
+            <!-- Mask Pattern -->
+            <FormKit
+              v-if="showField('mask')"
+              type="text"
+              label="Input Mask"
+              name="mask"
+              v-model="configModel.mask"
+              help="Pattern for input formatting, e.g. '###-###-####' for phone numbers"
+            />
+            
+            <!-- OTP Digits -->
+            <FormKit
+              v-if="showField('digits')"
+              type="number"
+              label="Number of Digits"
+              name="digits"
+              v-model="configModel.digits"
+              help="Number of OTP digits (typically 4-8)"
+              min="4"
+              max="8"
+            />
+            
+            <!-- Dropzone Settings -->
+            <template v-if="component.type === 'dropzone'">
+              <div class="grid grid-cols-2 gap-3">
+                <FormKit
+                  v-if="showField('maxSize')"
+                  type="number"
+                  label="Max File Size (bytes)"
+                  name="maxSize"
+                  v-model="configModel.maxSize"
+                  help="Maximum file size in bytes (5MB = 5242880)"
+                />
+                
+                <FormKit
+                  v-if="showField('maxFiles')"
+                  type="number"
+                  label="Max Files"
+                  name="maxFiles"
+                  v-model="configModel.maxFiles"
+                  help="Maximum number of files"
+                  min="1"
+                />
+              </div>
+              
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  v-model="configModel.multiple" 
+                  class="mr-2 h-4 w-4 rounded border-gray-300"
+                >
+                <span class="text-sm text-gray-700">Allow multiple files</span>
+              </div>
+            </template>
             
 
             
@@ -592,7 +878,7 @@ const showField = (fieldName) => {
     case 'name':
       return !['heading', 'paragraph', 'divider'].includes(componentType);
     case 'placeholder':
-      return ['text', 'textarea', 'email', 'password', 'number', 'select'].includes(componentType);
+      return ['text', 'textarea', 'email', 'password', 'number', 'select', 'dynamic-list'].includes(componentType);
     case 'help':
       return !['heading', 'paragraph', 'divider'].includes(componentType);
     case 'value':
@@ -602,17 +888,54 @@ const showField = (fieldName) => {
     case 'options':
       return ['select', 'radio', 'checkbox'].includes(componentType);
     case 'accept':
-      return componentType === 'file';
+      return componentType === 'file' || componentType === 'dropzone';
+    case 'mask':
+      return componentType === 'mask';
+    case 'digits':
+      return componentType === 'otp';
+    case 'maxSize':
+    case 'maxFiles':
+    case 'multiple':
+      return componentType === 'dropzone';
     case 'id':
       return true; // Always show component ID in advanced tab
     case 'width':
       return true; // Always show width in basic tab
     case 'title':
       return componentType === 'info-display';
+    case 'imageUrl':
+    case 'altText':
+    case 'caption':
+    case 'showZoom':
+    case 'showCaption':
+    case 'maxWidth':
+    case 'height':
+      return componentType === 'image-preview';
+    case 'minItems':
+    case 'maxItems':
+      return ['repeating-group', 'dynamic-list'].includes(componentType);
+    case 'buttonText':
+    case 'removeText':
+      return componentType === 'repeating-group' || componentType === 'dynamic-list';
+    case 'defaultItems':
+      return componentType === 'dynamic-list';
+    case 'fields':
+      return componentType === 'info-display' || componentType === 'repeating-group';
     case 'layout':
     case 'showBorder':
-    case 'fields':
       return componentType === 'info-display';
+    case 'min':
+    case 'max':
+    case 'step':
+      return componentType === 'range' || componentType === 'number';
+    case 'buttonType':
+    case 'variant':
+    case 'size':
+    case 'disabled':
+    case 'onClick':
+      return componentType === 'button';
+    case 'value':
+      return ['color', 'range', 'switch', 'hidden'].includes(componentType);
     default:
       return false;
   }
@@ -653,28 +976,55 @@ const removeInfoField = (index) => {
   configModel.value.fields.splice(index, 1);
 };
 
+// Add a new field to repeating group component
+const addGroupField = () => {
+  if (!configModel.value.fields) {
+    configModel.value.fields = [];
+  }
+  
+  configModel.value.fields.push({
+    type: 'text',
+    name: `field_${configModel.value.fields.length + 1}`,
+    label: `Field ${configModel.value.fields.length + 1}`,
+    placeholder: 'Enter value'
+  });
+};
+
 // Inside the <script setup> section
 // Add width to fieldsToShow
 const fieldsToShow = {
   // Basic input types
   text: ['label', 'name', 'placeholder', 'help', 'width'],
   textarea: ['label', 'name', 'placeholder', 'help', 'width'],
-  number: ['label', 'name', 'placeholder', 'help', 'width'],
+  number: ['label', 'name', 'placeholder', 'help', 'min', 'max', 'step', 'width'],
   email: ['label', 'name', 'placeholder', 'help', 'width'],
   password: ['label', 'name', 'placeholder', 'help', 'width'],
+  url: ['label', 'name', 'placeholder', 'help', 'width'],
+  tel: ['label', 'name', 'placeholder', 'help', 'width'],
+  hidden: ['name', 'value', 'help', 'width'],
   
   // Selection types
   select: ['label', 'name', 'placeholder', 'help', 'options', 'width'],
   checkbox: ['label', 'name', 'help', 'options', 'width'],
   radio: ['label', 'name', 'help', 'options', 'width'],
+  switch: ['label', 'name', 'help', 'value', 'width'],
   
   // Date and time
   date: ['label', 'name', 'placeholder', 'help', 'width'],
   time: ['label', 'name', 'placeholder', 'help', 'width'],
   'datetime-local': ['label', 'name', 'placeholder', 'help', 'width'],
+  range: ['label', 'name', 'help', 'min', 'max', 'step', 'value', 'width'],
+  color: ['label', 'name', 'help', 'value', 'width'],
   
   // Advanced
   file: ['label', 'name', 'help', 'accept', 'width'],
+  otp: ['label', 'name', 'help', 'digits', 'width'],
+  mask: ['label', 'name', 'placeholder', 'help', 'mask', 'width'],
+  dropzone: ['label', 'name', 'help', 'accept', 'multiple', 'maxSize', 'maxFiles', 'width'],
+  button: ['label', 'name', 'help', 'buttonType', 'variant', 'size', 'disabled', 'onClick', 'width'],
+  'image-preview': ['label', 'name', 'help', 'imageUrl', 'altText', 'caption', 'showZoom', 'showCaption', 'maxWidth', 'height', 'width'],
+  'repeating-group': ['label', 'name', 'help', 'minItems', 'maxItems', 'buttonText', 'removeText', 'fields', 'width'],
+  'dynamic-list': ['label', 'name', 'help', 'placeholder', 'buttonText', 'minItems', 'maxItems', 'defaultItems', 'width'],
   
   // Layout elements
   heading: ['value', 'level', 'width'],
@@ -695,7 +1045,7 @@ const getComponentWidthPercent = () => {
 
 // Computed property to determine if validation tab should be shown
 const showValidationTab = computed(() => {
-  const nonValidationComponents = ['heading', 'paragraph', 'divider', 'info-display'];
+  const nonValidationComponents = ['heading', 'paragraph', 'divider', 'info-display', 'button'];
   return !nonValidationComponents.includes(props.component.type);
 });
 

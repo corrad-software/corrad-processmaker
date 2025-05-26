@@ -2,8 +2,24 @@
   <div class="form-builder-canvas">
     <div v-if="formComponents.length === 0" class="flex flex-col items-center justify-center h-full py-16 text-gray-400">
       <Icon name="material-symbols:layers-outline" class="w-16 h-16 mb-4 text-gray-300" />
-      <p class="text-base font-medium">Drag components here</p>
-      <p class="text-xs mt-1">Or click a component from the sidebar</p>
+      <div class="text-center max-w-md">
+        <p class="text-base font-medium text-gray-600 mb-2">Start Building Your Form</p>
+        <p class="text-sm text-gray-500 mb-4">Drag components from the left sidebar or click on them to add to your form</p>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+          <div class="flex items-start">
+            <Icon name="heroicons:light-bulb" class="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p class="text-sm font-medium text-blue-800 mb-1">Quick Start Tips:</p>
+              <ul class="text-xs text-blue-700 space-y-1">
+                <li>• Add form fields from the sidebar</li>
+                <li>• Click any field to configure its settings</li>
+                <li>• Use the settings button to customize fields</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div v-else class="grid-container">
@@ -19,16 +35,24 @@
       >
         <template #item="{ element, index }">
           <div 
-            class="form-component relative border rounded-md overflow-hidden transition-all"
+            class="form-component relative border rounded-md overflow-hidden transition-all duration-200 cursor-pointer"
             :class="{ 
-              'ring-2 ring-blue-400 bg-blue-50 border-transparent': selectedComponentId === element.id,
-              'bg-white border-gray-200 hover:border-gray-300': selectedComponentId !== element.id
+              'ring-2 ring-blue-500 bg-blue-50 border-blue-300 shadow-lg': selectedComponentId === element.id,
+              'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md hover:bg-blue-25': selectedComponentId !== element.id
             }"
             :style="{
               gridColumn: element.props.gridColumn || 'span 12'
             }"
             @click.capture="selectComponent(element)"
           >
+            <!-- Selection Indicator -->
+            <div 
+              v-if="selectedComponentId === element.id" 
+              class="absolute top-2 left-2 flex items-center space-x-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full z-20"
+            >
+              <Icon name="heroicons:check-circle" class="w-3 h-3" />
+              <span>Selected</span>
+            </div>
             <div class="component-actions absolute right-1.5 top-1.5 flex space-x-1 z-10">
               <button 
                 class="p-1 text-gray-400 hover:text-gray-600 rounded"
