@@ -86,6 +86,10 @@ model form {
   formName         String    @db.VarChar(255)
   formDescription  String?   @db.Text
   formComponents   Json
+  customScript     String?   @db.LongText
+  customCSS        String?   @db.Text
+  formEvents       Json?
+  scriptMode       String?   @default("safe") @db.VarChar(20)
   formStatus       String    @default("active") @db.VarChar(50)
   formCreatedBy    Int?
   formCreatedDate  DateTime  @default(now()) @db.DateTime(0)

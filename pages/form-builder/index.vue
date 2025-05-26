@@ -42,6 +42,11 @@
           Preview
         </RsButton>
 
+        <RsButton @click="showFormSettings = true" variant="secondary" size="sm">
+          <Icon name="material-symbols:code" class="mr-1" />
+          Form Settings
+        </RsButton>
+
         <RsButton @click="navigateToManage" variant="secondary" size="sm">
           <Icon name="material-symbols:settings" class="mr-1" />
           Manage Forms
@@ -197,19 +202,223 @@
     <!-- Preview Modal -->
     <RsModal v-model="showPreview" title="Form Preview" size="xl">
       <div class="max-h-[70vh] overflow-y-auto p-4">
-        <FormKit type="form" @submit="handlePreviewSubmit" :actions="false">
-          <div class="grid-preview-container">
-            <template
-              v-for="(component, index) in formStore.formComponents"
-              :key="index"
-            >
-              <component-preview :component="component" :is-preview="false" />
-            </template>
-          </div>
-          <FormKit type="submit" label="Submit" />
-        </FormKit>
+        <div class="form-container">
+          <!-- Form Script Engine -->
+          <FormScriptEngine
+            :form-data="previewFormData"
+            :custom-script="formStore.formCustomScript"
+            :custom-css="formStore.formCustomCSS"
+            :form-events="formStore.formEvents"
+            :script-mode="formStore.scriptMode"
+            @field-change="handleScriptFieldChange"
+            @field-validate="handleScriptFieldValidate"
+          />
+          
+          <FormKit type="form" @submit="handlePreviewSubmit" :actions="false" v-model="previewFormData">
+            <div class="grid-preview-container">
+              <template
+                v-for="(component, index) in formStore.formComponents"
+                :key="index"
+              >
+                <component-preview :component="component" :is-preview="false" />
+              </template>
+            </div>
+            <FormKit type="submit" label="Submit" class="form-submit" />
+          </FormKit>
+        </div>
       </div>
       <template #footer> </template>
+    </RsModal>
+
+    <!-- Form Settings Modal -->
+    <RsModal v-model="showFormSettings" title="Form Settings & Scripts" size="xl">
+      <div class="max-h-[70vh] overflow-y-auto">
+        <RsTab :tabs="settingsTabs" v-model="activeSettingsTab">
+          <!-- Form Info Tab -->
+          <template #info>
+            <div class="p-4 space-y-4">
+              <FormKit
+                type="text"
+                label="Form Name"
+                v-model="formStore.formName"
+                help="Name of your form"
+                validation="required"
+              />
+              
+              <FormKit
+                type="textarea"
+                label="Form Description"
+                v-model="formStore.formDescription"
+                help="Brief description of what this form is for"
+                rows="3"
+              />
+            </div>
+          </template>
+
+          <!-- Custom JavaScript Tab -->
+          <template #javascript>
+            <div class="p-4">
+              <div class="mb-4">
+                <h3 class="text-lg font-medium mb-2">Custom JavaScript</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                  Write custom JavaScript to add dynamic behavior to your form. 
+                  Use <code class="bg-gray-100 px-1 rounded">this.getField('fieldName')</code> to access form fields.
+                </p>
+                
+                <!-- Helper Functions Reference -->
+                <div class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
+                  <details>
+                    <summary class="text-sm font-medium text-blue-800 cursor-pointer">📚 Available Helper Functions</summary>
+                    <div class="mt-2 text-xs text-blue-700 space-y-1">
+                      <div><code>this.getField('name')</code> - Get field value</div>
+                      <div><code>this.setField('name', value)</code> - Set field value</div>
+                      <div><code>this.hideField('name')</code> - Hide field</div>
+                      <div><code>this.showField('name')</code> - Show field</div>
+                      <div><code>this.disableField('name')</code> - Disable field</div>
+                      <div><code>this.enableField('name')</code> - Enable field</div>
+                      <div><code>this.validateField('name')</code> - Trigger field validation</div>
+                      <div><code>this.getAllFieldValues()</code> - Get all form values</div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+
+              <RsCodeMirror
+                v-model="formStore.formCustomScript"
+                language="javascript"
+                :height="400"
+                placeholder="// Example: Hide/show fields based on selection
+// this.onFieldChange('customer_type', (value) => {
+//   if (value === 'business') {
+//     this.showField('company_name');
+//     this.showField('tax_id');
+//   } else {
+//     this.hideField('company_name');
+//     this.hideField('tax_id');
+//   }
+// });
+
+// Example: Calculate total
+// this.onFieldChange(['quantity', 'price'], () => {
+//   const qty = this.getField('quantity') || 0;
+//   const price = this.getField('price') || 0;
+//   this.setField('total', qty * price);
+// });"
+              />
+            </div>
+          </template>
+
+          <!-- Custom CSS Tab -->
+          <template #css>
+            <div class="p-4">
+              <div class="mb-4">
+                <h3 class="text-lg font-medium mb-2">Custom CSS</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                  Add custom styles to enhance your form appearance. Use <code class="bg-gray-100 px-1 rounded">.form-container</code> to target the form.
+                </p>
+                
+                <!-- CSS Helper Reference -->
+                <div class="mb-4 p-3 bg-green-50 rounded border border-green-200">
+                  <details>
+                    <summary class="text-sm font-medium text-green-800 cursor-pointer">🎨 CSS Selectors</summary>
+                    <div class="mt-2 text-xs text-green-700 space-y-1">
+                      <div><code>.form-container</code> - Main form wrapper</div>
+                      <div><code>.form-field</code> - Individual form fields</div>
+                      <div><code>.form-field[data-name="fieldName"]</code> - Specific field</div>
+                      <div><code>.form-section</code> - Form sections</div>
+                      <div><code>.form-submit</code> - Submit button</div>
+                      <div><code>.info-display</code> - Info display components</div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+
+              <RsCodeMirror
+                v-model="formStore.formCustomCSS"
+                language="css"
+                :height="400"
+                placeholder="/* Example: Custom field styling */
+/* .form-field[data-name='customer_name'] {
+  background: #f0f9ff;
+  border: 2px solid #0ea5e9;
+}
+
+/* Example: Hide field initially */
+/* .form-field[data-name='hidden_field'] {
+  display: none;
+}
+
+/* Example: Custom info display styling */
+/* .info-display {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+} */"
+              />
+            </div>
+          </template>
+
+          <!-- Script Events Tab -->
+          <template #events>
+            <div class="p-4">
+              <div class="mb-4">
+                <h3 class="text-lg font-medium mb-2">Form Events</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                  Configure when your custom scripts should run.
+                </p>
+              </div>
+
+              <div class="space-y-4">
+                <div class="border rounded p-4">
+                  <h4 class="font-medium mb-2">Event Triggers</h4>
+                  <div class="space-y-2">
+                    <label class="flex items-center">
+                      <input type="checkbox" v-model="formStore.formEvents.onLoad" class="mr-2">
+                      <span class="text-sm">On Form Load</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" v-model="formStore.formEvents.onFieldChange" class="mr-2">
+                      <span class="text-sm">On Field Change</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" v-model="formStore.formEvents.onSubmit" class="mr-2">
+                      <span class="text-sm">Before Form Submit</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="checkbox" v-model="formStore.formEvents.onValidation" class="mr-2">
+                      <span class="text-sm">On Field Validation</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="border rounded p-4">
+                  <h4 class="font-medium mb-2">Script Execution Mode</h4>
+                  <div class="space-y-2">
+                    <label class="flex items-center">
+                      <input type="radio" v-model="formStore.scriptMode" value="safe" class="mr-2">
+                      <span class="text-sm">Safe Mode (Recommended) - Limited but secure</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input type="radio" v-model="formStore.scriptMode" value="advanced" class="mr-2">
+                      <span class="text-sm">Advanced Mode - Full JavaScript access</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </RsTab>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <RsButton @click="showFormSettings = false" variant="tertiary">
+            Cancel
+          </RsButton>
+          <RsButton @click="saveFormSettings" variant="primary">
+            Save Settings
+          </RsButton>
+        </div>
+      </template>
     </RsModal>
 
     <!-- Unsaved Changes Modal -->
@@ -272,6 +481,16 @@ const pendingNavigation = ref(null);
 const navigationTarget = ref(null);
 const navigationConfirmed = ref(false);
 const leftSidebarTab = ref('components');
+const showFormSettings = ref(false);
+const activeSettingsTab = ref('info');
+
+// Settings tabs configuration
+const settingsTabs = [
+  { key: 'info', label: 'Form Info', icon: 'material-symbols:info-outline' },
+  { key: 'javascript', label: 'JavaScript', icon: 'material-symbols:code' },
+  { key: 'css', label: 'CSS', icon: 'material-symbols:palette-outline' },
+  { key: 'events', label: 'Events', icon: 'material-symbols:event-outline' }
+];
 
 // Computed property for form name with getter and setter
 const formName = computed({
@@ -460,6 +679,47 @@ const handlePreviewSubmit = (formData) => {
   console.log("Form submitted:", formData);
   showPreview.value = false;
   toast.success("Form submitted successfully");
+};
+
+const saveFormSettings = () => {
+  // Form settings are automatically saved through the store's reactive updates
+  showFormSettings.value = false;
+  toast.success("Form settings saved successfully");
+};
+
+// Preview form data for script interactions
+const previewFormData = ref({});
+
+// Initialize preview form data with default values
+watchEffect(() => {
+  const newFormData = {};
+  formStore.formComponents.forEach(component => {
+    if (component.props.name) {
+      // Set default values based on component type
+      switch (component.type) {
+        case 'checkbox':
+          newFormData[component.props.name] = [];
+          break;
+        case 'number':
+          newFormData[component.props.name] = 0;
+          break;
+        default:
+          newFormData[component.props.name] = component.props.value || '';
+      }
+    }
+  });
+  previewFormData.value = newFormData;
+});
+
+// Handle script-driven field changes
+const handleScriptFieldChange = ({ fieldName, value }) => {
+  previewFormData.value[fieldName] = value;
+};
+
+// Handle script-driven field validation
+const handleScriptFieldValidate = ({ fieldName }) => {
+  // Could integrate with FormKit validation here
+  console.log(`Validating field: ${fieldName}`);
 };
 
 const navigateToManage = () => {

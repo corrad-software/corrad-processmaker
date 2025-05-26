@@ -13,7 +13,18 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     actionHistory: [],
     currentHistoryIndex: -1,
     maxHistoryLength: 30, // Maximum number of history entries to keep
-    currentFormId: null
+    currentFormId: null,
+    
+    // Custom scripts and styling
+    formCustomScript: '',
+    formCustomCSS: '',
+    formEvents: {
+      onLoad: true,
+      onFieldChange: true,
+      onSubmit: false,
+      onValidation: false
+    },
+    scriptMode: 'safe' // 'safe' or 'advanced'
   }),
   
   getters: {
@@ -467,7 +478,11 @@ export const useFormBuilderStore = defineStore('formBuilder', {
           components: this.formComponents.map(c => ({
             type: c.type,
             props: c.props
-          }))
+          })),
+          customScript: this.formCustomScript,
+          customCSS: this.formCustomCSS,
+          formEvents: this.formEvents,
+          scriptMode: this.scriptMode
         };
         
         // Determine if this is a new form or an update
@@ -544,6 +559,17 @@ export const useFormBuilderStore = defineStore('formBuilder', {
           this.formDescription = result.form.formDescription || '';
           this.currentFormId = result.form.formUUID;
           
+          // Load custom scripts and settings
+          this.formCustomScript = result.form.customScript || '';
+          this.formCustomCSS = result.form.customCSS || '';
+          this.formEvents = result.form.formEvents || {
+            onLoad: true,
+            onFieldChange: true,
+            onSubmit: false,
+            onValidation: false
+          };
+          this.scriptMode = result.form.scriptMode || 'safe';
+          
           // Transform components from DB format to store format
           if (Array.isArray(result.form.formComponents)) {
             this.formComponents = result.form.formComponents.map(c => ({
@@ -606,6 +632,17 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       this.formDescription = '';
       this.currentFormId = null;
       this.hasUnsavedChanges = false;
+      
+      // Reset custom scripts and settings
+      this.formCustomScript = '';
+      this.formCustomCSS = '';
+      this.formEvents = {
+        onLoad: true,
+        onFieldChange: true,
+        onSubmit: false,
+        onValidation: false
+      };
+      this.scriptMode = 'safe';
       
       // Clear history when starting a new form and add initial state
       this.actionHistory = [];

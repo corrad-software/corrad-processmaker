@@ -174,16 +174,105 @@
               help="File types, e.g. '.jpg,.png,image/*'"
             />
             
-            <!-- Max items for repeater -->
-            <FormKit
-              v-if="showField('max')"
-              type="number"
-              label="Maximum Items"
-              name="max"
-              v-model="configModel.max"
-              help="Maximum number of repeatable items"
-              min="1"
-            />
+
+            
+            <!-- Information Display Configuration -->
+            <template v-if="component.type === 'info-display'">
+              <FormKit
+                type="text"
+                label="Title"
+                name="title"
+                v-model="configModel.title"
+                help="Title displayed at the top"
+              />
+              
+              <FormKit
+                type="select"
+                label="Layout"
+                name="layout"
+                v-model="configModel.layout"
+                :options="[
+                  { label: 'Vertical (Label above value)', value: 'vertical' },
+                  { label: 'Horizontal (Label: Value)', value: 'horizontal' },
+                  { label: 'Grid (2 columns)', value: 'grid' }
+                ]"
+                help="How to display the information fields"
+              />
+              
+              <div class="grid grid-cols-2 gap-4">
+                <FormKit
+                  type="checkbox"
+                  label="Show Border"
+                  name="showBorder"
+                  v-model="configModel.showBorder"
+                  help="Show border around the information display"
+                />
+                
+                <FormKit
+                  type="color"
+                  label="Background Color"
+                  name="backgroundColor"
+                  v-model="configModel.backgroundColor"
+                  help="Background color"
+                />
+              </div>
+              
+              <!-- Information Fields Management -->
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="text-sm font-medium">Information Fields</label>
+                  <button 
+                    class="text-xs text-blue-600 hover:text-blue-700 flex items-center" 
+                    @click="addInfoField"
+                  >
+                    <Icon name="material-symbols:add-circle-outline" class="w-3.5 h-3.5 mr-0.5" />
+                    Add Field
+                  </button>
+                </div>
+                
+                <div class="border rounded bg-gray-50 divide-y max-h-64 overflow-y-auto">
+                  <div 
+                    v-for="(field, index) in configModel.fields" 
+                    :key="index"
+                    class="p-3"
+                  >
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                      <FormKit
+                        type="text"
+                        placeholder="Label (e.g., Customer Name)"
+                        v-model="field.label"
+                        :classes="{ outer: 'mb-0' }"
+                      />
+                      <FormKit
+                        type="text"
+                        placeholder="Key (e.g., customer_name)"
+                        v-model="field.key"
+                        :classes="{ outer: 'mb-0' }"
+                      />
+                    </div>
+                    <div class="flex items-center">
+                      <FormKit
+                        type="text"
+                        placeholder="Value (e.g., John Doe)"
+                        v-model="field.value"
+                        :classes="{ outer: 'mb-0 flex-1' }"
+                      />
+                      <button 
+                        class="ml-2 p-1 text-gray-400 hover:text-red-500 rounded" 
+                        @click="removeInfoField(index)"
+                        title="Remove field"
+                      >
+                        <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div v-if="!configModel.fields || configModel.fields.length === 0" class="p-3 text-center text-gray-500 text-xs">
+                    No information fields added yet
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
           
           <!-- Validation Tab -->
@@ -514,12 +603,16 @@ const showField = (fieldName) => {
       return ['select', 'radio', 'checkbox'].includes(componentType);
     case 'accept':
       return componentType === 'file';
-    case 'max':
-      return componentType === 'repeater';
     case 'id':
       return true; // Always show component ID in advanced tab
     case 'width':
       return true; // Always show width in basic tab
+    case 'title':
+      return componentType === 'info-display';
+    case 'layout':
+    case 'showBorder':
+    case 'fields':
+      return componentType === 'info-display';
     default:
       return false;
   }
@@ -540,6 +633,24 @@ const addOption = () => {
 // Remove an option from select/radio/checkbox
 const removeOption = (index) => {
   configModel.value.options.splice(index, 1);
+};
+
+// Add a new information field for info-display component
+const addInfoField = () => {
+  if (!configModel.value.fields) {
+    configModel.value.fields = [];
+  }
+  
+  configModel.value.fields.push({
+    label: `Field ${configModel.value.fields.length + 1}`,
+    value: 'Value',
+    key: `field_${configModel.value.fields.length + 1}`
+  });
+};
+
+// Remove an information field from info-display component
+const removeInfoField = (index) => {
+  configModel.value.fields.splice(index, 1);
 };
 
 // Inside the <script setup> section
@@ -564,13 +675,12 @@ const fieldsToShow = {
   
   // Advanced
   file: ['label', 'name', 'help', 'accept', 'width'],
-  repeater: ['label', 'name', 'help', 'max', 'width'],
-  group: ['label', 'name', 'help', 'width'],
   
   // Layout elements
   heading: ['value', 'level', 'width'],
   paragraph: ['value', 'width'],
-  divider: ['width']
+  divider: ['width'],
+  'info-display': ['title', 'layout', 'showBorder', 'backgroundColor', 'fields', 'width']
 };
 
 // Add these methods
@@ -585,7 +695,7 @@ const getComponentWidthPercent = () => {
 
 // Computed property to determine if validation tab should be shown
 const showValidationTab = computed(() => {
-  const nonValidationComponents = ['section', 'page', 'wizard', 'checkbox', 'repeater', 'group'];
+  const nonValidationComponents = ['heading', 'paragraph', 'divider', 'info-display'];
   return !nonValidationComponents.includes(props.component.type);
 });
 

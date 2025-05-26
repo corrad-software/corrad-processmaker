@@ -294,35 +294,26 @@ const availableComponents = [
       validation: ''
     }
   },
-  {
-    type: 'repeater',
-    name: 'Repeater',
-    category: 'Advanced',
-    icon: 'material-symbols:add-box-outline',
-    description: 'Repeatable group of fields',
-    defaultProps: {
-      type: 'repeater',
-      label: 'Repeater Section',
-      name: 'repeater',
-      help: 'Add multiple items',
-      max: 5
-    }
-  },
-  {
-    type: 'group',
-    name: 'Group',
-    category: 'Advanced',
-    icon: 'material-symbols:folder-outline',
-    description: 'Group of related fields',
-    defaultProps: {
-      type: 'group',
-      label: 'Field Group',
-      name: 'group',
-      help: 'Group of related fields'
-    }
-  },
   
   // Layout
+  {
+    type: 'info-display',
+    name: 'Info Display',
+    category: 'Layout',
+    icon: 'material-symbols:info-outline',
+    description: 'Display read-only information in key-value format',
+    defaultProps: {
+      title: 'Information',
+      fields: [
+        { label: 'Customer Name', value: 'John Doe', key: 'customer_name' },
+        { label: 'Email', value: 'john@example.com', key: 'customer_email' },
+        { label: 'Phone', value: '+1-234-567-8900', key: 'customer_phone' }
+      ],
+      layout: 'vertical', // vertical, horizontal, grid
+      showBorder: true,
+      backgroundColor: '#f9fafb'
+    }
+  },
   {
     type: 'heading',
     name: 'Heading',

@@ -1,5 +1,10 @@
 <template>
-  <div class="component-preview" :style="componentStyle">
+  <div 
+    class="component-preview form-field" 
+    :style="componentStyle"
+    :data-name="component.props.name"
+    :data-type="component.type"
+  >
     <!-- Basic Input Types (including radio and checkbox) -->
     <FormKit 
       v-if="isInputType"
@@ -26,28 +31,7 @@
       :class="{ 'canvas-component': isPreview }"
     />
     
-    <!-- Group Component -->
-    <div v-else-if="component.type === 'group'" class="py-2 border border-gray-200 p-3 rounded">
-      <div class="text-sm font-medium mb-2">{{ component.props.label || 'Group' }}</div>
-      <div class="text-xs text-gray-500">{{ component.props.help || 'A group can contain other form elements' }}</div>
-      <div class="mt-3 p-3 bg-gray-50 border border-dashed border-gray-300 rounded text-center text-xs text-gray-400">
-        Empty group - add components here in the final form
-      </div>
-    </div>
-    
-    <!-- Repeater Component -->
-    <div v-else-if="component.type === 'repeater'" class="py-2 border border-gray-200 p-3 rounded">
-      <div class="text-sm font-medium mb-2">{{ component.props.label || 'Repeater' }}</div>
-      <div class="text-xs text-gray-500">{{ component.props.help || 'A repeater allows adding multiple instances of fields' }}</div>
-      <div class="mt-3 p-3 bg-gray-50 border border-dashed border-gray-300 rounded text-center text-xs text-gray-400">
-        Empty repeater - add components here in the final form
-      </div>
-      <div class="mt-2 flex justify-end">
-        <button class="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded disabled:opacity-50" disabled>
-          Add Item
-        </button>
-      </div>
-    </div>
+
     
     <!-- Heading -->
     <div v-else-if="component.type === 'heading'" class="py-2">
@@ -69,6 +53,52 @@
       <p class="text-gray-600">{{ component.props.value || 'Paragraph text goes here' }}</p>
     </div>
     
+    <!-- Information Display -->
+    <div v-else-if="component.type === 'info-display'" class="py-2">
+      <div 
+        class="info-display-container rounded"
+        :style="{
+          backgroundColor: component.props.backgroundColor || '#f9fafb',
+          border: component.props.showBorder ? '1px solid #e5e7eb' : 'none'
+        }"
+      >
+        <!-- Title -->
+        <div v-if="component.props.title" class="p-3 border-b border-gray-200 bg-white">
+          <h4 class="text-base font-medium text-gray-800">{{ component.props.title }}</h4>
+        </div>
+        
+        <!-- Fields Display -->
+        <div class="p-4">
+          <div 
+            v-if="component.props.layout === 'grid'"
+            class="grid grid-cols-2 gap-4"
+          >
+            <div v-for="(field, index) in component.props.fields" :key="index" class="field-item">
+              <dt class="text-sm font-medium text-gray-600">{{ field.label }}</dt>
+              <dd class="text-sm text-gray-900 mt-1">{{ field.value }}</dd>
+            </div>
+          </div>
+          
+          <div 
+            v-else-if="component.props.layout === 'horizontal'"
+            class="space-y-2"
+          >
+            <div v-for="(field, index) in component.props.fields" :key="index" class="flex justify-between items-center">
+              <dt class="text-sm font-medium text-gray-600">{{ field.label }}:</dt>
+              <dd class="text-sm text-gray-900">{{ field.value }}</dd>
+            </div>
+          </div>
+          
+          <div v-else class="space-y-3">
+            <div v-for="(field, index) in component.props.fields" :key="index" class="field-item">
+              <dt class="text-sm font-medium text-gray-600">{{ field.label }}</dt>
+              <dd class="text-sm text-gray-900 mt-1">{{ field.value }}</dd>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Divider -->
     <div v-else-if="component.type === 'divider'" class="py-4">
       <hr class="border-gray-200" />

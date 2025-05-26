@@ -25,7 +25,11 @@ export default defineEventHandler(async (event) => {
         formDescription: body.formDescription || null,
         formComponents: body.components || [],
         formStatus: body.status || 'active',
-        formCreatedBy: body.createdBy || null // In a real app, this would come from the authenticated user
+        formCreatedBy: body.createdBy || null, // In a real app, this would come from the authenticated user
+        customScript: body.customScript || null,
+        customCSS: body.customCSS || null,
+        formEvents: body.formEvents || null,
+        scriptMode: body.scriptMode || 'safe'
       }
     });
     
