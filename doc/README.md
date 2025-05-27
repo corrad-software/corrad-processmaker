@@ -54,6 +54,24 @@ Last updated: December 2024
 
 ## Recent Updates
 
+### December 2024 - Major Process Builder Enhancements
+- **Enhanced Form Node Configuration**: Complete redesign of form task configuration with step-by-step workflow
+- **Input/Output Mappings**: Bidirectional data flow between process variables and form fields
+- **Field Conditions**: Dynamic field behavior based on process variables (readonly, hidden, required states)
+- **4-Point Connection System**: All nodes now have 4 connection points (top, bottom, left, right) to prevent edge overlaps
+- **Improved Visual Design**: Better handle styling with hover effects and connection state feedback
+- **Auto-Save Mechanism**: Reliable data persistence for form configurations and mappings
+- **Variable Integration**: Seamless integration with process variables for form pre-filling and data capture
+- **Conditional Logic**: Support for complex field conditions with multiple operators and actions
+- **Process Settings Management**: Comprehensive process configuration with 5 organized tabs:
+  - **Process Info**: Name, description, priority, category, ownership management
+  - **Execution Settings**: Process type, timeouts, parallel execution, error recovery
+  - **Variables & Data**: Data persistence policies, logging, encryption, retention controls
+  - **Permissions**: Role-based access control, execution permissions, approval workflows
+  - **JSON Export**: Complete configuration export with metadata for API integration
+- **Advanced Configuration Options**: Professional-grade settings comparable to enterprise BPM platforms
+- **Enhanced State Management**: Improved process store with settings persistence and history tracking
+
 ### December 2024 - Major Form Builder Enhancements
 - **JavaScript Execution Engine**: Added FormScriptEngine component for real-time calculations
 - **Dynamic Field Updates**: Implemented onFieldChange and onLoad event handlers

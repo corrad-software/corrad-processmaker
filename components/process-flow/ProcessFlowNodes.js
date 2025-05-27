@@ -3,20 +3,54 @@ import { Handle, Position } from '@vue-flow/core';
 
 // Custom node renderer
 const CustomNode = markRaw({
+  setup() {
+    return {
+      Position
+    };
+  },
   template: `
     <div 
       :class="['custom-node', 'node-' + type, selected ? 'selected' : '']"
       @click="onClick"
     >
+      <!-- Top handle -->
       <Handle
         v-if="type !== 'start'"
         type="target"
-        position="top"
-        :class="'handle-' + type + '-input'"
+        :position="Position.Top"
+        :class="'handle-' + type + '-input handle-top'"
+        :id="id + '-top'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
+      />
+      
+      <!-- Left handle -->
+      <Handle
+        v-if="type !== 'start'"
+        type="target"
+        :position="Position.Left"
+        :class="'handle-' + type + '-input handle-left'"
+        :id="id + '-left'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
+      />
+      
+      <!-- Right handle -->
+      <Handle
+        v-if="type !== 'end'"
+        type="source"
+        :position="Position.Right"
+        :class="'handle-' + type + '-output handle-right'"
+        :id="id + '-right'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
       />
       
       <div class="custom-node-content">
-        <template v-if="type === 'task' || type === 'form' || type === 'script'">
+        <template v-if="type === 'form' || type === 'script' || type === 'api' || type === 'business-rule' || type === 'notification'">
           <div class="flex items-center mb-1">
             <div class="custom-node-icon">
               <slot name="icon"></slot>
@@ -38,11 +72,16 @@ const CustomNode = markRaw({
         </template>
       </div>
 
+      <!-- Bottom handle -->
       <Handle
         v-if="type !== 'end'"
         type="source"
-        position="bottom"
-        :class="'handle-' + type + '-output'"
+        :position="Position.Bottom"
+        :class="'handle-' + type + '-output handle-bottom'"
+        :id="id + '-bottom'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
       />
     </div>
   `,
@@ -66,146 +105,115 @@ const CustomNode = markRaw({
   }
 });
 
-// Task node
-export const TaskNode = markRaw({
-  props: ['id', 'type', 'label', 'selected', 'data'],
-  computed: {
-    nodeLabel() {
-      // Get label from either prop or data, with fallback
-      return this.label || (this.data && this.data.label) || 'Task';
-    },
-    
-    // Helper method to get assignment display text
-    assignmentText() {
-      if (!this.data) return 'Unassigned';
-      
-      const { assignmentType, assignedUsers, assignedRoles, assigneeVariable } = this.data;
-      
-      if (assignmentType === 'user' && Array.isArray(assignedUsers) && assignedUsers.length > 0) {
-        return `${assignedUsers.length} User${assignedUsers.length > 1 ? 's' : ''}`;
-      }
-      
-      if (assignmentType === 'role' && Array.isArray(assignedRoles) && assignedRoles.length > 0) {
-        return `${assignedRoles.length} Role${assignedRoles.length > 1 ? 's' : ''}`;
-      }
-      
-      if (assignmentType === 'variable' && assigneeVariable) {
-        return `Variable: ${assigneeVariable}`;
-      }
-      
-      return 'Unassigned';
-    },
-    
-    // Helper to determine priority class
-    priorityClass() {
-      if (!this.data || !this.data.priority) return '';
-      
-      const priorityColors = {
-        low: 'text-green-500',
-        medium: 'text-blue-500',
-        high: 'text-orange-500',
-        urgent: 'text-red-500'
-      };
-      
-      return priorityColors[this.data.priority] || '';
-    },
-    
-    // Helper to get priority label
-    priorityLabel() {
-      if (!this.data || !this.data.priority) return 'None';
-      return this.data.priority.charAt(0).toUpperCase() + this.data.priority.slice(1);
-    },
-    
-    // Helper for due date
-    dueLabel() {
-      if (!this.data || !this.data.dueDateType || this.data.dueDateType === 'none') {
-        return 'Not set';
-      }
-      
-      if (this.data.dueDateType === 'fixed') {
-        return `${this.data.dueDateDays || 0} days`;
-      }
-      
-      return `Variable: ${this.data.dueDateVariable || 'none'}`;
-    }
-  },
-  render() {
-    return h(CustomNode, {
-      id: this.id,
-      type: 'task',
-      label: this.nodeLabel,
-      selected: this.selected,
-      data: this.data,
-      onClick: () => this.$emit('node-click', this.id)
-    }, {
-      icon: () => h('i', { class: 'material-icons text-blue-500' }, 'assignment'),
-      default: () => h('div', { class: 'node-details' }, [
-        h('p', { class: 'node-description' }, this.data?.description || 'A general task'),
-        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
-          h('span', { class: 'node-rule-detail-label' }, 'Assigned:'),
-          h('span', { class: 'node-rule-detail-value ml-1 font-medium text-blue-600' }, this.assignmentText)
-        ]),
-        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
-          h('span', { class: 'node-rule-detail-label' }, 'Priority:'),
-          h('span', { 
-            class: `node-rule-detail-value ml-1 font-medium ${this.priorityClass}` 
-          }, this.priorityLabel)
-        ]),
-        this.data?.dueDateType !== 'none' && this.data?.dueDateType ?
-          h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
-            h('span', { class: 'node-rule-detail-label' }, 'Due:'),
-            h('span', { class: 'node-rule-detail-value ml-1 font-medium text-blue-600' }, this.dueLabel)
-          ]) : null
-      ])
-    });
-  }
-});
+
 
 // Start node
 export const StartNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  setup() {
+    return {
+      Position
+    };
+  },
   computed: {
     nodeLabel() {
       // Get label from either prop or data, with fallback
       return this.label || (this.data && this.data.label) || 'Start';
     }
   },
-  render() {
-    return h(CustomNode, {
-      id: this.id,
-      type: 'start',
-      label: this.nodeLabel,
-      selected: this.selected,
-      data: this.data,
-      onClick: () => this.$emit('node-click', this.id)
-    }, {
-      icon: () => h('i', { class: 'material-icons text-green-600' }, 'play_arrow'),
-      default: () => null
-    });
+  template: `
+    <div 
+      :class="['custom-node', 'node-start', selected ? 'selected' : '']"
+      @click="$emit('node-click', id)"
+    >
+      <!-- Start node only has output handles -->
+      <!-- Right handle -->
+      <Handle
+        type="source"
+        :position="Position.Right"
+        class="handle-start-output handle-right"
+        :id="id + '-right'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
+      />
+      
+      <!-- Bottom handle -->
+      <Handle
+        type="source"
+        :position="Position.Bottom"
+        class="handle-start-output handle-bottom"
+        :id="id + '-bottom'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
+      />
+      
+      <div class="custom-node-content">
+        <div class="custom-node-icon">
+          <i class="material-icons text-green-600">play_arrow</i>
+        </div>
+        <div class="custom-node-title">{{ nodeLabel }}</div>
+      </div>
+    </div>
+  `,
+  components: {
+    Handle
   }
 });
 
 // End node
 export const EndNode = markRaw({
   props: ['id', 'type', 'label', 'selected', 'data'],
+  setup() {
+    return {
+      Position
+    };
+  },
   computed: {
     nodeLabel() {
       // Get label from either prop or data, with fallback
       return this.label || (this.data && this.data.label) || 'End';
     }
   },
-  render() {
-    return h(CustomNode, {
-      id: this.id,
-      type: 'end',
-      label: this.nodeLabel,
-      selected: this.selected,
-      data: this.data,
-      onClick: () => this.$emit('node-click', this.id)
-    }, {
-      icon: () => h('i', { class: 'material-icons text-red-600' }, 'stop'),
-      default: () => null
-    });
+  template: `
+    <div 
+      :class="['custom-node', 'node-end', selected ? 'selected' : '']"
+      @click="$emit('node-click', id)"
+    >
+      <!-- End node only has input handles -->
+      <!-- Top handle -->
+      <Handle
+        type="target"
+        :position="Position.Top"
+        class="handle-end-input handle-top"
+        :id="id + '-top'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
+      />
+      
+      <!-- Left handle -->
+      <Handle
+        type="target"
+        :position="Position.Left"
+        class="handle-end-input handle-left"
+        :id="id + '-left'"
+        :style="{ zIndex: 1000 }"
+        :isConnectable="true"
+        :isValidConnection="() => true"
+      />
+      
+      <div class="custom-node-content">
+        <div class="custom-node-icon">
+          <i class="material-icons text-red-600">stop</i>
+        </div>
+        <div class="custom-node-title">{{ nodeLabel }}</div>
+      </div>
+    </div>
+  `,
+  components: {
+    Handle
   }
 });
 
@@ -567,7 +575,6 @@ export const NotificationNode = markRaw({
 
 // Export the node types object to use with Vue Flow
 export const nodeTypes = markRaw({
-  task: TaskNode,
   start: StartNode,
   end: EndNode,
   gateway: GatewayNode,
@@ -593,8 +600,204 @@ export const nodeStyles = `
   box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
 }
 
+/* Handle positioning and styling */
+.handle-top {
+  top: -6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  border: 2px solid #666 !important;
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: crosshair;
+  z-index: 100 !important;
+  position: absolute !important;
+}
+
+.handle-bottom {
+  bottom: -6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  border: 2px solid #666 !important;
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: crosshair;
+  z-index: 100 !important;
+  position: absolute !important;
+}
+
+.handle-left {
+  left: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  border: 2px solid #666 !important;
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: crosshair;
+  z-index: 100 !important;
+  position: absolute !important;
+}
+
+.handle-right {
+  right: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  border: 2px solid #666 !important;
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: crosshair;
+  z-index: 100 !important;
+  position: absolute !important;
+}
+
+/* Show handles on hover and during connection */
+.custom-node:hover .handle-top,
+.custom-node:hover .handle-bottom,
+.custom-node:hover .handle-left,
+.custom-node:hover .handle-right,
+.vue-flow__node.connecting .handle-top,
+.vue-flow__node.connecting .handle-bottom,
+.vue-flow__node.connecting .handle-left,
+.vue-flow__node.connecting .handle-right {
+  opacity: 1;
+}
+
+/* Show all handles when any node is being connected */
+.vue-flow.connecting .handle-top,
+.vue-flow.connecting .handle-bottom,
+.vue-flow.connecting .handle-left,
+.vue-flow.connecting .handle-right {
+  opacity: 1 !important;
+}
+
+/* Active handle styles for connection mode */
+.vue-flow__handle.connecting,
+.vue-flow__handle.valid {
+  opacity: 1 !important;
+  transform: scale(1.3) !important;
+  border-width: 3px !important;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+}
+
+/* Ensure handles are clickable and properly sized */
+.vue-flow__handle {
+  pointer-events: all !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  position: absolute !important;
+}
+
+/* Force handle visibility during connection */
+.vue-flow.connecting .vue-flow__handle {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  z-index: 1000 !important;
+}
+
+/* Connection line styles */
+.vue-flow__connection-line {
+  stroke: #2563eb;
+  stroke-width: 3;
+  stroke-dasharray: 5,5;
+  z-index: 1000;
+}
+
+/* Target handle highlighting during connection */
+.vue-flow__handle.target:hover,
+.vue-flow__handle.valid {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  transform: scale(1.3) !important;
+}
+
+/* Handle hover effects */
+.handle-top:hover,
+.handle-bottom:hover,
+.handle-left:hover,
+.handle-right:hover {
+  transform: scale(1.1);
+  border-width: 3px;
+}
+
+.handle-top:hover {
+  transform: translateX(-50%) scale(1.1);
+}
+
+.handle-bottom:hover {
+  transform: translateX(-50%) scale(1.1);
+}
+
+.handle-left:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.handle-right:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* Source handles (output) */
+.handle-start-output,
+.handle-gateway-output,
+.handle-form-output,
+.handle-script-output,
+.handle-api-output,
+.handle-business-rule-output,
+.handle-notification-output {
+  border-color: #4CAF50;
+  background: #e8f5e9;
+}
+
+.handle-start-output:hover,
+.handle-gateway-output:hover,
+.handle-form-output:hover,
+.handle-script-output:hover,
+.handle-api-output:hover,
+.handle-business-rule-output:hover,
+.handle-notification-output:hover {
+  background: #4CAF50;
+  border-color: #2E7D32;
+}
+
+/* Target handles (input) */
+.handle-end-input,
+.handle-gateway-input,
+.handle-form-input,
+.handle-script-input,
+.handle-api-input,
+.handle-business-rule-input,
+.handle-notification-input {
+  border-color: #2196F3;
+  background: #e3f2fd;
+}
+
+.handle-end-input:hover,
+.handle-gateway-input:hover,
+.handle-form-input:hover,
+.handle-script-input:hover,
+.handle-api-input:hover,
+.handle-business-rule-input:hover,
+.handle-notification-input:hover {
+  background: #2196F3;
+  border-color: #1565C0;
+}
+
 /* Base styles for different node types */
-.node-task, .node-form, .node-script, .node-api {
+.node-form, .node-script, .node-api, .node-business-rule, .node-notification {
   width: 180px;
   background: white;
   border-radius: 4px;
@@ -689,10 +892,11 @@ export const nodeStyles = `
   font-size: 14px;
 }
 
-.node-task .custom-node-title,
 .node-form .custom-node-title,
 .node-script .custom-node-title,
-.node-api .custom-node-title {
+.node-api .custom-node-title,
+.node-business-rule .custom-node-title,
+.node-notification .custom-node-title {
   font-weight: 500;
   font-size: 11px;
   display: flex;
@@ -808,57 +1012,66 @@ export const nodeStyles = `
   margin-top: 4px;
 }
 
-.handle-task-input,
-.handle-form-input,
-.handle-script-input,
-.handle-api-input,
-.handle-gateway-input {
-  top: -5px !important;
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-}
 
-.handle-task-output,
-.handle-form-output,
-.handle-script-output,
-.handle-api-output,
-.handle-gateway-output {
-  bottom: -5px !important;
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-}
-
-.handle-start-output {
-  bottom: -5px !important;
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-}
-
-.handle-end-input {
-  top: -5px !important;
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-}
 
 /* Position handles correctly for gateway node */
-.handle-gateway-input {
-  transform: translateY(-42px) !important;
-  background-color: #f97316 !important;
-  border: 2px solid white !important;
-  width: 12px !important;
-  height: 12px !important;
+.node-gateway .handle-top {
+  top: -6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) rotate(-45deg) !important;
+  border-color: #f97316 !important;
+  background: #fff !important;
 }
 
-.handle-gateway-output {
-  transform: translateY(42px) !important;
-  background-color: #f97316 !important;
-  border: 2px solid white !important;
-  width: 12px !important;
-  height: 12px !important;
+.node-gateway .handle-bottom {
+  bottom: -6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) rotate(-45deg) !important;
+  border-color: #f97316 !important;
+  background: #fff !important;
+}
+
+.node-gateway .handle-left {
+  left: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) rotate(-45deg) !important;
+  border-color: #f97316 !important;
+  background: #fff !important;
+}
+
+.node-gateway .handle-right {
+  right: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) rotate(-45deg) !important;
+  border-color: #f97316 !important;
+  background: #fff !important;
+}
+
+.node-gateway:hover .handle-top,
+.node-gateway:hover .handle-bottom,
+.node-gateway:hover .handle-left,
+.node-gateway:hover .handle-right {
+  opacity: 1 !important;
+}
+
+.node-gateway .handle-top:hover {
+  transform: translateX(-50%) rotate(-45deg) scale(1.1) !important;
+  background: #f97316 !important;
+}
+
+.node-gateway .handle-bottom:hover {
+  transform: translateX(-50%) rotate(-45deg) scale(1.1) !important;
+  background: #f97316 !important;
+}
+
+.node-gateway .handle-left:hover {
+  transform: translateY(-50%) rotate(-45deg) scale(1.1) !important;
+  background: #f97316 !important;
+}
+
+.node-gateway .handle-right:hover {
+  transform: translateY(-50%) rotate(-45deg) scale(1.1) !important;
+  background: #f97316 !important;
 }
 
 /* Badge style */

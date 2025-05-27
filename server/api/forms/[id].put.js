@@ -35,6 +35,23 @@ export default defineEventHandler(async (event) => {
       updateData.formStatus = body.status;
     }
     
+    // Add the missing custom script and styling fields
+    if (body.customScript !== undefined) {
+      updateData.customScript = body.customScript;
+    }
+    
+    if (body.customCSS !== undefined) {
+      updateData.customCSS = body.customCSS;
+    }
+    
+    if (body.formEvents !== undefined) {
+      updateData.formEvents = body.formEvents;
+    }
+    
+    if (body.scriptMode !== undefined) {
+      updateData.scriptMode = body.scriptMode;
+    }
+    
     // Try to update by UUID first
     let form;
     try {

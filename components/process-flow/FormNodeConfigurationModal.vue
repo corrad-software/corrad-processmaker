@@ -26,6 +26,7 @@
 
       <!-- Main configuration area -->
       <FormNodeConfiguration 
+        ref="formNodeConfigRef"
         :nodeData="localNodeData" 
         :availableVariables="availableVariables"
         @update="handleUpdate"
@@ -75,6 +76,7 @@ const emit = defineEmits(['update:modelValue', 'update']);
 
 const showModal = ref(props.modelValue);
 const localNodeData = ref({ ...props.nodeData });
+const formNodeConfigRef = ref(null);
 
 // Watch for changes to modelValue prop to sync modal visibility
 watch(() => props.modelValue, (value) => {
@@ -88,14 +90,33 @@ watch(() => showModal.value, (value) => {
 
 // Watch for changes to nodeData prop
 watch(() => props.nodeData, (value) => {
-  localNodeData.value = { ...value };
+  // Create deep copy to prevent reactivity issues
+  localNodeData.value = {
+    ...value,
+    inputMappings: Array.isArray(value.inputMappings) 
+      ? value.inputMappings.map(mapping => ({ ...mapping }))
+      : [],
+    outputMappings: Array.isArray(value.outputMappings) 
+      ? value.outputMappings.map(mapping => ({ ...mapping }))
+      : [],
+    fieldConditions: Array.isArray(value.fieldConditions) 
+      ? value.fieldConditions.map(condition => ({ ...condition }))
+      : []
+  };
 }, { deep: true });
 
 function handleUpdate(updatedData) {
   localNodeData.value = { ...updatedData };
+  // Store the changes but don't emit until explicit save
 }
 
 function saveAndClose() {
+  // Explicitly save all changes including field conditions
+  if (formNodeConfigRef.value && formNodeConfigRef.value.saveAllChanges) {
+    formNodeConfigRef.value.saveAllChanges();
+  }
+  
+  // Also emit the current data to ensure all changes are saved
   emit('update', localNodeData.value);
   showModal.value = false;
 }

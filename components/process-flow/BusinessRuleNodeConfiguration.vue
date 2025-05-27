@@ -172,7 +172,7 @@
                         <select
                           v-model="condition.variable"
                           class="form-select"
-                          @change="saveChanges"
+                          @change="updateConditionVariable(groupIndex, condIndex)"
                         >
                           <option value="" disabled>Select variable</option>
                           <option
@@ -183,6 +183,21 @@
                             {{ variable.label }}
                           </option>
                         </select>
+                        <div v-if="condition.variable" class="mt-1">
+                          <span 
+                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                            :class="{
+                              'bg-purple-100 text-purple-800': ['int', 'decimal'].includes(availableVariables.find(v => v.name === condition.variable)?.type),
+                              'bg-blue-100 text-blue-800': availableVariables.find(v => v.name === condition.variable)?.type === 'string',
+                              'bg-indigo-100 text-indigo-800': availableVariables.find(v => v.name === condition.variable)?.type === 'boolean',
+                              'bg-amber-100 text-amber-800': ['date', 'datetime'].includes(availableVariables.find(v => v.name === condition.variable)?.type),
+                              'bg-emerald-100 text-emerald-800': availableVariables.find(v => v.name === condition.variable)?.type === 'object',
+                              'bg-gray-100 text-gray-800': !['int', 'decimal', 'string', 'boolean', 'date', 'datetime', 'object'].includes(availableVariables.find(v => v.name === condition.variable)?.type)
+                            }"
+                          >
+                            {{ availableVariables.find(v => v.name === condition.variable)?.type }} type
+                          </span>
+                        </div>
                       </td>
                       <td class="px-3 py-2">
                         <select
@@ -206,7 +221,80 @@
                         <template v-if="getInputType(
                           availableVariables.find(v => v.name === condition.variable)?.type,
                           condition.operator
-                        ) !== 'none'">
+                        ) === 'none'">
+                          <div class="flex items-center text-gray-400 text-sm italic">
+                            <Icon name="material-symbols:info" class="w-4 h-4 mr-1" />
+                            No value required
+                          </div>
+                        </template>
+                        
+                        <!-- Range inputs for between operators -->
+                        <template v-else-if="getInputType(
+                          availableVariables.find(v => v.name === condition.variable)?.type,
+                          condition.operator
+                        ) === 'range'">
+                          <div class="space-y-1">
+                            <div class="grid grid-cols-2 gap-1">
+                              <input
+                                v-model="condition.minValue"
+                                :type="availableVariables.find(v => v.name === condition.variable)?.type === 'date' ? 'date' : 
+                                       availableVariables.find(v => v.name === condition.variable)?.type === 'datetime' ? 'datetime-local' : 'number'"
+                                class="form-control text-xs"
+                                placeholder="Min"
+                                @blur="saveChanges"
+                              />
+                              <input
+                                v-model="condition.maxValue"
+                                :type="availableVariables.find(v => v.name === condition.variable)?.type === 'date' ? 'date' : 
+                                       availableVariables.find(v => v.name === condition.variable)?.type === 'datetime' ? 'datetime-local' : 'number'"
+                                class="form-control text-xs"
+                                placeholder="Max"
+                                @blur="saveChanges"
+                              />
+                            </div>
+                            <p class="text-xs text-gray-500">Range values</p>
+                          </div>
+                        </template>
+                        
+                        <!-- Weekday selector -->
+                        <template v-else-if="getInputType(
+                          availableVariables.find(v => v.name === condition.variable)?.type,
+                          condition.operator
+                        ) === 'weekday'">
+                          <select v-model="condition.value" class="form-select" @change="saveChanges">
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                            <option value="7">Sunday</option>
+                          </select>
+                        </template>
+                        
+                        <!-- Month selector -->
+                        <template v-else-if="getInputType(
+                          availableVariables.find(v => v.name === condition.variable)?.type,
+                          condition.operator
+                        ) === 'month'">
+                          <select v-model="condition.value" class="form-select" @change="saveChanges">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                          </select>
+                        </template>
+                        
+                        <!-- Regular input -->
+                        <template v-else>
                           <input
                             v-model="condition.value"
                             :type="getInputType(
@@ -214,11 +302,11 @@
                               condition.operator
                             )"
                             class="form-control"
-                            :placeholder="condition.operator?.includes('n_days') ? 'Number of days' : 'Value'"
+                            :placeholder="getValuePlaceholder(condition)"
+                            :step="availableVariables.find(v => v.name === condition.variable)?.type === 'decimal' ? '0.01' : undefined"
                             @blur="saveChanges"
                           />
                         </template>
-                        <span v-else class="text-gray-400 text-sm italic">N/A</span>
                       </td>
                       <td class="px-3 py-2 text-center">
                         <button 
@@ -588,16 +676,23 @@ const updateActionType = (groupIndex, actionIndex) => {
 // Get operators based on variable type
 const getOperatorsForType = (type) => {
   switch (type?.toLowerCase()) {
-    case 'number':
     case 'int':
     case 'decimal':
+    case 'number':
       return [
         { value: 'eq', label: '= (Equal to)' },
         { value: 'neq', label: '≠ (Not equal to)' },
         { value: 'gt', label: '> (Greater than)' },
-        { value: 'gte', label: '≥ (Greater than or equal)' },
+        { value: 'gte', label: '≥ (Greater than or equal to)' },
         { value: 'lt', label: '< (Less than)' },
-        { value: 'lte', label: '≤ (Less than or equal)' }
+        { value: 'lte', label: '≤ (Less than or equal to)' },
+        { value: 'between', label: 'Between (inclusive)' },
+        { value: 'not_between', label: 'Not between' },
+        { value: 'is_even', label: 'Is even number' },
+        { value: 'is_odd', label: 'Is odd number' },
+        { value: 'is_positive', label: 'Is positive' },
+        { value: 'is_negative', label: 'Is negative' },
+        { value: 'is_zero', label: 'Is zero' }
       ];
     case 'string':
       return [
@@ -608,10 +703,20 @@ const getOperatorsForType = (type) => {
         { value: 'starts_with', label: 'Starts with' },
         { value: 'ends_with', label: 'Ends with' },
         { value: 'is_empty', label: 'Is empty' },
-        { value: 'is_not_empty', label: 'Is not empty' }
+        { value: 'is_not_empty', label: 'Is not empty' },
+        { value: 'regex', label: 'Matches pattern (regex)' },
+        { value: 'length_eq', label: 'Length equals' },
+        { value: 'length_gt', label: 'Length greater than' },
+        { value: 'length_lt', label: 'Length less than' }
       ];
-    case 'datetime':
+    case 'boolean':
+      return [
+        { value: 'eq', label: '= (Equal to)' },
+        { value: 'is_true', label: 'Is True' },
+        { value: 'is_false', label: 'Is False' }
+      ];
     case 'date':
+    case 'datetime':
       return [
         { value: 'eq', label: '= (Equal to)' },
         { value: 'neq', label: '≠ (Not equal to)' },
@@ -619,25 +724,30 @@ const getOperatorsForType = (type) => {
         { value: 'gte', label: '≥ (On or after)' },
         { value: 'lt', label: '< (Before)' },
         { value: 'lte', label: '≤ (On or before)' },
+        { value: 'between', label: 'Between dates' },
         { value: 'is_today', label: 'Is today' },
+        { value: 'is_yesterday', label: 'Is yesterday' },
+        { value: 'is_tomorrow', label: 'Is tomorrow' },
+        { value: 'is_this_week', label: 'Is this week' },
+        { value: 'is_this_month', label: 'Is this month' },
+        { value: 'is_this_year', label: 'Is this year' },
         { value: 'is_future', label: 'Is in the future' },
         { value: 'is_past', label: 'Is in the past' },
         { value: 'last_n_days', label: 'In the last N days' },
-        { value: 'next_n_days', label: 'In the next N days' }
-      ];
-    case 'boolean':
-      return [
-        { value: 'is_true', label: 'Is true' },
-        { value: 'is_false', label: 'Is false' }
+        { value: 'next_n_days', label: 'In the next N days' },
+        { value: 'weekday_eq', label: 'Day of week equals' },
+        { value: 'month_eq', label: 'Month equals' }
       ];
     case 'object':
       return [
         { value: 'eq', label: '= (Equal to)' },
         { value: 'neq', label: '≠ (Not equal to)' },
-        { value: 'contains_key', label: 'Contains key' },
-        { value: 'not_contains_key', label: 'Does not contain key' },
-        { value: 'is_empty', label: 'Is empty' },
-        { value: 'is_not_empty', label: 'Is not empty' }
+        { value: 'has_property', label: 'Has property' },
+        { value: 'property_equals', label: 'Property equals' },
+        { value: 'property_contains', label: 'Property contains' },
+        { value: 'is_empty', label: 'Is empty/null' },
+        { value: 'is_not_empty', label: 'Is not empty/null' },
+        { value: 'property_count', label: 'Property count equals' }
       ];
     default:
       return [
@@ -654,17 +764,36 @@ const getInputType = (varType, operator) => {
   // Special operators that don't need value input
   const noValueOperators = [
     'is_empty', 'is_not_empty', 'is_true', 'is_false',
-    'is_today', 'is_future', 'is_past'
+    'is_today', 'is_yesterday', 'is_tomorrow', 'is_this_week', 'is_this_month', 'is_this_year',
+    'is_future', 'is_past', 'is_even', 'is_odd', 'is_positive', 'is_negative', 'is_zero'
   ];
   
   if (noValueOperators.includes(operator)) {
     return 'none';
   }
 
+  // Special operators that need specific input types
+  if (operator === 'between' || operator === 'not_between') {
+    return 'range';
+  }
+
+  // Operators that need number input regardless of base type
+  if (['last_n_days', 'next_n_days', 'length_eq', 'length_gt', 'length_lt', 'property_count'].includes(operator)) {
+    return 'number';
+  }
+
+  // Day/month selection
+  if (operator === 'weekday_eq') {
+    return 'weekday';
+  }
+  if (operator === 'month_eq') {
+    return 'month';
+  }
+
   switch (varType?.toLowerCase()) {
-    case 'number':
     case 'int':
     case 'decimal':
+    case 'number':
       return 'number';
     case 'datetime':
       return 'datetime-local';
@@ -740,14 +869,107 @@ const parseValue = (value, type) => {
   }
 };
 
+// Get placeholder text based on variable type and operator
+const getValuePlaceholder = (condition) => {
+  const varType = availableVariables.value.find(v => v.name === condition.variable)?.type?.toLowerCase();
+  const operator = condition.operator;
+  
+  // Handle operators that don't need values
+  if (getInputType(varType, operator) === 'none') {
+    return 'No value needed';
+  }
+  
+  // Handle special operators
+  if (operator === 'between' || operator === 'not_between') {
+    if (varType === 'int' || varType === 'decimal' || varType === 'number') {
+      return 'Enter range: min,max (e.g., 10,50)';
+    }
+    if (varType === 'date' || varType === 'datetime') {
+      return 'Enter date range: start,end';
+    }
+  }
+  
+  if (operator === 'last_n_days' || operator === 'next_n_days') {
+    return 'Enter number of days (e.g., 7)';
+  }
+  
+  if (operator === 'length_eq' || operator === 'length_gt' || operator === 'length_lt') {
+    return 'Enter length value (e.g., 5)';
+  }
+  
+  if (operator === 'property_count') {
+    return 'Enter expected count (e.g., 3)';
+  }
+  
+  if (operator === 'has_property' || operator === 'property_equals' || operator === 'property_contains') {
+    return 'Enter property path (e.g., user.email)';
+  }
+  
+  if (operator === 'regex') {
+    return 'Enter regex pattern (e.g., ^[A-Z]+$)';
+  }
+  
+  // Type-specific placeholders
+  switch (varType) {
+    case 'int':
+      return 'Enter a whole number (e.g., 42)';
+    case 'decimal':
+    case 'number':
+      return 'Enter a number (e.g., 3.14)';
+    case 'date':
+      return 'Select a date';
+    case 'datetime':
+      return 'Select date and time';
+    case 'string':
+      return operator === 'contains' || operator === 'not_contains' 
+        ? 'Enter text to search for' 
+        : 'Enter text value';
+    case 'boolean':
+      return 'true or false';
+    case 'object':
+      return 'Enter JSON object or property path';
+    default:
+      return 'Enter value';
+  }
+};
+
 // Add new methods for handling condition updates
 const updateConditionOperator = (groupIndex, condIndex) => {
   const condition = localNodeData.value.ruleGroups[groupIndex].conditions[condIndex];
   const varType = availableVariables.value.find(v => v.name === condition.variable)?.type;
   
-  // Reset value if operator doesn't need it
+  // Reset values when operator changes
   if (getInputType(varType, condition.operator) === 'none') {
     condition.value = null;
+    condition.minValue = null;
+    condition.maxValue = null;
+  } else if (getInputType(varType, condition.operator) === 'range') {
+    condition.value = null;
+    condition.minValue = condition.minValue || '';
+    condition.maxValue = condition.maxValue || '';
+  } else {
+    condition.minValue = null;
+    condition.maxValue = null;
+    condition.value = condition.value || '';
+  }
+  
+  saveChanges();
+};
+
+// Update condition variable
+const updateConditionVariable = (groupIndex, condIndex) => {
+  const condition = localNodeData.value.ruleGroups[groupIndex].conditions[condIndex];
+  const selectedVar = availableVariables.value.find(v => v.name === condition.variable);
+  
+  if (selectedVar) {
+    // Reset operator to a valid one for this type
+    const operators = getOperatorsForType(selectedVar.type);
+    condition.operator = operators.length > 0 ? operators[0].value : 'eq';
+    
+    // Reset values
+    condition.value = '';
+    condition.minValue = '';
+    condition.maxValue = '';
   }
   
   saveChanges();

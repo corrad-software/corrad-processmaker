@@ -8,9 +8,9 @@
             <Icon name="material-symbols:data-object" class="text-2xl" />
           </div>
           <div>
-            <h3 class="text-lg font-medium text-gray-900">Process Variables</h3>
+            <h3 class="text-lg font-medium text-gray-900">Variables</h3>
             <p class="mt-1 text-sm text-gray-500">
-              Define and manage global variables to store and pass data within your process
+              Define and manage variables to store and pass data within your process
             </p>
           </div>
         </div>
@@ -75,44 +75,89 @@
       </div>
 
       <!-- Variable List -->
-      <div v-else-if="filteredVariables.length" class="space-y-3">
+      <div v-else-if="filteredVariables.length" class="space-y-4">
         <div
           v-for="variable in filteredVariables"
           :key="variable.name"
-          class="variable-item"
+          class="variable-item group"
         >
           <div
-            class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200"
+            class="bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 overflow-hidden"
           >
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-900">{{ variable.name }}</span>
-                <RsBadge :variant="getTypeColor(variable.type)" size="sm">
-                  {{ variable.type }}
-                </RsBadge>
+            <!-- Header with Name and Actions -->
+            <div class="flex items-center justify-between p-5 pb-3">
+              <div class="flex items-center gap-3 flex-1 min-w-0">
+                <!-- Variable Icon -->
+                <div class="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Icon 
+                    :name="getVariableIcon(variable.type)" 
+                    class="w-5 h-5 text-blue-600" 
+                  />
+                </div>
+                
+                <!-- Variable Name -->
+                <div class="flex-1 min-w-0">
+                  <h4 class="text-lg font-semibold text-gray-900 truncate">
+                    {{ variable.name }}
+                  </h4>
+                  <div class="flex items-center gap-2 mt-1">
+                    <RsBadge :variant="getTypeColor(variable.type)" size="sm" class="font-medium">
+                      {{ variable.type }}
+                    </RsBadge>
+                  </div>
+                </div>
               </div>
-              <p v-if="variable.description" class="mt-1 text-sm text-gray-500">
-                {{ variable.description }}
-              </p>
-              <div v-if="variable.value !== undefined" class="mt-2 text-xs font-mono bg-gray-50 p-2 rounded border border-gray-200 max-w-md truncate">
-                {{ formatValue(variable.value, variable.type) }}
+              
+              <!-- Action Buttons -->
+              <div class="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                <button
+                  @click="editVariable(variable)"
+                  class="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Edit variable"
+                >
+                  <Icon name="material-symbols:edit" class="w-4 h-4" />
+                </button>
+                <button
+                  @click="deleteVariable(variable)"
+                  class="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete variable"
+                >
+                  <Icon name="material-symbols:delete" class="w-4 h-4" />
+                </button>
               </div>
             </div>
-            <div class="flex items-center gap-2 ml-4">
-              <button
-                @click="editVariable(variable)"
-                class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
-                title="Edit variable"
-              >
-                <Icon name="material-symbols:edit" class="w-4 h-4" />
-              </button>
-              <button
-                @click="deleteVariable(variable)"
-                class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                title="Delete variable"
-              >
-                <Icon name="material-symbols:delete" class="w-4 h-4" />
-              </button>
+            
+            <!-- Description -->
+            <div v-if="variable.description" class="px-5 pb-3">
+              <p class="text-sm text-gray-600 leading-relaxed">
+                {{ variable.description }}
+              </p>
+            </div>
+            
+            <!-- Current Value (if set) -->
+            <div v-if="variable.value !== undefined && variable.value !== ''" class="px-5 pb-4">
+              <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                <div class="flex items-center gap-2 mb-2">
+                  <Icon name="material-symbols:code" class="w-4 h-4 text-gray-500" />
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Current Value</span>
+                </div>
+                <div class="font-mono text-sm text-gray-800 break-all">
+                  {{ formatValue(variable.value, variable.type) }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Default Value (if no current value but has default) -->
+            <div v-else-if="variable.defaultValue !== undefined && variable.defaultValue !== ''" class="px-5 pb-4">
+              <div class="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                <div class="flex items-center gap-2 mb-2">
+                  <Icon name="material-symbols:settings" class="w-4 h-4 text-amber-600" />
+                  <span class="text-xs font-medium text-amber-600 uppercase tracking-wide">Default Value</span>
+                </div>
+                <div class="font-mono text-sm text-amber-800 break-all">
+                  {{ formatValue(variable.defaultValue, variable.type) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -239,8 +284,9 @@ const variableTypes = [
 
 // Computed
 const variables = computed(() => {
-  // Only return global variables
-  return variableStore.getAllVariables.global;
+  // Return all variables (treating everything as global)
+  const allVars = variableStore.getAllVariables;
+  return [...allVars.global, ...allVars.process];
 });
 
 // Filtered variables based on search query
@@ -298,7 +344,7 @@ const saveVariable = async (formData) => {
       variableStore.updateVariable(
         editingVariable.value.name,
         newVariable,
-        "global"
+        'global'
       );
     } else {
       // Add new variable
@@ -316,14 +362,14 @@ const saveVariable = async (formData) => {
 // Get badge color based on variable type
 const getTypeColor = (type) => {
   switch (type) {
-    case 'string': return 'blue';
+    case 'string': return 'info';
     case 'int': 
-    case 'decimal': return 'purple';
-    case 'object': return 'emerald';
+    case 'decimal': return 'primary';
+    case 'object': return 'success';
     case 'datetime':
-    case 'date': return 'amber';
-    case 'boolean': return 'indigo';
-    default: return 'gray';
+    case 'date': return 'warning';
+    case 'boolean': return 'secondary';
+    default: return 'secondary';
   }
 };
 
@@ -342,6 +388,27 @@ const formatValue = (value, type) => {
       return value ? 'true' : 'false';
     default:
       return String(value);
+  }
+};
+
+// Get icon based on variable type
+const getVariableIcon = (type) => {
+  switch (type) {
+    case 'string':
+      return 'material-symbols:text-fields';
+    case 'int':
+    case 'decimal':
+      return 'material-symbols:pin';
+    case 'boolean':
+      return 'material-symbols:toggle-on';
+    case 'date':
+      return 'material-symbols:calendar-today';
+    case 'datetime':
+      return 'material-symbols:schedule';
+    case 'object':
+      return 'material-symbols:data-object';
+    default:
+      return 'material-symbols:data-object';
   }
 };
 </script>

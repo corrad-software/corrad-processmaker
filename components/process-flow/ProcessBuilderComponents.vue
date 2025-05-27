@@ -34,6 +34,8 @@
         </div>
       </div>
     </div>
+
+
   </div>
 </template>
 
@@ -70,20 +72,7 @@ const availableComponents = [
       }
     }
   },
-  {
-    type: 'task',
-    name: 'Task',
-    category: 'Core',
-    icon: 'material-symbols:assignment-outline',
-    description: 'Manual or automated task',
-    defaultProps: {
-      label: 'Task',
-      data: {
-        description: 'A general task',
-        assignee: ''
-      }
-    }
-  },
+
   {
     type: 'form',
     name: 'Form Task',
@@ -166,26 +155,10 @@ const availableComponents = [
       }
     }
   },
-  // Advanced components
-  {
-    type: 'script',
-    name: 'Script Task',
-    category: 'Advanced',
-    icon: 'material-symbols:code',
-    description: 'Execute custom code',
-    defaultProps: {
-      label: 'Script',
-      data: {
-        description: 'Script execution',
-        language: 'JavaScript',
-        script: ''
-      }
-    }
-  },
   {
     type: 'business-rule',
     name: 'Business Rule',
-    category: 'Advanced',
+    category: 'Core',
     icon: 'material-symbols:rule',
     description: 'Apply business rules to data',
     defaultProps: {

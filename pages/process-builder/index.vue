@@ -14,10 +14,12 @@ import VariableManager from '~/components/process-flow/VariableManager.vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import FormNodeConfiguration from '~/components/process-flow/FormNodeConfiguration.vue';
 import FormNodeConfigurationModal from '~/components/process-flow/FormNodeConfigurationModal.vue';
-import TaskNodeConfiguration from '~/components/process-flow/TaskNodeConfiguration.vue';
+
 import BusinessRuleNodeConfiguration from '~/components/process-flow/BusinessRuleNodeConfiguration.vue';
 import BusinessRuleNodeConfigurationModal from '~/components/process-flow/BusinessRuleNodeConfigurationModal.vue';
 import NotificationNodeConfigurationModal from '~/components/process-flow/NotificationNodeConfigurationModal.vue';
+import ProcessTemplatesModal from '~/components/ProcessTemplatesModal.vue';
+import ProcessSettingsModal from '~/components/process-flow/ProcessSettingsModal.vue';
 
 // Define page meta
 definePageMeta({
@@ -66,6 +68,9 @@ const showApiConfigModal = ref(false);
 const showGatewayConfigModal = ref(false);
 const showBusinessRuleConfigModal = ref(false);
 const showNotificationConfigModal = ref(false);
+const showTemplatesModal = ref(false);
+const showProcessSettings = ref(false);
+const showDropdown = ref(false);
 
 // Component definitions
 const components = [
@@ -75,13 +80,6 @@ const components = [
     icon: 'play_circle_filled',
     iconColor: 'text-green-500',
     data: { description: 'Process starts here' }
-  },
-  {
-    type: 'task',
-    label: 'Task',
-    icon: 'assignment',
-    iconColor: 'text-blue-500',
-    data: { description: 'Task node', assignee: '' }
   },
   {
     type: 'form',
@@ -494,11 +492,22 @@ onMounted(() => {
   
   // Add the beforeunload event listener
   window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  // Add click outside listener for dropdown
+  document.addEventListener('click', handleClickOutside);
 });
+
+// Handle click outside dropdown
+const handleClickOutside = (event) => {
+  if (!event.target.closest('.dropdown')) {
+    showDropdown.value = false;
+  }
+};
 
 onUnmounted(() => {
   // Remove event listeners
   window.removeEventListener('beforeunload', handleBeforeUnload);
+  document.removeEventListener('click', handleClickOutside);
 });
 
 // Show warning if there are unsaved changes
@@ -625,6 +634,111 @@ const onAddComponent = (component) => {
   onNodeSelected(newNode);
 };
 
+// Handle template application
+const applyProcessTemplate = async (template) => {
+  try {
+    console.log('Applying process template:', template.name);
+    console.log('Template nodes:', template.nodes ? template.nodes.length : 0);
+    console.log('Template edges:', template.edges ? template.edges.length : 0);
+    
+    // Create a new process if one doesn't exist
+    if (!processStore.currentProcess) {
+      console.log('No current process, creating new one...');
+      processStore.createProcess(template.name, template.description || 'Process created from template');
+    } else {
+      // Confirm if there's already content in the existing process
+      if (processStore.currentProcess.nodes.length > 0 || processStore.currentProcess.edges.length > 0) {
+        if (!confirm("This will replace your current process content. Continue?")) {
+          return;
+        }
+      }
+      
+      // Update process name if user allows
+      if (processStore.currentProcess.name === 'New Process' || confirm("Update the process name to match the template?")) {
+        processStore.currentProcess.name = template.name;
+        processStore.currentProcess.description = template.description;
+      }
+    }
+
+    // Clear current process nodes and edges
+    if (processStore.currentProcess) {
+      console.log('Clearing existing nodes and edges...');
+      processStore.currentProcess.nodes = [];
+      processStore.currentProcess.edges = [];
+    }
+
+    // Add nodes and edges together - let the canvas watchers handle the sequencing
+    const templateNodes = template.nodes || [];
+    const templateEdges = template.edges || [];
+    
+    console.log('Adding template nodes:', templateNodes.length);
+    console.log('Adding template edges:', templateEdges.length);
+    
+    // Process nodes first
+    templateNodes.forEach((node) => {
+      const newNode = {
+        ...node,
+        id: node.id, // Keep original ID for edge references
+        label: node.data?.label || node.label || `${node.type} node`, // Set label at root level
+        position: node.position || { x: 100, y: 100 },
+        data: {
+          ...node.data,
+          label: node.data?.label || node.label || `${node.type} node`
+        }
+      };
+      
+      processStore.addNode(newNode);
+    });
+    
+    // Process edges after nodes
+    templateEdges.forEach((edge) => {
+      const newEdge = {
+        ...edge,
+        id: edge.id, // Keep original ID
+        type: edge.type || 'smoothstep',
+        animated: edge.animated !== undefined ? edge.animated : true
+      };
+      
+      processStore.addEdge(newEdge);
+    });
+    
+    // Add template variables to the variable store
+    if (template.variables && template.variables.length > 0) {
+      console.log('Adding template variables:', template.variables.length);
+      
+      // Clear existing process variables first
+      variableStore.clearAllProcessVariables();
+      
+      template.variables.forEach((variable) => {
+        console.log(`Adding variable: ${variable.name} (${variable.type}) with scope: ${variable.scope}`);
+        variableStore.addVariable({
+          ...variable,
+          id: crypto.randomUUID() // Generate unique ID for the variable
+        });
+      });
+    }
+
+    console.log('Template application completed - nodes:', processStore.currentProcess.nodes.length, 'edges:', processStore.currentProcess.edges.length);
+
+    // Mark the process as having unsaved changes
+    processStore.unsavedChanges = true;
+    
+    // Fit the view to show all nodes
+    if (processFlowCanvas.value && processFlowCanvas.value.fitView) {
+      nextTick(() => {
+        processFlowCanvas.value.fitView();
+      });
+    }
+    
+    // Show success message
+    console.log(`Template "${template.name}" applied successfully`);
+    
+  } catch (error) {
+    console.error('Error applying process template:', error);
+    alert('Failed to apply template: ' + error.message);
+  }
+};
+
 // Fix references to functions
 const onFormSelected = (formData) => {
   if (selectedNodeData.value && selectedNodeData.value.type === 'form') {
@@ -681,26 +795,6 @@ const handleFormNodeUpdate = (updatedData) => {
   }
 };
 
-// Add this function to handle task node updates
-const handleTaskNodeUpdate = (updatedData) => {
-  if (selectedNodeData.value && selectedNodeData.value.type === 'task') {
-    // Make sure to update the label both in data and at the root level
-    const newLabel = updatedData.label || 'Task';
-    
-    // Update the data
-    selectedNodeData.value.data = {
-      ...updatedData,
-      label: newLabel // Ensure label is in data
-    };
-    
-    // Also update the root label
-    selectedNodeData.value.label = newLabel;
-    
-    // Update the node in store
-    updateNodeInStore();
-  }
-};
-
 // Update handler for business rule node
 const handleBusinessRuleUpdate = (data) => {
   if (selectedNodeData.value) {
@@ -727,6 +821,11 @@ const handleNotificationNodeUpdate = (updatedData) => {
     updateNodeInStore();
   }
 };
+
+// Navigate to variables page
+const navigateToVariables = () => {
+  confirmNavigation('/variables');
+};
 </script>
 
 <template>
@@ -735,7 +834,13 @@ const handleNotificationNodeUpdate = (updatedData) => {
     <header
       class="bg-gray-800 px-4 py-4 flex items-center justify-between text-white shadow-md"
     >
+      <!-- Left section - Logo and navigation -->
       <div class="flex items-center gap-3">
+        <Icon
+          @click="confirmNavigation('/process-builder/manage')"
+          name="ph:arrow-circle-left-duotone"
+          class="cursor-pointer w-6 h-6"
+        />
         <img
           src="@/assets/img/logo/logo-word-white.svg"
           alt="Corrad Logo"
@@ -743,28 +848,65 @@ const handleNotificationNodeUpdate = (updatedData) => {
         />
       </div>
 
-      <div class="flex items-center gap-3">
+      <!-- Middle section - Process name -->
+      <div class="flex-1 flex justify-center items-center mx-4">
         <FormKit
           v-if="hasCurrentProcess"
           v-model="processStore.currentProcess.name"
           type="text"
-          placeholder="Enter process name"
+          placeholder="Process Name"
+          validation="required"
+          validation-visibility="live"
+          :validation-messages="{ required: 'Please enter a process name' }"
+          class="process-name-input max-w-md"
           :classes="{
-            outer: 'w-64 mb-0',
-            input: 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+            outer: 'mb-0 w-full',
           }"
         />
+        <div v-else class="text-lg font-medium text-gray-400">No Process Selected</div>
       </div>
-      
-      <div class="flex items-center gap-3">
-        <RsButton @click="saveProcess" variant="primary" size="sm" :disabled="!hasCurrentProcess">
-          <Icon name="material-symbols:save" class="mr-1" />
-          Save Process
-        </RsButton>
-        <RsButton @click="confirmNavigation('/process-builder/manage')" variant="tertiary" size="sm">
-          <Icon name="material-symbols:arrow-back" class="mr-1" />
-          Back to Processes
-        </RsButton>
+
+      <!-- Right section - Actions -->
+      <div class="flex items-center">
+        <!-- Primary actions -->
+        <div class="flex items-center mr-2 border-r border-gray-600 pr-2">
+          <RsButton @click="saveProcess" variant="primary" size="sm" class="mr-2" :disabled="!hasCurrentProcess">
+            <Icon name="material-symbols:save" class="mr-1" />
+            Save
+          </RsButton>
+        </div>
+        
+        <!-- Templates button -->
+        <div class="mr-2 border-r border-gray-600 pr-2">
+          <RsButton @click="showTemplatesModal = true" variant="secondary" size="sm" :disabled="!hasCurrentProcess">
+            <Icon name="material-symbols:description-outline" class="mr-1" />
+            Templates
+          </RsButton>
+        </div>
+        
+        <!-- Secondary actions -->
+        <div class="flex items-center">
+          <div class="dropdown relative">
+            <RsButton @click="showDropdown = !showDropdown" variant="tertiary" size="sm" class="flex items-center">
+              <Icon name="material-symbols:more-vert" class="w-5 h-5" />
+            </RsButton>
+            
+            <div v-if="showDropdown" class="dropdown-menu absolute right-0 mt-2 bg-white rounded shadow-lg py-1 z-10 w-48 text-gray-800">
+              <button @click="showProcessSettings = true; showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                <Icon name="material-symbols:tune" class="mr-2 w-4 h-4" />
+                <span>Process Settings</span>
+              </button>
+              <button @click="navigateToVariables(); showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                <Icon name="material-symbols:data-object" class="mr-2 w-4 h-4" />
+                <span>Variables</span>
+              </button>
+              <button @click="confirmNavigation('/process-builder/manage'); showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                <Icon name="material-symbols:settings" class="mr-2 w-4 h-4" />
+                <span>Manage Processes</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -826,13 +968,6 @@ const handleNotificationNodeUpdate = (updatedData) => {
             </div>
 
             <!-- Node Type Specific Properties -->
-            <div v-if="selectedNodeData.type === 'task'">
-              <TaskNodeConfiguration
-                :nodeData="selectedNodeData.data"
-                :availableVariables="variableStore.getAllVariables.global"
-                @update="handleTaskNodeUpdate"
-              />
-            </div>
 
             <!-- Form Selection for Form Nodes -->
             <div v-if="selectedNodeData.type === 'form'">
@@ -983,6 +1118,17 @@ const handleNotificationNodeUpdate = (updatedData) => {
       :availableVariables="gatewayAvailableVariables"
       @update="handleNotificationNodeUpdate"
     />
+    
+    <!-- Process Templates Modal -->
+    <ProcessTemplatesModal
+      v-model="showTemplatesModal"
+      @select-template="applyProcessTemplate"
+    />
+    
+    <!-- Process Settings Modal -->
+    <ProcessSettingsModal
+      v-model="showProcessSettings"
+    />
   </div>
 </template>
 
@@ -1072,11 +1218,15 @@ const handleNotificationNodeUpdate = (updatedData) => {
   background-color: #f8fafc;
 }
 
+.process-name-input {
+  width: 100%;
+  max-width: 400px;
+}
+
 .process-name-input :deep(.formkit-inner) {
   background-color: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
   color: white;
-  min-width: 200px;
 }
 
 .process-name-input :deep(.formkit-inner:focus-within) {

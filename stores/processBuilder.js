@@ -128,6 +128,22 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     },
 
     /**
+     * Update the current process with new data
+     */
+    updateCurrentProcess(processUpdates) {
+      if (!this.currentProcess) return;
+
+      this.currentProcess = {
+        ...this.currentProcess,
+        ...processUpdates,
+        updatedAt: new Date().toISOString()
+      };
+      
+      this.unsavedChanges = true;
+      this.saveToHistory('Update process settings');
+    },
+
+    /**
      * Save the current process
      */
     async saveProcess() {

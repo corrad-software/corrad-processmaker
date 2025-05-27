@@ -61,11 +61,18 @@ Activities represent work performed in a process:
 
 - **Form Task** (Emerald Icon)
   - A task that requires form data
-  - Has both input and output handles
-  - Step-by-step configuration workflow
-  - Properties: Form selection, data mapping
+  - Has 4 connection points: top, bottom, left, right handles
+  - **Enhanced Configuration**: Complete 3-step configuration workflow
+  - **Step 1 - Form Selection**: Choose existing forms or create new ones
+  - **Step 2 - Data Mapping**: Configure bidirectional data flow
+    - **Input Mappings**: Map process variables to pre-fill form fields
+    - **Output Mappings**: Capture form submission data in process variables
+  - **Step 3 - Field Conditions**: Dynamic field behavior based on process state
+    - Make fields readonly, hidden, required, or optional
+    - Support for complex conditional logic with multiple operators
+    - Real-time form adaptations based on process variables
   - Connects to forms created in the Form Builder
-  - Visualizes bidirectional data flow
+  - Visualizes bidirectional data flow with color-coded mapping sections
 
 - **API Task** (Indigo Icon)
   - Automated task that makes API calls
@@ -160,13 +167,29 @@ The Variable Manager provides a central location to define and manage global pro
 - **Control**: Multi-select nodes
 
 ### Connection Points
-- **Input Handle**: Located at the top of nodes (except Start)
-- **Output Handle**: Located at the bottom of nodes (except End)
-- **Creating Connections**:
-  1. Hover over a node to see handles
-  2. Click and drag from a handle
-  3. Drop on another node's handle
-  4. Connection automatically styles based on type
+All nodes now feature **4 connection points** for maximum flexibility:
+- **Top Handle**: Primary input connection point
+- **Right Handle**: Secondary output connection point  
+- **Bottom Handle**: Primary output connection point
+- **Left Handle**: Secondary input connection point
+
+**Special Cases**:
+- **Start Nodes**: Only have output handles (right + bottom)
+- **End Nodes**: Only have input handles (top + left)
+
+**Enhanced Visibility**:
+- Handles are invisible by default for clean appearance
+- Handles become visible when hovering over nodes
+- Handles are highlighted during connection mode
+- Color-coded: Green for outputs, Blue for inputs
+- Smooth transitions and hover effects for better user experience
+
+**Creating Connections**:
+1. Hover over a node to reveal handles
+2. Click and drag from any handle
+3. Drop on another node's compatible handle
+4. Connection automatically routes to prevent overlaps
+5. Use specific handles to control connection positioning
 
 ## Process Properties
 
@@ -186,23 +209,397 @@ The Variable Manager provides a central location to define and manage global pro
 - Role-based assignments
 - Group assignments
 
-## Form Integration
+## Process Settings
 
-The Process Builder integrates with the Form Builder to allow forms to be attached to process tasks:
+The Process Settings feature provides comprehensive configuration options for managing all aspects of your business process. Access Process Settings through the dropdown menu in the header by clicking the three-dot menu and selecting "Process Settings".
+
+### Accessing Process Settings
+
+1. **From the Header Menu**
+   - Click the three-dot menu (⋮) in the top-right of the Process Builder
+   - Select "Process Settings" from the dropdown menu
+   - The settings modal opens with tabbed configuration options
+
+2. **When to Use Process Settings**
+   - Configure process metadata and ownership
+   - Set execution parameters and timeouts
+   - Define data persistence and security policies
+   - Manage permissions and access control
+   - Export process configuration for integration
+
+### Settings Tabs Overview
+
+The Process Settings modal is organized into five comprehensive tabs:
+
+#### 1. Process Info Tab 📋
+
+Configure basic process information and ownership:
+
+**Process Details**:
+- **Process Name**: The display name for your process
+- **Process Description**: Detailed description of what the process accomplishes
+- **Priority Level**: Set process priority (Low, Normal, High, Critical)
+- **Process Category**: Department or functional area (e.g., HR, Finance, Operations)
+- **Owner/Manager**: Person responsible for the process
+
+**Best Practices**:
+- Use descriptive names that clearly indicate the process purpose
+- Include business context in descriptions
+- Set appropriate priority levels to help with resource allocation
+- Assign clear ownership for accountability
+
+#### 2. Execution Settings Tab ⚙️
+
+Control how your process executes and handles different scenarios:
+
+**Process Type Configuration**:
+- **Standard Process**: Regular business workflow
+- **Approval Workflow**: Multi-step approval process
+- **Data Collection**: Information gathering process
+- **Automated Task**: System-driven automation
+- **Review Process**: Quality assurance or compliance review
+
+**Timing and Performance**:
+- **Max Execution Time**: Maximum time allowed for process completion (1-10,080 minutes)
+- **Auto-Timeout**: Automatically timeout after specified hours (1-168 hours)
+- **Allow Parallel Execution**: Enable multiple instances to run simultaneously
+- **Enable Error Recovery**: Automatically retry failed steps before stopping
+
+**Notifications**:
+- **Send Completion Notifications**: Notify stakeholders when process completes
+
+**Example Configuration**:
+```
+Process Type: Approval Workflow
+Max Execution Time: 480 minutes (8 hours)
+Auto-Timeout: 72 hours (3 days)
+Parallel Execution: Enabled
+Error Recovery: Enabled
+Notifications: Enabled
+```
+
+#### 3. Variables & Data Tab 🗄️
+
+Configure data handling and variable persistence:
+
+**Data Persistence Options**:
+- **Session Only**: Data deleted when session ends
+- **Temporary (24 hours)**: Data retained for 24 hours
+- **Short Term (7 days)**: Data retained for one week
+- **Long Term (30 days)**: Data retained for one month
+- **Permanent**: Data retained indefinitely
+
+**Security and Compliance**:
+- **Log Variable Changes**: Track all variable modifications during execution
+- **Encrypt Sensitive Data**: Automatically encrypt variables marked as sensitive
+- **Data Retention Policy**: Custom policy description for compliance requirements
+
+**Best Practices**:
+- Choose appropriate persistence based on business and legal requirements
+- Enable variable change logging for audit trails
+- Document retention policies clearly for compliance
+- Consider data privacy regulations (GDPR, CCPA) when setting retention
+
+#### 4. Permissions Tab 🔒
+
+Define access control and security settings:
+
+**Execution Permissions**:
+- **Anyone**: Public access (use with caution)
+- **Authenticated Users**: Any logged-in user
+- **Specific Roles**: Define custom role-based access
+- **Process Managers Only**: Restrict to process managers
+- **Administrators Only**: Admin-only access
+
+**Modification Permissions**:
+- **Process Owner Only**: Original creator only
+- **Process Managers**: Designated process managers
+- **Administrators**: System administrators
+- **Anyone with Edit Rights**: Users with edit permissions
+
+**Advanced Security**:
+- **Require Approval for Changes**: Changes must be approved before taking effect
+- **Enable Audit Trail**: Detailed logs of all access and modifications
+
+**Role-Based Configuration Example**:
+```
+Execution Permission: Specific Roles
+Allowed Roles: hr_manager, hr_admin, department_head
+Modification Permission: Process Managers
+Require Approval: Enabled
+Audit Trail: Enabled
+```
+
+#### 5. JSON Export Tab 📊
+
+Export complete process configuration for developers and system integration:
+
+**Export Features**:
+- **Process Metadata**: Complete process information and settings
+- **Workflow Structure**: All nodes and edges with their configurations
+- **Variables**: All process variables and their definitions
+- **Permissions**: Access control and security settings
+- **Timestamps**: Creation and modification dates
+
+**Export Options**:
+- **Copy to Clipboard**: Quick copy for immediate use
+- **Download JSON**: Save complete configuration file
+- **Developer Integration**: Use exported JSON for API integration or backup
+
+**Export Data Structure**:
+```json
+{
+  "processInfo": {
+    "id": "process-uuid",
+    "name": "Customer Onboarding",
+    "description": "Complete customer onboarding workflow",
+    "priority": "high",
+    "category": "Sales",
+    "owner": "Sales Manager"
+  },
+  "settings": {
+    "processType": "approval",
+    "maxExecutionTime": 480,
+    "allowParallel": true,
+    "enableErrorRecovery": true
+  },
+  "workflow": {
+    "nodes": [...],
+    "edges": [...]
+  },
+  "variables": {...},
+  "permissions": {...},
+  "metadata": {
+    "exportedAt": "2024-12-20T10:30:00Z"
+  }
+}
+```
+
+### Common Process Settings Scenarios
+
+#### Scenario 1: HR Onboarding Process
+```
+Process Type: Standard Process
+Priority: High
+Max Execution Time: 1440 minutes (24 hours)
+Data Persistence: Long Term (30 days)
+Execution Permission: HR Managers
+Audit Trail: Enabled
+```
+
+#### Scenario 2: Financial Approval Workflow
+```
+Process Type: Approval Workflow
+Priority: Critical
+Auto-Timeout: 48 hours
+Data Persistence: Permanent
+Execution Permission: Finance Team
+Require Approval: Enabled for changes
+```
+
+#### Scenario 3: Customer Support Automation
+```
+Process Type: Automated Task
+Priority: Normal
+Parallel Execution: Enabled
+Data Persistence: Short Term (7 days)
+Execution Permission: Support Staff
+Error Recovery: Enabled
+```
+
+### Process Settings Best Practices
+
+#### Planning and Design
+1. **Define Clear Ownership**
+   - Assign process owners for accountability
+   - Document roles and responsibilities
+   - Regular review and updates
+
+2. **Set Appropriate Permissions**
+   - Follow principle of least privilege
+   - Use role-based access control
+   - Regular permission audits
+
+3. **Configure Realistic Timeouts**
+   - Consider business requirements
+   - Account for user availability
+   - Set appropriate escalation procedures
+
+#### Data Management
+1. **Choose Appropriate Persistence**
+   - Balance performance with compliance needs
+   - Consider storage costs
+   - Document retention policies
+
+2. **Implement Security Measures**
+   - Enable audit trails for sensitive processes
+   - Use encryption for PII data
+   - Regular security reviews
+
+#### Monitoring and Maintenance
+1. **Regular Settings Review**
+   - Quarterly configuration reviews
+   - Update settings as requirements change
+   - Monitor performance and adjust timeouts
+
+2. **Documentation Updates**
+   - Keep process descriptions current
+   - Document any changes made
+   - Maintain version history
+
+### Troubleshooting Process Settings
+
+#### Common Issues
+1. **Settings Not Saving**
+   - Verify all required fields are completed
+   - Check permission levels
+   - Ensure network connectivity
+
+2. **Permission Errors**
+   - Verify user roles and permissions
+   - Check with administrator if needed
+   - Review audit trail for access attempts
+
+3. **Export/Import Issues**
+   - Validate JSON format
+   - Check file size limits
+   - Verify browser clipboard permissions
+
+#### Getting Help
+- Review error messages for specific guidance
+- Check the audit trail for permission issues
+- Contact administrators for role-related problems
+- Use the JSON export for debugging configuration issues
+
+## Advanced Form Integration
+
+The Process Builder features sophisticated integration with the Form Builder, enabling complex data flows and dynamic form behavior.
+
+### Adding and Configuring Form Tasks
 
 1. **Adding a Form Task**
-   - Drag a Form Task component onto the canvas
-   - Select the task to open its properties
+   - Drag a Form Task component (emerald icon) onto the canvas
+   - Connect it to your process flow using the 4-point connection system
+   - Click "Configure Form Task" to open the configuration modal
 
-2. **Selecting a Form**
-   - In the properties panel, use the Form Selector to choose a form
-   - Forms are listed from those created in the Form Builder
-   - Selected forms will be displayed to users when they reach this task
+2. **Step 1: Form Selection**
+   - **Choose Existing Form**: Browse and select from available forms
+   - **Form Preview**: See form structure and field details
+   - **Create New Form**: Direct integration with Form Builder
+   - The selected form determines available fields for mapping
 
-3. **Form Data in Process**
-   - Form submissions become available as process variables
-   - Data can be referenced in gateway conditions
-   - Form fields can be pre-populated with process data
+3. **Step 2: Form Data Mapping**
+   Configure bidirectional data flow between your process and the form:
+
+   **Input Variables (Process → Form)**
+   - Map process variables to pre-fill form fields
+   - Users see pre-populated data when the form loads
+   - Useful for displaying existing customer data, calculated values, or previous submissions
+   - Example: Map `customer.email` process variable to "Email Address" form field
+
+   **Output Variables (Form → Process)**
+   - Capture form submission data in process variables
+   - Create new variables automatically from form fields
+   - Use captured data in subsequent process steps
+   - Example: Map "Order Total" form field to `order.total` process variable
+
+4. **Step 3: Field Conditions**
+   Create dynamic form behavior based on process state:
+
+   **Condition Components**:
+   - **Process Variable**: The variable to evaluate
+   - **Operator**: Comparison type (equals, not equals, greater than, etc.)
+   - **Value**: Comparison value (when applicable)
+   - **Target Field**: The form field to control
+   - **Action**: What to do when condition is met
+
+   **Available Actions**:
+   - **Make Readonly**: Field displays value but cannot be edited
+   - **Hide Field**: Field is completely hidden from user
+   - **Make Required**: Field becomes mandatory for submission
+   - **Make Optional**: Field becomes optional
+   - **Show Field**: Field becomes visible (opposite of hide)
+   - **Enable Field**: Field becomes editable (opposite of readonly)
+
+   **Operators**:
+   - **Equals/Not Equals**: Exact value comparison
+   - **Is True/Is False**: Boolean value checks
+   - **Is Empty/Is Not Empty**: Check for presence of data
+   - **Contains**: Text substring matching
+   - **Greater Than/Less Than**: Numeric comparisons
+
+### Example Use Cases
+
+**Customer Onboarding Process**:
+```
+Input Mapping: 
+- customer.type → "Customer Type" field (pre-select existing customers)
+
+Output Mapping:
+- "Company Name" field → customer.company
+- "Industry" field → customer.industry
+
+Field Conditions:
+- IF customer.type = "Existing" THEN "Company Name" = Readonly
+- IF customer.type = "Enterprise" THEN "Dedicated Rep" = Required
+```
+
+**Expense Approval Process**:
+```
+Input Mapping:
+- employee.name → "Employee Name" field
+- expense.amount → "Amount" field
+
+Output Mapping:
+- "Justification" field → expense.justification
+- "Manager Approval" field → expense.approved
+
+Field Conditions:
+- IF expense.amount > 1000 THEN "Manager Approval" = Required
+- IF employee.level = "Executive" THEN "Amount" = Readonly
+```
+
+**Support Ticket Process**:
+```
+Input Mapping:
+- ticket.priority → "Priority" field
+- customer.tier → "Customer Tier" field
+
+Output Mapping:
+- "Resolution" field → ticket.resolution
+- "Satisfaction Rating" field → ticket.rating
+
+Field Conditions:
+- IF customer.tier = "Premium" THEN "Priority" = Readonly AND "Escalation" = Show
+- IF ticket.priority = "Critical" THEN "Manager Review" = Required
+```
+
+### Best Practices for Form Integration
+
+1. **Data Flow Planning**
+   - Map the complete data journey from process start to end
+   - Identify which data needs to be captured vs. displayed
+   - Plan for data validation and transformation needs
+
+2. **Variable Naming**
+   - Use consistent, descriptive variable names
+   - Follow a naming convention (e.g., `customer.email`, `order.total`)
+   - Create variables in the Variable Manager before mapping
+
+3. **Field Condition Design**
+   - Start with simple conditions and build complexity gradually
+   - Test conditions with various scenarios
+   - Document complex logic for future maintenance
+
+4. **User Experience**
+   - Pre-fill forms whenever possible to reduce user effort
+   - Use conditional logic to show only relevant fields
+   - Provide clear feedback when fields become readonly or required
+
+5. **Performance Considerations**
+   - Avoid excessive field conditions that could slow form rendering
+   - Test forms with realistic data volumes
+   - Consider caching for frequently accessed reference data
 
 ## Best Practices
 
@@ -258,7 +655,7 @@ The Process Builder integrates with the Form Builder to allow forms to be attach
 
 For technical details about implementation and integration, please refer to the [Process Builder Technical Documentation](TECHNICAL_GUIDE.md).
 
-Last updated: July 10, 2024 
+Last updated: December 2024 
 
 ## Working with Business Rules
 

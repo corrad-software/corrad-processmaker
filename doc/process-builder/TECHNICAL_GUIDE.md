@@ -171,14 +171,85 @@ const onDeleteKeyPress = () => {
 import { h, markRaw } from 'vue';
 import { Handle, Position } from '@vue-flow/core';
 
-// Custom node renderer with handles
+// Enhanced custom node renderer with 4-point connection system
 const CustomNode = markRaw({
   template: `
     <div :class="['custom-node', 'node-' + type]">
+      <!-- 4-Point Handle System -->
+      <!-- Top Handle (Input) -->
       <Handle
         v-if="type !== 'start'"
+        :id="id + '-top'"
         type="target"
-        position="top"
+        :position="Position.Top"
+        :style="{ 
+          opacity: 0,
+          transition: 'all 0.2s ease',
+          backgroundColor: '#3b82f6',
+          borderColor: '#1d4ed8',
+          width: '12px',
+          height: '12px',
+          transform: 'translate(-50%, -50%)',
+          top: '-6px'
+        }"
+        class="handle-input"
+      />
+      
+      <!-- Right Handle (Output) -->
+      <Handle
+        v-if="type !== 'end'"
+        :id="id + '-right'"
+        type="source"
+        :position="Position.Right"
+        :style="{ 
+          opacity: 0,
+          transition: 'all 0.2s ease',
+          backgroundColor: '#10b981',
+          borderColor: '#059669',
+          width: '12px',
+          height: '12px',
+          transform: 'translate(50%, -50%)',
+          right: '-6px'
+        }"
+        class="handle-output"
+      />
+      
+      <!-- Bottom Handle (Output) -->
+      <Handle
+        v-if="type !== 'end'"
+        :id="id + '-bottom'"
+        type="source"
+        :position="Position.Bottom"
+        :style="{ 
+          opacity: 0,
+          transition: 'all 0.2s ease',
+          backgroundColor: '#10b981',
+          borderColor: '#059669',
+          width: '12px',
+          height: '12px',
+          transform: 'translate(-50%, 50%)',
+          bottom: '-6px'
+        }"
+        class="handle-output"
+      />
+      
+      <!-- Left Handle (Input) -->
+      <Handle
+        v-if="type !== 'start'"
+        :id="id + '-left'"
+        type="target"
+        :position="Position.Left"
+        :style="{ 
+          opacity: 0,
+          transition: 'all 0.2s ease',
+          backgroundColor: '#3b82f6',
+          borderColor: '#1d4ed8',
+          width: '12px',
+          height: '12px',
+          transform: 'translate(-50%, -50%)',
+          left: '-6px'
+        }"
+        class="handle-input"
       />
       
       <div class="custom-node-header">
@@ -191,28 +262,181 @@ const CustomNode = markRaw({
       <div class="custom-node-content">
         <slot></slot>
       </div>
-
-      <Handle
-        v-if="type !== 'end'"
-        type="source"
-        position="bottom"
-      />
     </div>
   `,
   props: ['id', 'type', 'label', 'data'],
-  components: { Handle }
+  components: { Handle },
+  mounted() {
+    // Add event listeners for handle visibility
+    this.$el.addEventListener('mouseenter', this.showHandles);
+    this.$el.addEventListener('mouseleave', this.hideHandles);
+  },
+  methods: {
+    showHandles() {
+      const handles = this.$el.querySelectorAll('.vue-flow__handle');
+      handles.forEach(handle => {
+        handle.style.opacity = '1';
+      });
+    },
+    hideHandles() {
+      const handles = this.$el.querySelectorAll('.vue-flow__handle');
+      handles.forEach(handle => {
+        handle.style.opacity = '0';
+      });
+    }
+  }
 });
 
-// Node type definitions
+// Enhanced CSS for handles
+const handleStyles = `
+.custom-node:hover .vue-flow__handle {
+  opacity: 1 !important;
+  z-index: 100;
+}
+
+.vue-flow__handle {
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: crosshair;
+  border: 2px solid;
+  border-radius: 50%;
+}
+
+.handle-input {
+  background-color: #3b82f6;
+  border-color: #1d4ed8;
+}
+
+.handle-output {
+  background-color: #10b981;
+  border-color: #059669;
+}
+
+.vue-flow__handle:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.custom-node.connecting .vue-flow__handle {
+  opacity: 1;
+}
+
+/* Special handling for gateway nodes (rotated) */
+.node-gateway .vue-flow__handle {
+  position: absolute;
+}
+
+.node-gateway .vue-flow__handle[data-handlepos="top"] {
+  top: -6px;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.node-gateway .vue-flow__handle[data-handlepos="right"] {
+  right: -6px;
+  top: 50%;
+  transform: translate(50%, -50%) rotate(-45deg);
+}
+
+.node-gateway .vue-flow__handle[data-handlepos="bottom"] {
+  bottom: -6px;
+  left: 50%;
+  transform: translate(-50%, 50%) rotate(-45deg);
+}
+
+.node-gateway .vue-flow__handle[data-handlepos="left"] {
+  left: -6px;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+`;
+
+// Node type definitions with enhanced handle system
 export const nodeTypes = markRaw({
   task: TaskNode,
   start: StartNode,
   end: EndNode,
   gateway: GatewayNode,
   form: FormNode,
-  script: ScriptNode
+  api: ApiNode,
+  script: ScriptNode,
+  'business-rule': BusinessRuleNode,
+  notification: NotificationNode
 });
-```
+
+// Connection validation
+export const isValidConnection = (connection) => {
+  // Prevent self-connections
+  if (connection.source === connection.target) {
+    return false;
+  }
+  
+  // Validate handle types
+  const sourceHandle = connection.sourceHandle;
+  const targetHandle = connection.targetHandle;
+  
+  // Ensure proper source/target handle types
+  if (sourceHandle && !sourceHandle.includes('right') && !sourceHandle.includes('bottom')) {
+    return false;
+  }
+  
+  if (targetHandle && !targetHandle.includes('top') && !targetHandle.includes('left')) {
+    return false;
+  }
+  
+  return true;
+};
+
+// Enhanced connection handler with handle-specific routing
+export const onConnect = (params) => {
+  const { source, target, sourceHandle, targetHandle } = params;
+  
+  return {
+    id: `${source}-${target}-${Date.now()}`,
+    source,
+    target,
+    sourceHandle,
+    targetHandle,
+    type: 'smoothstep',
+    animated: true,
+    style: {
+      strokeWidth: 2,
+      stroke: '#64748b'
+    },
+    data: {
+      sourcePosition: sourceHandle?.split('-')[1] || 'bottom',
+      targetPosition: targetHandle?.split('-')[1] || 'top'
+    }
+  };
+};
+
+#### Handle System Features
+
+1. **4-Point Connection System**:
+   - **Top Handle**: Primary input connection point (blue, target)
+   - **Right Handle**: Secondary output connection point (green, source)
+   - **Bottom Handle**: Primary output connection point (green, source) 
+   - **Left Handle**: Secondary input connection point (blue, target)
+
+2. **Enhanced Visibility**:
+   - Handles are invisible by default for clean UI
+   - Become visible on node hover with smooth transitions
+   - Unique IDs for precise connection targeting (`nodeId-position`)
+
+3. **Visual Feedback**:
+   - Color-coded handles (blue for inputs, green for outputs)
+   - Hover effects with scaling and shadow
+   - Connection state awareness
+
+4. **Special Node Handling**:
+   - **Start Nodes**: Only output handles (right + bottom)
+   - **End Nodes**: Only input handles (top + left)
+   - **Gateway Nodes**: Rotated handle positioning for diamond shape
+
+5. **Connection Validation**:
+   - Prevents self-connections
+   - Validates proper source/target handle types
+   - Ensures logical connection flow
 
 ## Enhanced Node Configuration Components
 
@@ -759,51 +983,826 @@ The API Node Configuration component provides a stepped interface for configurin
 
 ### 5. FormNodeConfiguration.vue
 
-The Form Node Configuration component provides a stepped interface for configuring form interactions.
+The Form Node Configuration component provides a comprehensive 3-step interface for configuring form interactions with enhanced data mapping and conditional field behavior.
+
+#### Architecture Overview
 
 ```vue
 <template>
-  <div>
-    <!-- Header with descriptive info -->
-    <div class="bg-emerald-50 p-4 border-b border-emerald-200">
-      <div class="flex items-start">
-        <div class="mr-4 text-emerald-500 flex-shrink-0 mt-1">
-          <Icon name="material-symbols:database-form" class="text-2xl" />
+  <div class="form-node-configuration">
+    <!-- Step 1: Form Selection -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-emerald-600">1</span>
         </div>
-        <div>
-          <h3 class="text-lg font-medium text-gray-900">Form Configuration</h3>
-          <p class="mt-1 text-sm text-gray-500">
-            Connect process flow with user forms for data collection and display
-          </p>
+        <h4 class="font-medium">Form Selection</h4>
+      </div>
+      
+      <FormSelector 
+        :formId="localNodeData.formId"
+        @select="handleFormSelection"
+        @clear="clearFormSelection"
+      />
+    </div>
+    
+    <!-- Step 2: Form Data Mapping -->
+    <div v-if="localNodeData.formId" class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <!-- Input Variables Mapping (Process → Form) -->
+      <div class="mb-5">
+        <div class="flex justify-between items-center mb-3">
+          <h5 class="text-sm font-medium flex items-center">
+            <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mr-2 text-xs">
+              <Icon name="material-symbols:arrow-outward" />
+            </span>
+            Input Variables (Process → Form)
+          </h5>
+          <RsButton @click="addInputMapping()" variant="secondary" size="sm">
+            <Icon name="material-symbols:add" class="mr-1" /> Add Mapping
+          </RsButton>
+        </div>
+        
+        <div v-for="(mapping, index) in localNodeData.inputMappings" :key="'input-' + index" 
+             class="p-4 border rounded-md bg-blue-50">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormKit
+              type="select"
+              v-model="mapping.processVariable"
+              :options="processVariableOptions"
+              placeholder="Select a process variable"
+            />
+            <FormKit
+              type="select"
+              v-model="mapping.formField"
+              :options="formFieldOptions"
+              placeholder="Select a form field"
+            />
+          </div>
+        </div>
+      </div>
+      
+      <!-- Output Variables Mapping (Form → Process) -->
+      <div class="mb-3">
+        <div class="flex justify-between items-center mb-3">
+          <h5 class="text-sm font-medium flex items-center">
+            <span class="w-5 h-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center mr-2 text-xs">
+              <Icon name="material-symbols:arrow-back" />
+            </span>
+            Output Variables (Form → Process)
+          </h5>
+          <RsButton @click="addOutputMapping()" variant="secondary" size="sm">
+            <Icon name="material-symbols:add" class="mr-1" /> Add Mapping
+          </RsButton>
+        </div>
+        
+        <div v-for="(mapping, index) in localNodeData.outputMappings" :key="'output-' + index" 
+             class="p-4 border rounded-md bg-green-50">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormKit
+              type="select"
+              v-model="mapping.formField"
+              :options="formFieldOptions"
+              placeholder="Select a form field"
+            />
+            <div class="flex items-center gap-2">
+              <FormKit
+                type="select"
+                v-model="mapping.processVariable"
+                :options="[
+                  { label: 'Create new variable', value: 'create_new_' + getVariableNameFromFormField(mapping.formField) },
+                  ...processVariableOptions
+                ]"
+                placeholder="Select a variable"
+              />
+              <RsButton
+                v-if="getStringValue(mapping.processVariable) && getStringValue(mapping.processVariable).startsWith('create_new_')"
+                @click="createVariableFromMapping(mapping)"
+                variant="primary"
+                size="sm"
+                title="Create this variable"
+              >
+                <Icon name="material-symbols:add" />
+              </RsButton>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- Step-by-step configuration -->
-    <div class="p-4">
-      <!-- Progress steps -->
-      <div class="flex items-center mb-6">
-        <!-- Step indicators -->
+    
+    <!-- Step 3: Field Conditions -->
+    <div v-if="localNodeData.formId" class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-emerald-600">3</span>
+        </div>
+        <h4 class="font-medium">Field Conditions</h4>
       </div>
-
-      <!-- Step content -->
-      <div v-if="activeStep === 1">
-        <!-- Form selection -->
-      </div>
-      <div v-else-if="activeStep === 2">
-        <!-- Data mapping -->
-      </div>
-      <div v-else-if="activeStep === 3">
-        <!-- Options configuration -->
+      
+      <div v-for="(condition, index) in localNodeData.fieldConditions" :key="'condition-' + index" 
+           class="p-4 border rounded-md bg-amber-50">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <!-- Process Variable -->
+          <FormKit
+            type="select"
+            v-model="condition.processVariable"
+            :options="processVariableOptions"
+            placeholder="Select variable"
+          />
+          
+          <!-- Operator -->
+          <FormKit
+            type="select"
+            v-model="condition.operator"
+            :options="[
+              { label: 'Equals', value: 'equals' },
+              { label: 'Not Equals', value: 'not_equals' },
+              { label: 'Is True', value: 'is_true' },
+              { label: 'Is False', value: 'is_false' },
+              { label: 'Is Empty', value: 'is_empty' },
+              { label: 'Is Not Empty', value: 'is_not_empty' },
+              { label: 'Contains', value: 'contains' },
+              { label: 'Greater Than', value: 'greater_than' },
+              { label: 'Less Than', value: 'less_than' }
+            ]"
+            placeholder="Select operator"
+          />
+          
+          <!-- Value -->
+          <FormKit
+            v-if="!['is_true', 'is_false', 'is_empty', 'is_not_empty'].includes(condition.operator)"
+            type="text"
+            v-model="condition.value"
+            placeholder="Comparison value"
+          />
+          
+          <!-- Target Form Field -->
+          <FormKit
+            type="select"
+            v-model="condition.targetField"
+            :options="formFieldOptions"
+            placeholder="Select field"
+          />
+        </div>
+        
+        <!-- Action Row -->
+        <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <FormKit
+            type="select"
+            v-model="condition.action"
+            :options="[
+              { label: 'Make Readonly', value: 'readonly' },
+              { label: 'Hide Field', value: 'hide' },
+              { label: 'Make Required', value: 'required' },
+              { label: 'Make Optional', value: 'optional' },
+              { label: 'Show Field', value: 'show' },
+              { label: 'Enable Field', value: 'enable' }
+            ]"
+            placeholder="Select action"
+          />
+          
+          <FormKit
+            type="text"
+            v-model="condition.description"
+            placeholder="e.g., Hide email when user is resubmitting"
+          />
+        </div>
       </div>
     </div>
   </div>
 </template>
 ```
 
+#### Script Implementation
+
+```javascript
+<script setup>
+import { ref, computed, watch, nextTick } from 'vue';
+import { useVariableStore } from '@/stores/variableStore';
+import FormSelector from './FormSelector.vue';
+
+const props = defineProps({
+  nodeData: {
+    type: Object,
+    required: true
+  },
+  availableVariables: {
+    type: Array,
+    default: () => []
+  }
+});
+
+const emit = defineEmits(['update']);
+
+// Get the variable store for creating variables
+const variableStore = useVariableStore();
+
+// State for form fields
+const formFields = ref([]);
+const isLoadingFields = ref(false);
+
+// Local state for node data - create a deep copy to avoid mutation issues
+const localNodeData = ref({
+  label: 'Form Task',
+  description: '',
+  formId: null,
+  formName: '',
+  formUuid: null,
+  inputMappings: [],
+  outputMappings: [],
+  fieldConditions: []
+});
+
+// Watch for changes from parent props
+watch(() => props.nodeData, async (newNodeData) => {
+  if (newNodeData) {
+    // Create a deep copy to break reactivity chains with parent
+    localNodeData.value = {
+      label: newNodeData.label || 'Form Task',
+      description: newNodeData.description || '',
+      formId: newNodeData.formId || null,
+      formName: newNodeData.formName || '',
+      formUuid: newNodeData.formUuid || null,
+      inputMappings: Array.isArray(newNodeData.inputMappings) 
+        ? newNodeData.inputMappings.map(mapping => ({ ...mapping }))
+        : [],
+      outputMappings: Array.isArray(newNodeData.outputMappings) 
+        ? newNodeData.outputMappings.map(mapping => ({ ...mapping }))
+        : [],
+      fieldConditions: Array.isArray(newNodeData.fieldConditions) 
+        ? newNodeData.fieldConditions.map(condition => ({ ...condition }))
+        : []
+    };
+    
+    // Load form fields if form is already selected
+    if (newNodeData.formId || newNodeData.formUuid) {
+      await loadFormFields(newNodeData.formId || newNodeData.formUuid);
+    }
+  }
+}, { immediate: true, deep: true });
+
+// Function to handle form selection
+async function handleFormSelection(form) {
+  if (!form) return;
+  
+  localNodeData.value = {
+    ...localNodeData.value,
+    formId: form.formID,
+    formName: form.formName,
+    formUuid: form.formUUID,
+    label: form.formName || 'Form Task',
+    description: `Form: ${form.formName}`,
+    fieldConditions: []
+  };
+  
+  // Load form fields for this form
+  await loadFormFields(form.formID || form.formUUID);
+  
+  saveChanges();
+}
+
+// Load form fields for the selected form
+async function loadFormFields(formId) {
+  if (!formId) {
+    formFields.value = [];
+    return;
+  }
+  
+  isLoadingFields.value = true;
+  
+  try {
+    const response = await fetch(`/api/forms/${formId}/fields`);
+    const result = await response.json();
+    
+    if (result.success && result.fields) {
+      formFields.value = result.fields;
+    } else {
+      console.error('Failed to load form fields:', result.error);
+      formFields.value = [];
+    }
+  } catch (error) {
+    console.error('Error loading form fields:', error);
+    formFields.value = [];
+  } finally {
+    isLoadingFields.value = false;
+  }
+}
+
+// Computed property for form field options (for FormKit select)
+const formFieldOptions = computed(() => {
+  return formFields.value.map(field => ({
+    label: `${field.label} (${field.name})`,
+    value: field.name,
+    description: field.description || `${field.type} field`
+  }));
+});
+
+// Computed property for process variable options (for FormKit select)
+const processVariableOptions = computed(() => {
+  return props.availableVariables.map(variable => ({
+    label: variable.label || `${variable.name} (${variable.scope || 'unknown'})`,
+    value: variable.name,
+    description: variable.description || `Type: ${variable.type || 'unknown'}`
+  }));
+});
+
+// Save changes by emitting them to parent
+function saveChanges() {
+  // Create a clean copy of the data to avoid reactivity issues
+  const nodeDataCopy = {
+    ...localNodeData.value,
+    inputMappings: localNodeData.value.inputMappings ? 
+      localNodeData.value.inputMappings.map(mapping => ({ ...mapping })) : [],
+    outputMappings: localNodeData.value.outputMappings ? 
+      localNodeData.value.outputMappings.map(mapping => ({ ...mapping })) : [],
+    fieldConditions: localNodeData.value.fieldConditions ? 
+      localNodeData.value.fieldConditions.map(condition => ({ ...condition })) : []
+  };
+  
+  // Emit the updated data to parent
+  emit('update', nodeDataCopy);
+}
+
+// Explicit save function for when the Save button is clicked
+function saveAllChanges() {
+  saveChanges();
+}
+
+// Expose saveAllChanges so parent components can call it
+defineExpose({
+  saveAllChanges
+});
+
+// Helper function to safely extract string values from FormKit select options
+function getStringValue(value) {
+  if (typeof value === 'string') {
+    return value;
+  } else if (typeof value === 'object' && value.label) {
+    return value.label;
+  } else if (typeof value === 'object' && value.value) {
+    return value.value;
+  } else {
+    return '';
+  }
+}
+</script>
+```
+
+#### Key Features
+
+1. **3-Step Configuration Workflow**:
+   - **Step 1**: Form selection with integrated FormSelector component
+   - **Step 2**: Bidirectional data mapping between process variables and form fields
+   - **Step 3**: Dynamic field conditions for runtime form behavior
+
+2. **Input/Output Mappings**:
+   - **Input Mappings**: Map process variables to form fields for pre-filling
+   - **Output Mappings**: Capture form submission data in process variables
+   - **Auto-Variable Creation**: Automatically create process variables from form fields
+   - **FormKit Integration**: Seamless dropdown selection with proper v-model binding
+
+3. **Field Conditions**:
+   - **Conditional Logic**: Support for 9 different operators (equals, contains, greater than, etc.)
+   - **Multiple Actions**: readonly, hide, show, required, optional, enable
+   - **Process Variable Integration**: Conditions based on current process state
+   - **Real-time Updates**: Dynamic form behavior during process execution
+
+4. **Data Persistence**:
+   - **Deep Copying**: Proper reactivity management to prevent data corruption
+   - **Explicit Save**: Manual save mechanism with `saveAllChanges()` function exposed via `defineExpose`
+   - **Change Tracking**: Reliable change detection and persistence
+
+5. **API Integration**:
+   - **Form Field Loading**: Dynamic loading of form fields via `/api/forms/{formId}/fields`
+   - **Error Handling**: Comprehensive error handling for API failures
+   - **Loading States**: Proper loading state management
+
+#### Component Integration
+
+The FormNodeConfiguration component integrates with:
+
+- **FormSelector.vue**: For form selection and browsing
+- **VariableStore**: For process variable management and creation
+- **FormNodeConfigurationModal.vue**: Modal wrapper with save/cancel functionality
+- **ProcessBuilder**: Main process builder integration
+
+#### Data Flow
+
+```
+1. User selects form → handleFormSelection() → loadFormFields() → Update localNodeData
+2. User adds mappings → addInputMapping()/addOutputMapping() → Update arrays → saveChanges()
+3. User configures conditions → addFieldCondition() → Update conditions array → saveChanges()
+4. User clicks Save → FormNodeConfigurationModal calls saveAllChanges() → emit('update', data)
+5. Parent receives update → Process node data is persisted
+```
+
+This architecture ensures reliable data persistence, proper reactivity management, and seamless integration with the broader process builder system.
+
 ## State Management
 
 The project uses Pinia for state management. Key stores include:
+
+### processBuilder.js Enhanced with Settings Management
+
+The Process Builder store has been enhanced to handle comprehensive process settings:
+
+```javascript
+export const useProcessBuilderStore = defineStore('processBuilder', {
+  state: () => ({
+    processes: [],
+    currentProcess: null,
+    selectedNodeId: null,
+    selectedEdgeId: null,
+    history: [],
+    historyIndex: -1,
+    unsavedChanges: false
+  }),
+
+  actions: {
+    /**
+     * Update the current process with new data including settings
+     */
+    updateCurrentProcess(processUpdates) {
+      if (!this.currentProcess) return;
+
+      this.currentProcess = {
+        ...this.currentProcess,
+        ...processUpdates,
+        updatedAt: new Date().toISOString()
+      };
+      
+      this.unsavedChanges = true;
+      this.saveToHistory('Update process settings');
+    },
+
+    /**
+     * Enhanced save process with settings persistence
+     */
+    async saveProcess() {
+      if (!this.currentProcess) return;
+
+      try {
+        // Save process data including all settings
+        const processData = {
+          ...this.currentProcess,
+          variables: useVariableStore().getAllVariables.process,
+          // Settings are now part of the process object structure
+          settings: this.currentProcess.settings || {}
+        };
+
+        // TODO: Implement API call to save process with settings
+        const index = this.processes.findIndex(p => p.id === this.currentProcess.id);
+        if (index !== -1) {
+          this.processes[index] = processData;
+        } else {
+          this.processes.push(processData);
+        }
+
+        this.unsavedChanges = false;
+        return true;
+      } catch (error) {
+        console.error('Error saving process:', error);
+        return false;
+      }
+    }
+  }
+});
+```
+
+### Process Settings Data Structure
+
+The enhanced process object now includes comprehensive settings:
+
+```typescript
+interface ProcessSettings {
+  // Process Info
+  priority: 'low' | 'normal' | 'high' | 'critical';
+  category: string;
+  owner: string;
+  
+  // Execution Settings
+  processType: 'standard' | 'approval' | 'data_collection' | 'automation' | 'review';
+  maxExecutionTime: number; // minutes
+  autoTimeout: number; // hours
+  allowParallel: boolean;
+  enableErrorRecovery: boolean;
+  sendNotifications: boolean;
+  
+  // Data & Variables
+  dataPersistence: 'session' | 'temporary' | 'short_term' | 'long_term' | 'permanent';
+  logVariableChanges: boolean;
+  encryptSensitiveData: boolean;
+  dataRetentionPolicy: string;
+  
+  // Permissions
+  executionPermission: 'public' | 'authenticated' | 'roles' | 'managers' | 'admin';
+  allowedRoles: string;
+  modificationPermission: 'owner' | 'managers' | 'admin' | 'editors';
+  requireApproval: boolean;
+  enableAuditTrail: boolean;
+}
+
+interface EnhancedProcess {
+  id: string;
+  name: string;
+  description: string;
+  nodes: ProcessNode[];
+  edges: ProcessEdge[];
+  variables: Record<string, any>;
+  settings: ProcessSettings;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## Process Settings Implementation
+
+### ProcessSettingsModal.vue Component Architecture
+
+The Process Settings modal is implemented as a comprehensive tabbed interface:
+
+```vue
+<template>
+  <RsModal v-model="showModal" title="Process Settings" size="xl" position="center">
+    <div>
+      <RsTab :tabs="settingsTabs" v-model="activeTab">
+        <!-- 5 main tabs: info, execution, variables, permissions, json -->
+        <template #info>
+          <!-- Process information and ownership settings -->
+        </template>
+        
+        <template #execution>
+          <!-- Execution parameters and performance settings -->
+        </template>
+        
+        <template #variables>
+          <!-- Data persistence and security settings -->
+        </template>
+        
+        <template #permissions>
+          <!-- Access control and security policies -->
+        </template>
+        
+        <template #json>
+          <!-- Complete configuration export -->
+        </template>
+      </RsTab>
+    </div>
+    
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <RsButton @click="closeModal" variant="tertiary">Cancel</RsButton>
+        <RsButton @click="saveSettings" variant="primary">Save Settings</RsButton>
+      </div>
+    </template>
+  </RsModal>
+</template>
+
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { useProcessBuilderStore } from '~/stores/processBuilder'
+import { useVariableStore } from '~/stores/variableStore'
+
+// Modal state management
+const showModal = computed({
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value)
+})
+
+// Local process data for settings form
+const localProcess = ref({
+  // Default settings with sensible defaults
+  name: '',
+  description: '',
+  priority: 'normal',
+  category: '',
+  owner: '',
+  processType: 'standard',
+  maxExecutionTime: 60,
+  autoTimeout: 24,
+  allowParallel: false,
+  enableErrorRecovery: true,
+  sendNotifications: true,
+  dataPersistence: 'short_term',
+  logVariableChanges: true,
+  encryptSensitiveData: false,
+  dataRetentionPolicy: '',
+  executionPermission: 'authenticated',
+  allowedRoles: '',
+  modificationPermission: 'managers',
+  requireApproval: false,
+  enableAuditTrail: true
+})
+
+// Reactive sync with store
+watch(() => processStore.currentProcess, (newProcess) => {
+  if (newProcess) {
+    localProcess.value = {
+      ...localProcess.value,
+      id: newProcess.id,
+      name: newProcess.name || '',
+      description: newProcess.description || '',
+      ...newProcess.settings
+    }
+  }
+}, { immediate: true, deep: true })
+
+// Save settings with validation
+const saveSettings = () => {
+  if (processStore.currentProcess) {
+    const updatedProcess = {
+      ...processStore.currentProcess,
+      name: localProcess.value.name,
+      description: localProcess.value.description,
+      settings: {
+        priority: localProcess.value.priority,
+        category: localProcess.value.category,
+        owner: localProcess.value.owner,
+        processType: localProcess.value.processType,
+        maxExecutionTime: localProcess.value.maxExecutionTime,
+        autoTimeout: localProcess.value.autoTimeout,
+        allowParallel: localProcess.value.allowParallel,
+        enableErrorRecovery: localProcess.value.enableErrorRecovery,
+        sendNotifications: localProcess.value.sendNotifications,
+        dataPersistence: localProcess.value.dataPersistence,
+        logVariableChanges: localProcess.value.logVariableChanges,
+        encryptSensitiveData: localProcess.value.encryptSensitiveData,
+        dataRetentionPolicy: localProcess.value.dataRetentionPolicy,
+        executionPermission: localProcess.value.executionPermission,
+        allowedRoles: localProcess.value.allowedRoles,
+        modificationPermission: localProcess.value.modificationPermission,
+        requireApproval: localProcess.value.requireApproval,
+        enableAuditTrail: localProcess.value.enableAuditTrail
+      }
+    }
+    
+    processStore.updateCurrentProcess(updatedProcess)
+  }
+  
+  closeModal()
+}
+</script>
+```
+
+### JSON Export Functionality
+
+The JSON export feature provides comprehensive process configuration export:
+
+```javascript
+// Complete export data structure
+const formattedJson = computed(() => {
+  const exportData = {
+    processInfo: {
+      id: localProcess.value.id,
+      name: localProcess.value.name,
+      description: localProcess.value.description,
+      priority: localProcess.value.priority,
+      category: localProcess.value.category,
+      owner: localProcess.value.owner
+    },
+    settings: {
+      processType: localProcess.value.processType,
+      maxExecutionTime: localProcess.value.maxExecutionTime,
+      autoTimeout: localProcess.value.autoTimeout,
+      allowParallel: localProcess.value.allowParallel,
+      enableErrorRecovery: localProcess.value.enableErrorRecovery,
+      sendNotifications: localProcess.value.sendNotifications
+    },
+    dataSettings: {
+      dataPersistence: localProcess.value.dataPersistence,
+      logVariableChanges: localProcess.value.logVariableChanges,
+      encryptSensitiveData: localProcess.value.encryptSensitiveData,
+      dataRetentionPolicy: localProcess.value.dataRetentionPolicy
+    },
+    permissions: {
+      executionPermission: localProcess.value.executionPermission,
+      allowedRoles: localProcess.value.allowedRoles,
+      modificationPermission: localProcess.value.modificationPermission,
+      requireApproval: localProcess.value.requireApproval,
+      enableAuditTrail: localProcess.value.enableAuditTrail
+    },
+    workflow: {
+      nodes: processStore.currentProcess?.nodes || [],
+      edges: processStore.currentProcess?.edges || []
+    },
+    variables: variableStore.getAllVariables,
+    metadata: {
+      nodeCount: nodeCount.value,
+      edgeCount: edgeCount.value,
+      variableCount: variableCount.value,
+      exportedAt: new Date().toISOString()
+    }
+  }
+  
+  return JSON.stringify(exportData, null, 2)
+})
+
+// Export functions
+const copyToClipboard = async () => {
+  try {
+    await navigator.clipboard.writeText(formattedJson.value)
+    console.log('JSON copied to clipboard')
+  } catch (err) {
+    console.error('Failed to copy JSON:', err)
+  }
+}
+
+const downloadJson = () => {
+  const blob = new Blob([formattedJson.value], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${localProcess.value.name || 'process'}_settings.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+```
+
+### Integration with Process Builder
+
+The Process Settings modal is integrated into the main Process Builder interface:
+
+```vue
+<!-- In pages/process-builder/index.vue -->
+<script setup>
+import ProcessSettingsModal from '~/components/process-flow/ProcessSettingsModal.vue'
+
+// Modal state
+const showProcessSettings = ref(false)
+</script>
+
+<template>
+  <!-- Header dropdown menu integration -->
+  <div v-if="showDropdown" class="dropdown-menu absolute right-0 mt-2 bg-white rounded shadow-lg py-1 z-10 w-48 text-gray-800">
+    <button @click="showProcessSettings = true; showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+      <Icon name="material-symbols:tune" class="mr-2 w-4 h-4" />
+      <span>Process Settings</span>
+    </button>
+    <!-- Other menu items -->
+  </div>
+  
+  <!-- Process Settings Modal -->
+  <ProcessSettingsModal v-model="showProcessSettings" />
+</template>
+```
+
+### API Integration Considerations
+
+For future API integration, the settings should be handled as follows:
+
+```javascript
+// API endpoint structure for process settings
+POST /api/processes/{processId}/settings
+PUT /api/processes/{processId}/settings
+GET /api/processes/{processId}/settings
+
+// Request/Response format
+{
+  "processInfo": {
+    "name": "Customer Onboarding",
+    "description": "Complete customer onboarding workflow",
+    "priority": "high",
+    "category": "Sales",
+    "owner": "Sales Manager"
+  },
+  "settings": {
+    "processType": "approval",
+    "maxExecutionTime": 480,
+    "autoTimeout": 48,
+    "allowParallel": true,
+    "enableErrorRecovery": true,
+    "sendNotifications": true
+  },
+  "dataSettings": {
+    "dataPersistence": "long_term",
+    "logVariableChanges": true,
+    "encryptSensitiveData": false,
+    "dataRetentionPolicy": "Delete after 30 days"
+  },
+  "permissions": {
+    "executionPermission": "roles",
+    "allowedRoles": "hr_manager,department_head",
+    "modificationPermission": "managers",
+    "requireApproval": true,
+    "enableAuditTrail": true
+  }
+}
+```
+
+### Performance Considerations
+
+1. **Lazy Loading**: Settings are only loaded when the modal is opened
+2. **Local State Management**: Changes are made to local copies to avoid unnecessary reactivity
+3. **Debounced Updates**: Consider debouncing settings updates for better performance
+4. **Validation**: Client-side validation before API calls
+
+### Security Considerations
+
+1. **Permission Validation**: Server-side validation of permission changes
+2. **Audit Trail**: All settings changes should be logged
+3. **Role Verification**: Verify user permissions before allowing settings modifications
+4. **Data Encryption**: Implement proper encryption for sensitive settings
 
 ### variableStore.js
 
@@ -975,4 +1974,4 @@ When developing new components or enhancing existing ones:
 
 For user documentation and usage guidelines, please refer to [Process Builder Documentation](USER_GUIDE.md).
 
-Last updated: July 10, 2024 
+Last updated: December 2024 

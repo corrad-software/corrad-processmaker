@@ -54,7 +54,11 @@ const {
   deleteKeyCode: 'Delete',
   selectionKeyCode: 'Shift',
   multiSelectionKeyCode: 'Control',
-  connectionMode: 'loose'
+  connectionMode: 'loose',
+  isValidConnection: (connection) => {
+    // console.log('Validating connection:', connection);
+    return true;
+  }
 });
 
 // Default nodes if empty
@@ -73,6 +77,7 @@ const flowOptions = ref({
   snapGrid: [15, 15],
   edgeUpdaterRadius: 10,
   connectionMode: 'loose',
+  connectionRadius: 25,
   elevateEdgesOnSelect: true,
   nodesDraggable: true,
   nodesConnectable: true,
@@ -82,7 +87,8 @@ const flowOptions = ref({
   panOnScroll: false,
   zoomOnScroll: true,
   zoomOnPinch: true,
-  zoomOnDoubleClick: false
+  zoomOnDoubleClick: false,
+  connectOnClick: false
 });
 
 // Use shallowRef for selected node to avoid unnecessary reactivity
@@ -170,6 +176,100 @@ onMounted(() => {
   }, 100);
 });
 
+// Watch for changes to initialNodes prop and update the canvas
+watch(() => props.initialNodes, async (newNodes, oldNodes) => {
+  if (newNodes && Array.isArray(newNodes)) {
+    // console.log('ProcessFlowCanvas: Updating nodes, count:', newNodes.length);
+    
+    // Clear existing nodes and add new ones
+    nodes.value = [];
+    
+    if (newNodes.length > 0) {
+      addNodes([...newNodes]); // Create a copy to avoid reactivity issues
+      
+      // Fit view to show all nodes after both nodes and edges are processed
+      await nextTick();
+      setTimeout(() => {
+        fitView();
+      }, 100);
+    }
+  }
+}, { deep: true });
+
+// Watch for changes to initialEdges prop and update the canvas
+// This watcher depends on nodes being already present
+watch(() => [props.initialEdges, nodes.value.length], async ([newEdges, nodeCount]) => {
+  if (newEdges && Array.isArray(newEdges) && nodeCount > 0) {
+    // console.log('ProcessFlowCanvas: Updating edges, count:', newEdges.length, 'nodeCount:', nodeCount);
+    
+    // Clear existing edges
+    edges.value = [];
+    
+    if (newEdges.length > 0) {
+      // Verify all nodes exist before adding edges
+      const validEdges = newEdges.filter(edge => {
+        const sourceExists = nodes.value.some(node => node.id === edge.source);
+        const targetExists = nodes.value.some(node => node.id === edge.target);
+        
+        if (!sourceExists || !targetExists) {
+          console.warn(`Skipping edge ${edge.id}: source ${edge.source} exists: ${sourceExists}, target ${edge.target} exists: ${targetExists}`);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      if (validEdges.length > 0) {
+        // Ensure all edges have proper handle specifications
+        const edgesWithHandles = validEdges.map(edge => {
+          // If edge already has sourceHandle and targetHandle, use them
+          if (edge.sourceHandle && edge.targetHandle) {
+            return edge;
+          }
+          
+          // Otherwise, generate default handles based on node types
+          const sourceNode = nodes.value.find(n => n.id === edge.source);
+          const targetNode = nodes.value.find(n => n.id === edge.target);
+          
+          let sourceHandle = edge.sourceHandle;
+          let targetHandle = edge.targetHandle;
+          
+          // Generate default source handle if missing
+          if (!sourceHandle && sourceNode) {
+            if (sourceNode.type === 'start') {
+              sourceHandle = `${edge.source}-bottom`; // Start nodes prefer bottom output
+            } else if (sourceNode.type === 'gateway') {
+              sourceHandle = `${edge.source}-right`; // Gateway nodes prefer right output for first connection
+            } else {
+              sourceHandle = `${edge.source}-bottom`; // Most nodes prefer bottom output
+            }
+          }
+          
+          // Generate default target handle if missing
+          if (!targetHandle && targetNode) {
+            if (targetNode.type === 'end') {
+              targetHandle = `${edge.target}-top`; // End nodes prefer top input
+            } else {
+              targetHandle = `${edge.target}-top`; // Most nodes prefer top input
+            }
+          }
+          
+          return {
+            ...edge,
+            sourceHandle,
+            targetHandle
+          };
+        });
+        
+        addEdges([...edgesWithHandles]); // Create a copy to avoid reactivity issues
+        // console.log('ProcessFlowCanvas: Successfully added edges with handles:', edgesWithHandles.length);
+      }
+    }
+  } else if (newEdges && Array.isArray(newEdges) && newEdges.length > 0 && nodeCount === 0) {
+    // console.log('ProcessFlowCanvas: Edges provided but no nodes yet, waiting...');
+  }
+}, { deep: true });
+
 // Remove the deep watch as it's causing recursive updates
 
 // Handle node changes
@@ -185,6 +285,8 @@ onEdgesChange((changes) => {
 // Handle new connections
 const handleConnect = (connection) => {
   if (!connection.source || !connection.target) return;
+  
+  console.log('Connection created:', connection);
   
   // Try to determine if this is coming from a gateway
   const sourceNode = nodes.value.find(node => node.id === connection.source);
@@ -219,14 +321,23 @@ const handleConnect = (connection) => {
   }
   
   const newEdge = {
-    id: `${connection.source}-${connection.target}`,
+    id: `${connection.source}-${connection.target}-${Date.now()}`,
     source: connection.source,
     target: connection.target,
+    sourceHandle: connection.sourceHandle,
+    targetHandle: connection.targetHandle,
     type: 'smoothstep',
     animated: true,
     style: { stroke: '#555' },
     label: label
   };
+  
+  console.log('Creating edge with handles:', {
+    sourceHandle: connection.sourceHandle,
+    targetHandle: connection.targetHandle,
+    source: connection.source,
+    target: connection.target
+  });
 
   addEdges([newEdge]);
   emit('edgesChange', edges.value);

@@ -37,14 +37,14 @@ export const useVariableStore = defineStore('variables', {
   actions: {
     // Add a new variable
     addVariable(variable) {
-      // Set scope to global by default
+      // Respect the scope passed in, default to global if not specified
+      const scope = variable.scope || 'global';
       const updatedVariable = {
         ...variable,
-        scope: 'global'
+        scope: scope
       };
       
-      // For backward compatibility, still respect the scope if it's explicitly set
-      if (variable.scope === 'process') {
+      if (scope === 'process') {
         this.processVariables.push(updatedVariable);
       } else {
         this.globalVariables.push(updatedVariable);
@@ -109,6 +109,11 @@ export const useVariableStore = defineStore('variables', {
         input: [],
         output: []
       };
+    },
+
+    // Clear all process variables specifically (for template application)
+    clearAllProcessVariables() {
+      this.processVariables = [];
     }
   }
 }); 

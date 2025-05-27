@@ -547,5 +547,11 @@ export default defineNuxtConfig({
         requestSizeLimiter: false,
       },
     },
+    "/api/forms/**": {
+      security: {
+        xssValidator: false,
+        requestSizeLimiter: false,
+      },
+    },
   },
 });

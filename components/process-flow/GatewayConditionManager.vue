@@ -96,7 +96,9 @@ watch(() => props.conditions, (newConditions) => {
 
 // Operators based on variable type
 const getOperatorsForType = (type) => {
-  switch (type) {
+  switch (type?.toLowerCase()) {
+    case 'int':
+    case 'decimal':
     case 'number':
       return [
         { value: 'eq', label: '= (Equal to)' },
@@ -104,45 +106,77 @@ const getOperatorsForType = (type) => {
         { value: 'gt', label: '> (Greater than)' },
         { value: 'gte', label: '≥ (Greater than or equal to)' },
         { value: 'lt', label: '< (Less than)' },
-        { value: 'lte', label: '≤ (Less than or equal to)' }
+        { value: 'lte', label: '≤ (Less than or equal to)' },
+        { value: 'between', label: 'Between (inclusive)' },
+        { value: 'not_between', label: 'Not between' }
       ];
     case 'string':
       return [
         { value: 'eq', label: '= (Equal to)' },
         { value: 'neq', label: '≠ (Not equal to)' },
         { value: 'contains', label: 'Contains' },
-        { value: 'startsWith', label: 'Starts with' },
-        { value: 'endsWith', label: 'Ends with' }
+        { value: 'not_contains', label: 'Does not contain' },
+        { value: 'starts_with', label: 'Starts with' },
+        { value: 'ends_with', label: 'Ends with' },
+        { value: 'empty', label: 'Is empty' },
+        { value: 'not_empty', label: 'Is not empty' },
+        { value: 'regex', label: 'Matches pattern (regex)' }
       ];
     case 'boolean':
       return [
         { value: 'eq', label: '= (Equal to)' },
-        { value: 'neq', label: '≠ (Not equal to)' }
+        { value: 'is_true', label: 'Is True' },
+        { value: 'is_false', label: 'Is False' }
       ];
     case 'date':
+    case 'datetime':
       return [
         { value: 'eq', label: '= (Equal to)' },
         { value: 'neq', label: '≠ (Not equal to)' },
         { value: 'gt', label: '> (After)' },
         { value: 'gte', label: '≥ (On or after)' },
         { value: 'lt', label: '< (Before)' },
-        { value: 'lte', label: '≤ (On or before)' }
+        { value: 'lte', label: '≤ (On or before)' },
+        { value: 'between', label: 'Between dates' },
+        { value: 'today', label: 'Is today' },
+        { value: 'this_week', label: 'Is this week' },
+        { value: 'this_month', label: 'Is this month' },
+        { value: 'this_year', label: 'Is this year' }
+      ];
+    case 'object':
+      return [
+        { value: 'eq', label: '= (Equal to)' },
+        { value: 'neq', label: '≠ (Not equal to)' },
+        { value: 'has_property', label: 'Has property' },
+        { value: 'property_equals', label: 'Property equals' },
+        { value: 'empty', label: 'Is empty/null' },
+        { value: 'not_empty', label: 'Is not empty/null' }
       ];
     default:
       return [
         { value: 'eq', label: '= (Equal to)' },
-        { value: 'neq', label: '≠ (Not equal to)' }
+        { value: 'neq', label: '≠ (Not equal to)' },
+        { value: 'empty', label: 'Is empty' },
+        { value: 'not_empty', label: 'Is not empty' }
       ];
   }
 };
 
 // Get value input type based on variable type
 const getInputTypeForVarType = (type) => {
-  switch (type) {
-    case 'number': return 'number';
-    case 'date': return 'date';
-    case 'boolean': return 'checkbox';
-    default: return 'text';
+  switch (type?.toLowerCase()) {
+    case 'int':
+    case 'decimal':
+    case 'number': 
+      return 'number';
+    case 'date': 
+      return 'date';
+    case 'datetime': 
+      return 'datetime-local';
+    case 'boolean': 
+      return 'checkbox';
+    default: 
+      return 'text';
   }
 };
 
@@ -169,6 +203,8 @@ const addConditionGroup = () => {
         variable: defaultVar.name,
         operator: getOperatorsForType(defaultVar.type || 'string')[0].value,
         value: '',
+        minValue: '',
+        maxValue: '',
         valueType: defaultVar.type || 'string',
         logicalOperator: 'and' // This won't be used for the first condition but included for consistency
       }
@@ -211,6 +247,8 @@ const addConditionToGroup = (groupIndex) => {
     variable: defaultVar.name,
     operator: getOperatorsForType(defaultVar.type || 'string')[0].value,
     value: '',
+    minValue: '',
+    maxValue: '',
     valueType: defaultVar.type || 'string',
     logicalOperator: 'and' // Default operator for this condition
   };
@@ -240,8 +278,16 @@ const updateCondition = (groupIndex, conditionIndex, field, value) => {
     localConditions.value[groupIndex].conditions[conditionIndex].valueType = selectedVar.type;
     // Reset operator to a valid one for this type
     localConditions.value[groupIndex].conditions[conditionIndex].operator = getOperatorsForType(selectedVar.type)[0].value;
-    // Reset value
+    // Reset values
     localConditions.value[groupIndex].conditions[conditionIndex].value = '';
+    localConditions.value[groupIndex].conditions[conditionIndex].minValue = '';
+    localConditions.value[groupIndex].conditions[conditionIndex].maxValue = '';
+  } else if (field === 'operator') {
+    localConditions.value[groupIndex].conditions[conditionIndex].operator = value;
+    // Reset values when operator changes
+    localConditions.value[groupIndex].conditions[conditionIndex].value = '';
+    localConditions.value[groupIndex].conditions[conditionIndex].minValue = '';
+    localConditions.value[groupIndex].conditions[conditionIndex].maxValue = '';
   } else {
     localConditions.value[groupIndex].conditions[conditionIndex][field] = value;
   }
@@ -265,7 +311,21 @@ const conditionText = (condition) => {
   const variableName = variable?.label || variable?.name || condition.variable || 'Unknown variable';
   const operatorText = operator?.label?.split(' ')[0] || condition.operator || '=';
   
-  return `${variableName} ${operatorText} ${condition.value}`;
+  // Handle operators that don't need values
+  if (['empty', 'not_empty', 'is_true', 'is_false', 'today', 'this_week', 'this_month', 'this_year'].includes(condition.operator)) {
+    return `${variableName} ${operatorText}`;
+  }
+  
+  // Handle between operators
+  if (['between', 'not_between'].includes(condition.operator)) {
+    const minVal = condition.minValue || '';
+    const maxVal = condition.maxValue || '';
+    return `${variableName} ${operatorText} ${minVal} and ${maxVal}`;
+  }
+  
+  // Handle regular operators with values
+  const value = condition.value || '';
+  return `${variableName} ${operatorText} ${value}`;
 };
 
 // Default path value
@@ -307,13 +367,61 @@ const groupedConditionText = (group) => {
   }).join(' ');
 };
 
-// Add the following helper method to the existing script
+// Get placeholder text based on variable type and operator
 const getValuePlaceholder = (condition) => {
   const varType = condition.valueType?.toLowerCase();
-  if (varType === 'number') return 'Enter a number';
-  if (varType === 'date') return 'Select a date';
-  if (varType === 'string') return 'Enter text value';
-  return 'Enter value';
+  const operator = condition.operator;
+  
+  // Handle operators that don't need values
+  if (['empty', 'not_empty', 'is_true', 'is_false', 'today', 'this_week', 'this_month', 'this_year'].includes(operator)) {
+    return 'No value needed';
+  }
+  
+  // Handle between operators
+  if (operator === 'between' || operator === 'not_between') {
+    if (varType === 'int' || varType === 'decimal' || varType === 'number') {
+      return 'Enter two numbers: min,max (e.g., 10,50)';
+    }
+    if (varType === 'date' || varType === 'datetime') {
+      return 'Enter date range: start,end';
+    }
+  }
+  
+  // Handle property-based operators for objects
+  if (operator === 'has_property') {
+    return 'Enter property name (e.g., email)';
+  }
+  if (operator === 'property_equals') {
+    return 'Enter property:value (e.g., status:active)';
+  }
+  
+  // Handle regex
+  if (operator === 'regex') {
+    return 'Enter regex pattern (e.g., ^[A-Z]+$)';
+  }
+  
+  // Type-specific placeholders
+  switch (varType) {
+    case 'int':
+      return 'Enter a whole number (e.g., 42)';
+    case 'decimal':
+    case 'number':
+      return 'Enter a number (e.g., 3.14)';
+    case 'date':
+      return 'Select a date';
+    case 'datetime':
+      return 'Select date and time';
+    case 'string':
+      return operator === 'contains' || operator === 'not_contains' 
+        ? 'Enter text to search for' 
+        : 'Enter text value';
+    case 'boolean':
+      return 'true or false';
+    case 'object':
+      return 'Enter JSON object or property path';
+    default:
+      return 'Enter value';
+  }
 };
 
 // Add a method to get friendly path summary
@@ -504,9 +612,24 @@ const getPathSummary = (group) => {
                         :key="variable.name" 
                         :value="variable.name"
                       >
-                        {{ variable.label || variable.name }}
+                        {{ variable.label || variable.name }} ({{ variable.type }})
                       </option>
                     </select>
+                    <div v-if="condition.variable" class="mt-1 flex items-center">
+                      <span 
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                        :class="{
+                          'bg-purple-100 text-purple-800': ['int', 'decimal'].includes(condition.valueType),
+                          'bg-blue-100 text-blue-800': condition.valueType === 'string',
+                          'bg-indigo-100 text-indigo-800': condition.valueType === 'boolean',
+                          'bg-amber-100 text-amber-800': ['date', 'datetime'].includes(condition.valueType),
+                          'bg-emerald-100 text-emerald-800': condition.valueType === 'object',
+                          'bg-gray-100 text-gray-800': !['int', 'decimal', 'string', 'boolean', 'date', 'datetime', 'object'].includes(condition.valueType)
+                        }"
+                      >
+                        {{ condition.valueType }} type
+                      </span>
+                    </div>
                   </div>
                   
                   <!-- Operator -->
@@ -532,22 +655,64 @@ const getPathSummary = (group) => {
                   <!-- Value -->
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Value</label>
+                    
+                    <!-- No value needed for certain operators -->
+                    <div 
+                      v-if="['empty', 'not_empty', 'is_true', 'is_false', 'today', 'this_week', 'this_month', 'this_year'].includes(condition.operator)"
+                      class="flex items-center h-[38px] p-2 border rounded-md shadow-sm bg-gray-50 text-gray-500"
+                    >
+                      <Icon name="material-symbols:info" class="w-4 h-4 mr-2" />
+                      <span class="text-sm">No value required</span>
+                    </div>
+                    
+                    <!-- Boolean value selection -->
+                    <div 
+                      v-else-if="condition.valueType === 'boolean' && !['is_true', 'is_false'].includes(condition.operator)"
+                      class="flex items-center h-[38px] p-2 border rounded-md shadow-sm bg-white"
+                    >
+                      <input 
+                        type="checkbox"
+                        v-model="condition.value"
+                        @change="saveChanges"
+                        class="form-checkbox text-orange-500 focus:ring-orange-500"
+                      />
+                      <span class="ml-2 text-sm">{{ condition.value ? 'True' : 'False' }}</span>
+                    </div>
+                    
+                    <!-- Special handling for between operators -->
+                    <div 
+                      v-else-if="['between', 'not_between'].includes(condition.operator)"
+                      class="space-y-2"
+                    >
+                      <div class="grid grid-cols-2 gap-2">
+                        <input 
+                          :type="getInputTypeForVarType(condition.valueType)"
+                          v-model="condition.minValue"
+                          @blur="saveChanges"
+                          class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
+                          :placeholder="condition.valueType === 'date' || condition.valueType === 'datetime' ? 'Start date' : 'Min value'"
+                        />
+                        <input 
+                          :type="getInputTypeForVarType(condition.valueType)"
+                          v-model="condition.maxValue"
+                          @blur="saveChanges"
+                          class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
+                          :placeholder="condition.valueType === 'date' || condition.valueType === 'datetime' ? 'End date' : 'Max value'"
+                        />
+                      </div>
+                      <p class="text-xs text-gray-500">Enter the range for the condition</p>
+                    </div>
+                    
+                    <!-- Regular value input -->
                     <input 
-                      v-if="condition.valueType !== 'boolean'"
+                      v-else
                       :type="getInputTypeForVarType(condition.valueType)"
                       v-model="condition.value"
                       @blur="saveChanges"
                       class="w-full p-2 border rounded-md shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 text-sm"
                       :placeholder="getValuePlaceholder(condition)"
+                      :step="condition.valueType === 'decimal' ? '0.01' : undefined"
                     />
-                    <div v-else class="flex items-center h-[38px] p-2 border rounded-md shadow-sm bg-white">
-                      <input 
-                        type="checkbox"
-                        v-model="condition.value"
-                        class="form-checkbox text-orange-500 focus:ring-orange-500"
-                      />
-                      <span class="ml-2 text-sm">{{ condition.value ? 'Yes/True' : 'No/False' }}</span>
-                    </div>
                   </div>
                 </div>
               </div>

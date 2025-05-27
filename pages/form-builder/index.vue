@@ -1901,8 +1901,9 @@ const applyFormTemplate = (template) => {
       formStore.setFormName(template.name);
     }
     
-    // Reset the form components
+    // Reset the form components and form ID (to ensure this becomes a new form)
     formStore.formComponents = [];
+    formStore.currentFormId = null; // Important: This ensures we create a new form instead of updating existing
     
     // Add the template components
     if (template.components && template.components.length > 0) {
