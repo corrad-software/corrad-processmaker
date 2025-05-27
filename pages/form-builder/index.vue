@@ -196,6 +196,7 @@
             <!-- Preview Mode -->
             <div v-if="isPreview" class="form-container">
               <FormScriptEngine
+                ref="formScriptEngine"
                 :form-data="previewFormData"
                 :custom-script="formStore.formCustomScript"
                 :custom-css="formStore.formCustomCSS"
@@ -205,7 +206,13 @@
                 @field-validate="handleScriptFieldValidate"
               />
               
-              <FormKit type="form" @submit="handlePreviewSubmit" :actions="false" v-model="previewFormData">
+              <FormKit 
+                ref="previewForm"
+                type="form" 
+                @submit="handlePreviewSubmit" 
+                :actions="false" 
+                v-model="previewFormData"
+              >
                 <div class="grid-preview-container">
                   <template
                     v-for="(component, index) in formStore.formComponents"
@@ -495,26 +502,53 @@
               <div class="mb-4">
                 <h3 class="text-lg font-medium mb-2">Custom JavaScript</h3>
                 <p class="text-sm text-gray-600 mb-4">
-                  Write custom JavaScript to add dynamic behavior to your form. 
-                  Use <code class="bg-gray-100 px-1 rounded">this.getField('fieldName')</code> to access form fields.
+                  Write custom JavaScript to add dynamic behavior to your form. Scripts run securely in a sandboxed environment with access to form fields and utility functions.
                 </p>
                 
                 <!-- Helper Functions Reference -->
                 <div class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
                   <details>
-                    <summary class="text-sm font-medium text-blue-800 cursor-pointer">📚 Available Helper Functions</summary>
+                    <summary class="text-sm font-medium text-blue-800 cursor-pointer">📚 Core Functions</summary>
                     <div class="mt-2 text-xs text-blue-700 space-y-1">
-                      <div><code>this.getField('name')</code> - Get field value</div>
-                      <div><code>this.setField('name', value)</code> - Set field value</div>
-                      <div><code>this.hideField('name')</code> - Hide field</div>
-                      <div><code>this.showField('name')</code> - Show field</div>
-                      <div><code>this.disableField('name')</code> - Disable field</div>
-                      <div><code>this.enableField('name')</code> - Enable field</div>
-                      <div><code>this.validateField('name')</code> - Trigger field validation</div>
-                      <div><code>this.getAllFieldValues()</code> - Get all form values</div>
-          </div>
+                      <div><code>getField('name')</code> - Get field value</div>
+                      <div><code>setField('name', value)</code> - Set field value and trigger events</div>
+                      <div><code>hideField('name')</code> - Hide a field</div>
+                      <div><code>showField('name')</code> - Show a field</div>
+                      <div><code>disableField('name')</code> - Disable a field</div>
+                      <div><code>enableField('name')</code> - Enable a field</div>
+                      <div><code>validateField('name')</code> - Trigger field validation</div>
+                      <div><code>getAllFieldValues()</code> - Get all form values as object</div>
+                      <div><code>onFieldChange(['field1', 'field2'], callback)</code> - Listen for field changes</div>
+                    </div>
                   </details>
-      </div>
+                </div>
+                
+                <!-- User Interface Functions -->
+                <div class="mb-4 p-3 bg-green-50 rounded border border-green-200">
+                  <details>
+                    <summary class="text-sm font-medium text-green-800 cursor-pointer">🎨 UI & Notifications</summary>
+                    <div class="mt-2 text-xs text-green-700 space-y-1">
+                      <div><code>showSuccess('message')</code> - Display success notification</div>
+                      <div><code>showError('message')</code> - Display error notification</div>
+                      <div><code>showInfo('message')</code> - Display info notification</div>
+                      <div><code>querySelector('selector')</code> - Safe DOM querying within form</div>
+                    </div>
+                  </details>
+                </div>
+                
+                <!-- Utility Functions -->
+                <div class="mb-4 p-3 bg-purple-50 rounded border border-purple-200">
+                  <details>
+                    <summary class="text-sm font-medium text-purple-800 cursor-pointer">🛠️ Utilities</summary>
+                    <div class="mt-2 text-xs text-purple-700 space-y-1">
+                      <div><code>Math.*</code> - Mathematical functions (Math.round, Math.max, etc.)</div>
+                      <div><code>Date</code> - Date object for date/time operations</div>
+                      <div><code>Number()</code>, <code>String()</code>, <code>Array</code> - Type conversion</div>
+                      <div><code>setTimeout()</code>, <code>setInterval()</code> - Timing functions</div>
+                      <div><code>console.log()</code>, <code>console.warn()</code> - Debug logging</div>
+                    </div>
+                  </details>
+                </div>
               </div>
 
               <RsCodeMirror
@@ -522,21 +556,34 @@
                 language="javascript"
                 height="300px"
                 placeholder="// Example: Hide/show fields based on selection
-// this.onFieldChange('customer_type', (value) => {
+// onFieldChange('customer_type', (value) => {
 //   if (value === 'business') {
-//     this.showField('company_name');
-//     this.showField('tax_id');
+//     showField('company_name');
+//     showField('tax_id');
+//     showInfo('Business information fields are now visible');
 //   } else {
-//     this.hideField('company_name');
-//     this.hideField('tax_id');
+//     hideField('company_name');
+//     hideField('tax_id');
 //   }
 // });
 
-// Example: Calculate total
-// this.onFieldChange(['quantity', 'price'], () => {
-//   const qty = this.getField('quantity') || 0;
-//   const price = this.getField('price') || 0;
-//   this.setField('total', qty * price);
+// Example: Real-time calculations
+// onFieldChange(['quantity', 'price'], () => {
+//   const qty = Number(getField('quantity')) || 0;
+//   const price = Number(getField('price')) || 0;
+//   const total = Math.round((qty * price) * 100) / 100;
+//   setField('total', total);
+//   
+//   if (total > 1000) {
+//     showSuccess('Discount applied for orders over $1000!');
+//   }
+// });
+
+// Example: Conditional validation
+// onFieldChange('email', (value) => {
+//   if (value && !value.includes('@')) {
+//     showError('Please enter a valid email address');
+//   }
 // });"
               />
             </div>
@@ -598,8 +645,18 @@
               <div class="mb-4">
                 <h3 class="text-lg font-medium mb-2">Form Events</h3>
                 <p class="text-sm text-gray-600 mb-4">
-                  Configure when your custom scripts should run.
+                  Configure when your custom scripts should run. Field change events are detected automatically in real-time when users interact with form fields.
                 </p>
+                
+                <!-- Important Note -->
+                <div class="mb-4 p-3 bg-amber-50 rounded border border-amber-200">
+                  <div class="flex items-start">
+                    <Icon name="material-symbols:info" class="w-4 h-4 text-amber-600 mr-2 mt-0.5" />
+                    <div class="text-xs text-amber-700">
+                      <strong>Note:</strong> The "On Field Change" event must be enabled for <code>onFieldChange()</code> callbacks to work in your scripts.
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="space-y-4">
@@ -627,14 +684,20 @@
 
                 <div class="border rounded p-4">
                   <h4 class="font-medium mb-2">Script Execution Mode</h4>
-                  <div class="space-y-2">
-                    <label class="flex items-center">
-                      <input type="radio" v-model="formStore.scriptMode" value="safe" class="mr-2">
-                      <span class="text-sm">Safe Mode (Recommended) - Limited but secure</span>
+                  <div class="space-y-3">
+                    <label class="flex items-start">
+                      <input type="radio" v-model="formStore.scriptMode" value="safe" class="mr-2 mt-0.5">
+                      <div>
+                        <span class="text-sm font-medium text-green-700">Safe Mode (Recommended)</span>
+                        <p class="text-xs text-gray-600 mt-1">Scripts run in a secure sandbox with access only to form functions. Best for most use cases.</p>
+                      </div>
                     </label>
-                    <label class="flex items-center">
-                      <input type="radio" v-model="formStore.scriptMode" value="advanced" class="mr-2">
-                      <span class="text-sm">Advanced Mode - Full JavaScript access</span>
+                    <label class="flex items-start">
+                      <input type="radio" v-model="formStore.scriptMode" value="advanced" class="mr-2 mt-0.5">
+                      <div>
+                        <span class="text-sm font-medium text-orange-700">Advanced Mode</span>
+                        <p class="text-xs text-gray-600 mt-1">Provides broader JavaScript access but with security restrictions. Use with caution.</p>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -796,6 +859,7 @@
 
 <script setup>
 import { useFormBuilderStore } from "~/stores/formBuilder";
+import { nextTick } from 'vue';
 import FormBuilderHistory from "~/components/FormBuilderHistory.vue";
 import FormTemplatesModal from '~/components/FormTemplatesModal.vue';
 import FormBuilderFieldSettingsModal from '~/components/FormBuilderFieldSettingsModal.vue';
@@ -838,6 +902,8 @@ const showDropdown = ref(false);
 const showTemplatesModal = ref(false);
 const showFieldSettings = ref(false);
 const showFieldSettingsPanel = ref(false);
+const previewForm = ref(null);
+const formScriptEngine = ref(null);
 
 // Settings tabs configuration
 const settingsTabs = [
@@ -1617,118 +1683,127 @@ const previewFormData = ref({});
 
 // Initialize preview form data with default values
 watchEffect(() => {
-  const newFormData = {};
+  console.log('[FormBuilder] watchEffect for previewFormData initialization. Current form components:', formStore.formComponents.length);
+  const existingFormData = { ...previewFormData.value }; // Preserve current user inputs
+  let newDefaults = {};
+  let hasNewComponents = false;
+
   formStore.formComponents.forEach(component => {
     if (component.props.name) {
-      // Set default values based on component type
-      switch (component.type) {
-        case 'checkbox':
-          newFormData[component.props.name] = [];
-          break;
-          
-        case 'number':
-        case 'range':
-          newFormData[component.props.name] = component.props.value || 0;
-          break;
-          
-        case 'switch':
-          newFormData[component.props.name] = component.props.value !== undefined ? component.props.value : false;
-          break;
-          
-        case 'color':
-          newFormData[component.props.name] = component.props.value || '#3b82f6';
-          break;
-          
-        case 'hidden':
-          newFormData[component.props.name] = component.props.value || '';
-          break;
-          
-        case 'image-preview':
-        case 'info-display':
-        case 'button':
-          // These are display-only components and don't need form data values
-          break;
-          
-        case 'repeating-group':
-          // Initialize with one empty group or use minItems to determine how many initial groups
-          const initialGroups = [];
-          const minItems = component.props.minItems || 1;
-          
-          // Create the specified number of initial groups
-          for (let i = 0; i < minItems; i++) {
-            // Create an object with fields from the configuration
-            const group = {};
-            if (Array.isArray(component.props.fields)) {
-              component.props.fields.forEach(field => {
-                // Initialize each field with appropriate default value
-                switch (field.type) {
-                  case 'number':
-                    group[field.name] = 0;
-                    break;
-                  case 'checkbox':
-                    group[field.name] = [];
-                    break;
-                  case 'select':
-                    // If there's a default value in the options, use it
-                    const defaultOption = Array.isArray(field.options) && field.options.length > 0 
-                      ? field.options[0].value 
-                      : '';
-                    group[field.name] = field.value || defaultOption || '';
-                    break;
-                  default:
-                    group[field.name] = field.value || '';
-                }
-              });
+      // If field is not already in existingFormData, it's a new component or needs initialization
+      if (!existingFormData.hasOwnProperty(component.props.name)) {
+        hasNewComponents = true;
+        // Set default values based on component type
+        switch (component.type) {
+          case 'checkbox':
+            newDefaults[component.props.name] = [];
+            break;
+          case 'number':
+          case 'range':
+            newDefaults[component.props.name] = component.props.value || 0;
+            break;
+          case 'switch':
+            newDefaults[component.props.name] = component.props.value !== undefined ? component.props.value : false;
+            break;
+          case 'color':
+            newDefaults[component.props.name] = component.props.value || '#3b82f6';
+            break;
+          case 'hidden':
+            newDefaults[component.props.name] = component.props.value || '';
+            break;
+          case 'repeating-group':
+            const initialGroups = [];
+            const minItems = component.props.minItems || 1;
+            for (let i = 0; i < minItems; i++) {
+              const group = {};
+              if (Array.isArray(component.props.fields)) {
+                component.props.fields.forEach(field => {
+                  switch (field.type) {
+                    case 'number': group[field.name] = 0; break;
+                    case 'checkbox': group[field.name] = []; break;
+                    case 'select':
+                      const defaultOption = Array.isArray(field.options) && field.options.length > 0 ? field.options[0].value : '';
+                      group[field.name] = field.value || defaultOption || '';
+                      break;
+                    default: group[field.name] = field.value || '';
+                  }
+                });
+              }
+              initialGroups.push(group);
             }
-            initialGroups.push(group);
-          }
-          
-          newFormData[component.props.name] = initialGroups;
-          break;
-          
-        case 'dynamic-list':
-          // Initialize with default items from configuration
-          newFormData[component.props.name] = Array.isArray(component.props.defaultItems) 
-            ? [...component.props.defaultItems] 
-            : [];
-          break;
-          
-        case 'select':
-        case 'radio':
-          // For select and radio, initialize with first option value if available
-          if (Array.isArray(component.props.options) && component.props.options.length > 0) {
-            newFormData[component.props.name] = component.props.value || component.props.options[0].value;
-          } else {
-            newFormData[component.props.name] = '';
-          }
-          break;
-          
-        case 'date':
-        case 'time':
-        case 'datetime-local':
-          // Initialize with current date/time
-          newFormData[component.props.name] = component.props.value || '';
-          break;
-          
-        case 'file':
-          // Initialize file inputs as null
-          newFormData[component.props.name] = null;
-          break;
-          
-        default:
-          // For text, textarea, email, password, url, tel, etc.
-          newFormData[component.props.name] = component.props.value || '';
+            newDefaults[component.props.name] = initialGroups;
+            break;
+          case 'dynamic-list':
+            newDefaults[component.props.name] = Array.isArray(component.props.defaultItems) ? [...component.props.defaultItems] : [];
+            break;
+          case 'select':
+          case 'radio':
+            if (Array.isArray(component.props.options) && component.props.options.length > 0) {
+              newDefaults[component.props.name] = component.props.value || component.props.options[0].value;
+            } else {
+              newDefaults[component.props.name] = '';
+            }
+            break;
+          case 'date':
+          case 'time':
+          case 'datetime-local':
+          case 'file': // file inputs are handled by FormKit, typically initialized to null or specific file objects
+             newDefaults[component.props.name] = component.props.value || null;
+            break;
+          // image-preview, info-display, button don't usually hold data in previewFormData directly
+          case 'image-preview':
+          case 'info-display':
+          case 'button':
+            break;
+          default:
+            newDefaults[component.props.name] = component.props.value || '';
+        }
       }
     }
   });
-  previewFormData.value = newFormData;
+
+  // Only update previewFormData if it's the initial load (empty) or new components were added that need defaults
+  // This prevents overwriting user input when existing components change their props (which also triggers this watchEffect)
+  const isInitialLoad = Object.keys(previewFormData.value).length === 0 && Object.keys(newDefaults).length > 0;
+  
+  if (isInitialLoad || hasNewComponents) {
+    console.log('[FormBuilder] Initializing/merging preview form data. Initial load:', isInitialLoad, 'Has new components:', hasNewComponents);
+    previewFormData.value = { ...existingFormData, ...newDefaults };
+    console.log('[FormBuilder] Preview form data after init/merge:', previewFormData.value);
+  } else {
+    console.log('[FormBuilder] Skipping full previewFormData re-initialization to preserve user input.');
+  }
 });
 
 // Handle script-driven field changes
 const handleScriptFieldChange = ({ fieldName, value }) => {
-  previewFormData.value[fieldName] = value;
+  console.log('[FormBuilder] Script field change:', fieldName, '=', value);
+  
+  // Update the reactive form data
+  const newFormData = {
+    ...previewFormData.value,
+    [fieldName]: value
+  };
+  
+  previewFormData.value = newFormData;
+  
   // Make form data accessible to component previews
-  formStore.updatePreviewFormData(previewFormData.value);
+  formStore.updatePreviewFormData(newFormData);
+  
+  // Try to force FormKit form to update
+  nextTick(() => {
+    console.log('[FormBuilder] Updated form data:', newFormData);
+    
+    // Try to access the FormKit form node and update it directly
+    if (previewForm.value && previewForm.value.node) {
+      try {
+        previewForm.value.node.input(newFormData);
+        console.log('[FormBuilder] Force updated FormKit form');
+      } catch (error) {
+        console.warn('[FormBuilder] Could not force update FormKit form:', error);
+      }
+    }
+  });
 };
 
 // Handle script-driven field validation
@@ -1737,10 +1812,45 @@ const handleScriptFieldValidate = ({ fieldName }) => {
   console.log(`Validating field: ${fieldName}`);
 };
 
-// Make form data accessible to component previews
-watchEffect(() => {
+// Handle FormKit form input events
+const handleFormKitInput = (formData, node) => {
+  console.log('[FormBuilder] FormKit input event received!');
+  console.log('[FormBuilder] FormKit formData:', JSON.parse(JSON.stringify(formData)));
+  console.log('[FormBuilder] Current previewFormData before update:', JSON.parse(JSON.stringify(previewFormData.value)));
+  
+  // Update our reactive form data - this should trigger the FormScriptEngine watcher
+  const oldPreviewData = { ...previewFormData.value };
+  previewFormData.value = { ...formData };
+  
+  console.log('[FormBuilder] Updated previewFormData to:', JSON.parse(JSON.stringify(previewFormData.value)));
+  console.log('[FormBuilder] Did previewFormData actually change?', JSON.stringify(oldPreviewData) !== JSON.stringify(previewFormData.value));
+  
+  // Make form data accessible to component previews
   formStore.updatePreviewFormData(previewFormData.value);
+  
+  console.log('[FormBuilder] FormStore preview data updated to:', JSON.parse(JSON.stringify(formStore.previewFormData)));
+};
+
+// Make form data accessible to component previews (for UI rendering, not for triggering script engine)
+watchEffect(() => {
+  if (formStore) { // Ensure formStore is available
+    formStore.updatePreviewFormData(previewFormData.value);
+  }
 });
+
+// Watch for changes in previewFormData to trigger FormScriptEngine
+watch(() => previewFormData.value, (newData, oldData) => {
+  if (!isPreview.value) return; // Only in preview mode
+  
+  console.log('[FormBuilder] previewFormData watcher triggered!');
+  console.log('[FormBuilder] New data:', JSON.parse(JSON.stringify(newData)));
+  console.log('[FormBuilder] Old data:', oldData ? JSON.parse(JSON.stringify(oldData)) : 'undefined');
+  
+  // Update form store
+  formStore.updatePreviewFormData(newData);
+  
+  console.log('[FormBuilder] FormStore preview data updated to:', JSON.parse(JSON.stringify(formStore.previewFormData)));
+}, { deep: true, immediate: false });
 
 const navigateToManage = () => {
   // If already confirmed or no unsaved changes, navigate directly

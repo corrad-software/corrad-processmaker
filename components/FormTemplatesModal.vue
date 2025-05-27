@@ -142,6 +142,210 @@ const activeCategory = ref('all');
 // Templates data
 const templates = [
   {
+    id: 'test-css-js',
+    name: 'CSS & JavaScript Test',
+    description: 'Simple test form to verify custom CSS and JavaScript functionality works correctly.',
+    category: 'advanced',
+    image: null,
+    hasScript: true,
+    hasCSS: true,
+    componentCount: 6,
+    components: [
+      {
+        type: 'heading',
+        name: 'Heading',
+        category: 'Layout',
+        icon: 'material-symbols:title',
+        defaultProps: {
+          value: 'CSS & JavaScript Test Form',
+          level: 1,
+          width: '100%',
+          gridColumn: 'span 12'
+        }
+      },
+      {
+        type: 'paragraph',
+        name: 'Paragraph',
+        category: 'Layout',
+        icon: 'material-symbols:text-snippet-outline',
+        defaultProps: {
+          value: 'This form tests custom CSS styling and JavaScript functionality. Try changing the values to see the scripts in action!',
+          width: '100%',
+          gridColumn: 'span 12'
+        }
+      },
+      {
+        type: 'text',
+        name: 'Text Field',
+        category: 'Basic Inputs',
+        icon: 'material-symbols:text-fields',
+        defaultProps: {
+          type: 'text',
+          label: 'Your Name',
+          name: 'user_name',
+          placeholder: 'Enter your name',
+          help: 'This field will trigger JavaScript when changed',
+          validation: 'required',
+          width: '50%',
+          gridColumn: 'span 6'
+        }
+      },
+      {
+        type: 'number',
+        name: 'Number',
+        category: 'Basic Inputs',
+        icon: 'material-symbols:counter-1-outline',
+        defaultProps: {
+          type: 'number',
+          label: 'Quantity',
+          name: 'quantity',
+          placeholder: '1',
+          help: 'Change this to see the total calculation',
+          min: 1,
+          max: 100,
+          validation: 'required',
+          width: '25%',
+          gridColumn: 'span 3'
+        }
+      },
+      {
+        type: 'number',
+        name: 'Number',
+        category: 'Basic Inputs',
+        icon: 'material-symbols:counter-1-outline',
+        defaultProps: {
+          type: 'number',
+          label: 'Price ($)',
+          name: 'price',
+          placeholder: '10.00',
+          help: 'Price per item',
+          min: 0,
+          step: 0.01,
+          validation: 'required',
+          width: '25%',
+          gridColumn: 'span 3'
+        }
+      },
+      {
+        type: 'text',
+        name: 'Text Field',
+        category: 'Basic Inputs',
+        icon: 'material-symbols:text-fields',
+        defaultProps: {
+          type: 'text',
+          label: 'Total Amount',
+          name: 'total',
+          placeholder: '$0.00',
+          help: 'This will be calculated automatically',
+          width: '100%',
+          gridColumn: 'span 12'
+        }
+      }
+    ],
+    script: `// Welcome message when form loads
+this.showSuccess('CSS & JavaScript test form loaded successfully!');
+
+// Greet user when name changes
+this.onFieldChange('user_name', (value) => {
+  if (value && value.trim()) {
+    this.showInfo('Hello, ' + value.trim() + '! Welcome to the test form.');
+  }
+});
+
+// Calculate total when quantity or price changes
+this.onFieldChange(['quantity', 'price'], () => {
+  const quantity = parseFloat(this.getField('quantity')) || 0;
+  const price = parseFloat(this.getField('price')) || 0;
+  const total = quantity * price;
+  
+  this.setField('total', '$' + total.toFixed(2));
+  
+  if (total > 0) {
+    this.console.log('Total calculated:', total);
+    
+    if (total > 50) {
+      this.showSuccess('Great! Total is over $50');
+    } else if (total > 100) {
+      this.showInfo('Wow! Total is over $100');
+    }
+  }
+});
+
+// Initialize with default values when form loads
+setTimeout(() => {
+  this.setField('quantity', 2);
+  this.setField('price', 15.50);
+}, 500);`,
+    css: `.form-container {
+  background: linear-gradient(135deg, #fef7ff 0%, #f3e8ff 100%);
+  border: 3px solid #a855f7;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(168, 85, 247, 0.2);
+}
+
+/* Style the name field with a special border */
+.form-field[data-name="user_name"] {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.form-field[data-name="user_name"] input {
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  color: #065f46;
+}
+
+/* Style the quantity field */
+.form-field[data-name="quantity"] {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+/* Style the price field */
+.form-field[data-name="price"] {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+/* Style the total field with special emphasis */
+.form-field[data-name="total"] {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 3px solid #ef4444;
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.form-field[data-name="total"] input {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #dc2626;
+  text-align: center;
+}
+
+/* Add some hover effects */
+.form-field:hover {
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+/* Style the heading */
+h1 {
+  color: #7c3aed;
+  text-shadow: 2px 2px 4px rgba(124, 58, 237, 0.3);
+}`
+  },
+  {
     id: 'contact-form',
     name: 'Contact Form',
     description: 'A modern contact form with optimized grid layout and smart field widths.',
@@ -2187,6 +2391,7 @@ this.onFieldChange('budget', (value) => {
   
   // Update display somewhere in the form
   console.log('Budget formatted:', formatted);
+  this.showInfo('Budget updated: ' + formatted);
 });
 
 // OTP validation
@@ -2201,18 +2406,32 @@ this.onFieldChange('otp_code', (value) => {
       }
     }, 1000);
   }
-});`,
+});
+
+// Initialize form
+console.log('Advanced form script loaded successfully!');`,
     css: `.form-container {
-  background: #f8fafc;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+  border-radius: 16px;
   padding: 2rem;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.form-field[data-name="budget"] {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1rem;
+  font-weight: bold;
+  font-size: 1.1rem;
 }
 
 .form-field[data-name="info_display"] {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .form-field[data-name="dropzone"] {
@@ -2225,6 +2444,8 @@ this.onFieldChange('otp_code', (value) => {
 .form-field[data-name="dropzone"]:hover {
   border-color: #3b82f6;
   background: #eff6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .form-field[data-name="otp_code"] input {
@@ -2232,6 +2453,19 @@ this.onFieldChange('otp_code', (value) => {
   font-family: monospace;
   font-size: 1.2rem;
   letter-spacing: 0.5rem;
+  background: #f0f9ff;
+  border: 2px solid #3b82f6;
+}
+
+/* Animated submit button */
+.form-field[data-name="submit_advanced"] button {
+  background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+  transition: all 0.3s ease;
+}
+
+.form-field[data-name="submit_advanced"] button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }`
   }
 ];

@@ -1,7 +1,7 @@
 <template>
   <div>
-    <!-- Custom CSS Injection -->
-    <component :is="'style'" v-if="customCSS" scoped>
+    <!-- Custom CSS Injection - Remove scoped to allow global styling -->
+    <component :is="'style'" v-if="customCSS">
       {{ customCSS }}
     </component>
   </div>
@@ -44,16 +44,31 @@ const emit = defineEmits(['field-change', 'form-submit', 'field-validate']);
 const scriptContext = ref(null);
 const fieldChangeHandlers = ref(new Map());
 const isScriptInitialized = ref(false);
+const previousFormData = ref({});
 
 // Create safe execution context
 const createScriptContext = () => {
   const context = {
-    // Form field interaction methods
     getField: (fieldName) => {
       return props.formData[fieldName];
     },
     
     setField: (fieldName, value) => {
+      // Try to find the FormKit input element and update it directly
+      const fieldElement = document.querySelector(`[data-name="${fieldName}"] input, [data-name="${fieldName}"] select, [data-name="${fieldName}"] textarea`);
+      if (fieldElement) {
+        fieldElement.value = value;
+        
+        // Trigger input event to notify FormKit of the change
+        const inputEvent = new Event('input', { bubbles: true });
+        fieldElement.dispatchEvent(inputEvent);
+        
+        // Also trigger change event
+        const changeEvent = new Event('change', { bubbles: true });
+        fieldElement.dispatchEvent(changeEvent);
+      }
+      
+      // Also emit the event for the parent component
       emit('field-change', { fieldName, value });
     },
     
@@ -107,6 +122,46 @@ const createScriptContext = () => {
       });
     },
     
+    // Add missing helper functions
+    showSuccess: (message) => {
+      // Create a simple success notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 3000);
+    },
+    
+    showError: (message) => {
+      // Create a simple error notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 5000);
+    },
+    
+    showInfo: (message) => {
+      // Create a simple info notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 3000);
+    },
+    
     // Utility functions
     console: {
       log: (...args) => console.log('[Form Script]', ...args),
@@ -134,7 +189,13 @@ const createScriptContext = () => {
     String: String,
     
     // Number utilities
-    Number: Number
+    Number: Number,
+    
+    // Additional utility functions
+    setTimeout: setTimeout,
+    setInterval: setInterval,
+    clearTimeout: clearTimeout,
+    clearInterval: clearInterval
   };
   
   return context;
@@ -183,20 +244,26 @@ const executeScript = (script, context) => {
       scriptFunction.call(null, context);
     }
   } catch (error) {
-    console.error('Script execution error:', error);
-    // Could emit an error event here for user feedback
+    console.error('[FormScriptEngine] Script execution error:', error);
+    // Show error to user if showError function is available
+    if (context.showError) {
+      context.showError(`Script Error: ${error.message}`);
+    }
   }
 };
 
 // Initialize script engine
-const initializeScript = async () => {
-  if (!props.customScript || isScriptInitialized.value) return;
+const initializeScript = () => {
+  fieldChangeHandlers.value.clear();
   
-  await nextTick(); // Ensure DOM is ready
-  
+  // Create script context
   scriptContext.value = createScriptContext();
   
-  if (props.formEvents.onLoad) {
+  // Store initial form data
+  previousFormData.value = { ...props.formData };
+  
+  // Execute onLoad script if enabled
+  if (props.formEvents.onLoad && props.customScript) {
     executeScript(props.customScript, scriptContext.value);
   }
   
@@ -205,44 +272,63 @@ const initializeScript = async () => {
 
 // Handle field changes
 const handleFieldChange = (fieldName, newValue, oldValue) => {
-  if (!fieldChangeHandlers.value.has(fieldName)) return;
+  if (!fieldChangeHandlers.value.has(fieldName)) {
+    return;
+  }
   
   const handlers = fieldChangeHandlers.value.get(fieldName);
-  handlers.forEach(handler => {
+  handlers.forEach((handler, index) => {
     try {
       if (typeof handler === 'function') {
         handler.call(scriptContext.value, newValue, oldValue);
       }
     } catch (error) {
-      console.error(`Error in field change handler for '${fieldName}':`, error);
+      console.error(`[FormScriptEngine] Error in onFieldChange handler for "${fieldName}":`, error);
+      if (scriptContext.value?.showError) {
+        scriptContext.value.showError(`Field change handler error for ${fieldName}: ${error.message}`);
+      }
     }
   });
 };
 
-// Watch for form data changes
-watch(() => props.formData, (newData, oldData) => {
-  if (!isScriptInitialized.value || !props.formEvents.onFieldChange) return;
-  
-  // Compare and trigger handlers for changed fields
-  Object.keys(newData).forEach(fieldName => {
-    if (newData[fieldName] !== oldData?.[fieldName]) {
-      handleFieldChange(fieldName, newData[fieldName], oldData?.[fieldName]);
-    }
-  });
-}, { deep: true });
-
 // Watch for script changes and reinitialize
-watch(() => props.customScript, () => {
-  if (isScriptInitialized.value) {
+watch(() => props.customScript, (newScript, oldScript) => {
+  if (newScript !== oldScript) {
     isScriptInitialized.value = false;
-    fieldChangeHandlers.value.clear();
     initializeScript();
   }
 });
 
+// Watch for form data changes - the elegant, performant way
+watch(() => props.formData, (newData, oldData) => {
+  if (!isScriptInitialized.value || !props.formEvents.onFieldChange) {
+    return;
+  }
+  
+  // Compare with our stored previousFormData to detect changes
+  Object.keys(newData).forEach(fieldName => {
+    const newValue = newData[fieldName];
+    const oldValue = previousFormData.value[fieldName];
+    
+    if (newValue !== oldValue) {
+      handleFieldChange(fieldName, newValue, oldValue);
+    }
+  });
+  
+  // Update previousFormData for next comparison
+  previousFormData.value = { ...newData };
+}, { deep: true, immediate: false });
+
+// Watch for CSS changes and update
+watch(() => props.customCSS, () => {
+  // CSS will be automatically updated by the template reactivity
+});
+
 // Lifecycle hooks
 onMounted(() => {
-  initializeScript();
+  setTimeout(() => {
+    initializeScript();
+  }, 500); // Delay to ensure parent DOM and initial props are settled
 });
 
 onUnmounted(() => {
@@ -259,13 +345,12 @@ defineExpose({
   },
   getContext: () => scriptContext.value,
   reinitialize: () => {
-    isScriptInitialized.value = false;
-    fieldChangeHandlers.value.clear();
-    initializeScript();
+    isScriptInitialized.value = false; 
+    initializeScript(); 
   }
 });
 </script>
 
-<style scoped>
+<style>
 /* Component doesn't render visible content */
 </style> 

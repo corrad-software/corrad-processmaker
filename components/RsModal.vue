@@ -117,8 +117,8 @@ watch(
               ></Icon>
             </div>
             <div class="modal-body">
-              <slot name="body"></slot>
-              <slot v-if="!$slots.body"></slot>
+                <slot name="body"></slot>
+                <slot v-if="!$slots.body"></slot>
             </div>
             <div v-if="!hideFooter" class="modal-footer">
               <slot name="footer"></slot>

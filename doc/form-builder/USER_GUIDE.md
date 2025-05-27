@@ -106,7 +106,7 @@ Perfect for collecting simple data:
 **Text Field**
 - Single-line text input
 - Smart width: Small (33%)
-- Use for: Names, titles, short answers
+  - Use for: Names, titles, short answers
 - Quick settings: Label, name, placeholder, required
 
 **Text Area**
@@ -119,7 +119,7 @@ Perfect for collecting simple data:
 - Numeric input with validation
 - Smart width: Narrow (25%)
 - Use for: Age, quantity, prices
-- Features: Min/max limits, step values
+  - Features: Min/max limits, step values
 
 **Email Field**
 - Email input with validation
@@ -131,7 +131,7 @@ Perfect for collecting simple data:
 - Secure password input
 - Smart width: Medium (50%)
 - Use for: Authentication forms
-- Features: Password masking, strength indicators
+  - Features: Password masking, strength indicators
 
 ### Selection Components
 For choosing from options:
@@ -151,7 +151,7 @@ For choosing from options:
 **Radio Group**  
 - Single choice from group
 - Smart width: Full (100%)
-- Use for: Exclusive choices, yes/no questions
+  - Use for: Exclusive choices, yes/no questions
 - Features: Button or traditional styles
 
 **Switch Toggle**
@@ -188,7 +188,7 @@ Specialized functionality:
 - Standard file input
 - Smart width: Wide (75%)
 - Use for: Document uploads, attachments
-- Features: File type restrictions, size limits
+  - Features: File type restrictions, size limits
 
 **File Drop Zone**
 - Drag & drop upload area
@@ -214,7 +214,7 @@ Form structure and organization:
 **Heading**
 - Section titles and organization
 - Smart width: Full (100%)
-- Use for: Form sections, categories
+  - Use for: Form sections, categories
 - Features: Multiple heading levels (H1-H6)
 
 **Paragraph**
@@ -311,7 +311,7 @@ Forms integrate seamlessly with the Process Builder for automated workflows:
 3. **Logical Grouping**: Use similar widths for related fields
 4. **Space Efficiency**: Let the system auto-optimize grid placement
 
-### User Experience  
+### User Experience
 1. **Clear Labels**: Use descriptive, action-oriented labels
 2. **Helpful Placeholders**: Provide examples in placeholder text
 3. **Progressive Disclosure**: Use sections for complex forms
@@ -362,13 +362,288 @@ Forms integrate seamlessly with the Process Builder for automated workflows:
 **Performance Issues**  
 - Reduce number of components
 - Simplify conditional logic
-- Clear browser cache
+   - Clear browser cache
 
 ### Getting Help
 - **Documentation**: Complete technical guides available
 - **Examples**: Sample forms and templates provided
 - **Support**: Contact support team for assistance
 - **Community**: Join user community forums
+
+## JavaScript & Dynamic Calculations
+
+### Real-time Calculations
+The Form Builder supports powerful JavaScript-based calculations that update in real-time as users interact with your forms. This enables dynamic forms with automatic calculations, conditional logic, and interactive behavior.
+
+#### Key Features
+- **Real-time Updates**: Calculations execute instantly when users change field values
+- **onFieldChange Handlers**: Trigger custom logic when specific fields change
+- **setField Function**: Programmatically update field values from JavaScript
+- **Cross-field Dependencies**: Create complex relationships between form fields
+- **Calculation Templates**: Pre-built templates for common calculation patterns
+
+#### Basic Example
+```javascript
+// Form with real-time total calculation
+onLoad: function() {
+    console.log('Form loaded, setting up calculations...');
+    
+    // Initialize fields
+    setField('quantity', 1);
+    setField('price', 0);
+    setField('total', 0);
+}
+
+onFieldChange: function(fieldName, value) {
+    console.log('Field changed:', fieldName, '=', value);
+    
+    if (fieldName === 'quantity' || fieldName === 'price') {
+        // Get current values
+        const quantity = getField('quantity') || 0;
+        const price = getField('price') || 0;
+        
+        // Calculate and update total
+        const total = quantity * price;
+        setField('total', total.toFixed(2));
+        
+        console.log('Updated total:', total);
+    }
+}
+```
+
+### Available JavaScript Functions
+
+#### setField(fieldName, value)
+Updates a form field value and triggers the UI to refresh.
+```javascript
+// Set text field
+setField('user_name', 'John Doe');
+
+// Set number field
+setField('quantity', 5);
+
+// Set calculated field
+setField('total', 99.95);
+```
+
+#### getField(fieldName)
+Retrieves the current value of a form field.
+```javascript
+const userName = getField('user_name');
+const quantity = getField('quantity') || 0; // Default to 0 if empty
+```
+
+#### onLoad Event Handler
+Executes when the form first loads. Use for initialization and setting default values.
+```javascript
+onLoad: function() {
+    // Set default values
+    setField('country', 'USA');
+    setField('currency', 'USD');
+    
+    // Perform initial calculations
+    calculateTotals();
+}
+```
+
+#### onFieldChange Event Handler
+Executes whenever a user changes a field value. Receives fieldName and new value as parameters.
+```javascript
+onFieldChange: function(fieldName, value) {
+    switch(fieldName) {
+        case 'quantity':
+        case 'price':
+            updateTotal();
+            break;
+            
+        case 'country':
+            updateShippingOptions(value);
+            break;
+    }
+}
+```
+
+### Real-world Examples
+
+#### Invoice Calculator
+```javascript
+onLoad: function() {
+    // Initialize invoice fields
+    setField('quantity', 1);
+    setField('unit_price', 0);
+    setField('tax_rate', 8.5); // 8.5% tax
+    setField('subtotal', 0);
+    setField('tax_amount', 0);
+    setField('total', 0);
+}
+
+onFieldChange: function(fieldName, value) {
+    if (['quantity', 'unit_price', 'tax_rate'].includes(fieldName)) {
+        const quantity = parseFloat(getField('quantity')) || 0;
+        const unitPrice = parseFloat(getField('unit_price')) || 0;
+        const taxRate = parseFloat(getField('tax_rate')) || 0;
+        
+        const subtotal = quantity * unitPrice;
+        const taxAmount = (subtotal * taxRate) / 100;
+        const total = subtotal + taxAmount;
+        
+        setField('subtotal', subtotal.toFixed(2));
+        setField('tax_amount', taxAmount.toFixed(2));
+        setField('total', total.toFixed(2));
+    }
+}
+```
+
+#### Conditional Field Logic
+```javascript
+onFieldChange: function(fieldName, value) {
+    if (fieldName === 'subscription_type') {
+        if (value === 'premium') {
+            setField('premium_features', 'Available');
+            setField('support_level', '24/7 Priority');
+        } else {
+            setField('premium_features', 'Not Available');
+            setField('support_level', 'Standard Business Hours');
+        }
+    }
+}
+```
+
+#### Age Calculator
+```javascript
+onFieldChange: function(fieldName, value) {
+    if (fieldName === 'birth_date') {
+        const birthDate = new Date(value);
+        const today = new Date();
+        
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        
+        setField('age', age);
+        
+        // Set eligibility based on age
+        if (age >= 18) {
+            setField('eligible', 'Yes');
+        } else {
+            setField('eligible', 'No');
+        }
+    }
+}
+```
+
+### Best Practices for JavaScript Forms
+
+#### Performance Optimization
+1. **Minimize Calculations**: Only calculate when necessary fields change
+2. **Use Default Values**: Provide fallbacks for empty fields
+3. **Debounce Heavy Operations**: For complex calculations, consider debouncing
+4. **Cache Results**: Store calculation results when appropriate
+
+#### Error Handling
+```javascript
+onFieldChange: function(fieldName, value) {
+    try {
+        if (fieldName === 'price') {
+            const price = parseFloat(value);
+            if (isNaN(price)) {
+                console.warn('Invalid price value:', value);
+                return;
+            }
+            
+            // Perform calculation
+            calculateTotal(price);
+        }
+    } catch (error) {
+        console.error('Error in field change handler:', error);
+    }
+}
+```
+
+#### Debugging Tips
+1. **Use Console Logging**: Add console.log statements to track execution
+2. **Check Field Names**: Ensure field names in code match form field names exactly
+3. **Validate Data Types**: Always parse and validate input values
+4. **Test Edge Cases**: Test with empty values, zero, and negative numbers
+
+### Form Templates with JavaScript
+
+#### CSS & JavaScript Test Form
+A comprehensive template demonstrating real-time calculations:
+
+**Field Structure:**
+- `user_name` (Text): User's name
+- `quantity` (Number): Quantity of items
+- `price` (Number): Price per item  
+- `total` (Number): Calculated total (read-only)
+
+**JavaScript Logic:**
+```javascript
+onLoad: function() {
+    console.log('Form loaded, initializing...');
+    setField('user_name', '');
+    setField('quantity', 1);
+    setField('price', 0);
+    setField('total', 0);
+}
+
+onFieldChange: function(fieldName, value) {
+    console.log('Field changed:', fieldName, '=', value);
+    
+    if (fieldName === 'user_name') {
+        console.log('User name updated to:', value);
+    }
+    
+    if (fieldName === 'quantity' || fieldName === 'price') {
+        const quantity = parseFloat(getField('quantity')) || 0;
+        const price = parseFloat(getField('price')) || 0;
+        const total = quantity * price;
+        
+        setField('total', total.toFixed(2));
+        console.log('Calculated total:', total);
+    }
+}
+```
+
+### Troubleshooting JavaScript Forms
+
+#### Common Issues
+
+**Calculations Not Updating**
+- Verify field names match exactly (case-sensitive)
+- Check browser console for JavaScript errors
+- Ensure `onFieldChange` handler is properly defined
+- Confirm form is in preview mode for testing
+
+**Initial Values Not Setting**
+- Make sure `onLoad` handler is defined
+- Check that `setField` calls use correct field names
+- Verify form data structure in browser developer tools
+
+**Console Errors**
+- **"getField/setField is not defined"**: JavaScript engine not properly initialized
+- **"Cannot read property"**: Field name doesn't exist or typo in field name
+- **"Unexpected token"**: Syntax error in JavaScript code
+
+#### Debugging Workflow
+1. **Open Browser Developer Tools** (F12)
+2. **Check Console Tab** for error messages
+3. **Add Debug Logging**:
+   ```javascript
+   onFieldChange: function(fieldName, value) {
+       console.log('=== Field Change Debug ===');
+       console.log('Field:', fieldName);
+       console.log('New Value:', value);
+       console.log('Current Form Data:', Object.keys(formData));
+       
+       // Your calculation logic here
+   }
+   ```
+4. **Test in Preview Mode** - JavaScript only executes in preview mode
+5. **Verify Field Names** - Use browser inspect element to confirm field name attributes
 
 ## Advanced Features
 

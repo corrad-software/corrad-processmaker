@@ -47,9 +47,6 @@
       :multiple="component.props.multiple || undefined"
       :maxSize="component.props.maxSize || undefined"
       :maxFiles="component.props.maxFiles || undefined"
-      :preserve-events="isPreview"
-      @input.capture.stop="isPreview ? $event.stopPropagation() : null"
-      @click.capture.stop="isPreview ? $event.stopPropagation() : null"
       :classes="component.type === 'checkbox' ? { 
         wrapper: 'mb-1',
         options: 'space-y-0.5'
@@ -124,7 +121,7 @@
         </div>
       </div>
     </div>
-
+    
     <!-- Divider -->
     <div v-else-if="component.type === 'divider'" class="py-4">
       <hr class="border-gray-200" />
@@ -349,7 +346,7 @@
     </div>
 
 
-
+    
     <!-- Unknown Component Type Fallback -->
     <div v-else class="p-4 border border-dashed border-gray-300 rounded">
       <div class="text-gray-500">Unknown component type: {{ component.type }}</div>

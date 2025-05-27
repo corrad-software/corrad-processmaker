@@ -446,8 +446,8 @@
                   name="maxFiles"
                   v-model="configModel.maxFiles"
                   help="Maximum number of files"
-                  min="1"
-                />
+              min="1"
+            />
               </div>
               
               <div class="flex items-center">

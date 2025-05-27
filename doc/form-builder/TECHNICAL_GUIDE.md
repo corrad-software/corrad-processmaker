@@ -438,11 +438,11 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     },
     
     formConfig: (state) => ({
-      id: state.formId,
-      uuid: state.formUUID,
-      name: state.formName,
-      description: state.formDescription,
-      components: state.formComponents
+        id: state.formId,
+        uuid: state.formUUID,
+        name: state.formName,
+        description: state.formDescription,
+        components: state.formComponents
     })
   },
   
@@ -912,7 +912,725 @@ const useVirtualScrolling = (components, containerHeight) => {
 }
 ```
 
+## JavaScript Execution Engine (FormScriptEngine)
+
+### Architecture Overview
+
+The FormScriptEngine component provides real-time JavaScript execution for dynamic form behavior, calculations, and conditional logic. It monitors form data changes and executes user-defined event handlers to create interactive forms.
+
+#### Core Components
+```
+components/
+├── FormScriptEngine.vue       # Main execution engine
+└── FormBuilderCanvas.vue      # Integration point for script execution
+pages/
+└── form-builder/
+    └── index.vue              # Form data handling and script triggering
+```
+
+### FormScriptEngine.vue Implementation
+
+```vue
+<template>
+  <!-- FormScriptEngine runs invisibly in the background -->
+  <div style="display: none;">
+    <!-- Debug info in development -->
+    <div v-if="isDev">
+      Script Engine Status: {{ isInitialized ? 'Active' : 'Initializing' }}
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch, nextTick, onMounted } from 'vue'
+
+// Component props
+const props = defineProps({
+  formData: {
+    type: Object,
+    required: true
+  },
+  script: {
+    type: String,
+    default: ''
+  }
+})
+
+// Reactive state
+const isInitialized = ref(false)
+const previousFormData = ref({})
+const scriptContext = ref(null)
+const handlers = ref({
+  onLoad: null,
+  onFieldChange: null
+})
+
+// Development mode detection
+const isDev = process.env.NODE_ENV === 'development'
+
+// Initialize script execution context
+const initializeScript = () => {
+  try {
+    if (!props.script.trim()) {
+      console.log('FormScriptEngine: No script provided')
+      return
+    }
+
+    // Create execution context with form functions
+    const context = {
+      setField: (fieldName, value) => {
+        console.log('setField called:', fieldName, '=', value)
+        
+        if (props.formData[fieldName] !== value) {
+          // Update form data reactively
+          props.formData[fieldName] = value
+          
+          // Emit update event for parent component
+          emit('fieldUpdate', { fieldName, value })
+        }
+      },
+      
+      getField: (fieldName) => {
+        const value = props.formData[fieldName]
+        console.log('getField called:', fieldName, '=', value)
+        return value
+      },
+      
+      console: console, // Allow console access
+      
+      // Add other safe global functions as needed
+      parseFloat: parseFloat,
+      parseInt: parseInt,
+      Date: Date,
+      Math: Math
+    }
+
+    // Execute script in isolated context
+    const scriptFunction = new Function(
+      'setField', 'getField', 'console', 'parseFloat', 'parseInt', 'Date', 'Math',
+      `
+        ${props.script}
+        
+        // Return the event handlers
+        return {
+          onLoad: typeof onLoad !== 'undefined' ? onLoad : null,
+          onFieldChange: typeof onFieldChange !== 'undefined' ? onFieldChange : null
+        }
+      `
+    )
+
+    // Execute script and extract handlers
+    const result = scriptFunction(
+      context.setField,
+      context.getField,
+      context.console,
+      context.parseFloat,
+      context.parseInt,
+      context.Date,
+      context.Math
+    )
+
+    handlers.value = result
+    scriptContext.value = context
+    
+    console.log('FormScriptEngine: Script initialized with handlers:', Object.keys(result))
+    
+    return true
+  } catch (error) {
+    console.error('FormScriptEngine: Script initialization error:', error)
+    return false
+  }
+}
+
+// Execute onLoad handler
+const executeOnLoad = async () => {
+  if (handlers.value.onLoad && typeof handlers.value.onLoad === 'function') {
+    try {
+      console.log('FormScriptEngine: Executing onLoad handler')
+      await handlers.value.onLoad()
+      console.log('FormScriptEngine: onLoad completed')
+    } catch (error) {
+      console.error('FormScriptEngine: onLoad execution error:', error)
+    }
+  }
+}
+
+// Execute onFieldChange handler
+const executeOnFieldChange = async (fieldName, value) => {
+  if (handlers.value.onFieldChange && typeof handlers.value.onFieldChange === 'function') {
+    try {
+      console.log('FormScriptEngine: Executing onFieldChange for:', fieldName)
+      await handlers.value.onFieldChange(fieldName, value)
+      console.log('FormScriptEngine: onFieldChange completed for:', fieldName)
+    } catch (error) {
+      console.error('FormScriptEngine: onFieldChange execution error:', error)
+    }
+  }
+}
+
+// Detect and trigger field changes
+const triggerFieldChangeDetection = () => {
+  const currentData = { ...props.formData }
+  const previousData = previousFormData.value
+  
+  // Find changed fields
+  const changedFields = []
+  
+  for (const fieldName in currentData) {
+    if (currentData[fieldName] !== previousData[fieldName]) {
+      changedFields.push({
+        name: fieldName,
+        value: currentData[fieldName],
+        oldValue: previousData[fieldName]
+      })
+    }
+  }
+  
+  if (changedFields.length > 0) {
+    console.log('FormScriptEngine: Detected field changes:', changedFields)
+    
+    // Execute handler for each changed field
+    changedFields.forEach(field => {
+      executeOnFieldChange(field.name, field.value)
+    })
+    
+    // Update previous data after processing
+    previousFormData.value = { ...currentData }
+  } else {
+    console.log('FormScriptEngine: No field changes detected')
+  }
+}
+
+// Watch for form data changes with enhanced detection
+watch(
+  () => props.formData,
+  (newData, oldData) => {
+    if (!isInitialized.value) return
+    
+    console.log('FormScriptEngine: Form data changed, checking for field changes...')
+    console.log('New data:', JSON.stringify(newData))
+    console.log('Previous data:', JSON.stringify(previousFormData.value))
+    
+    // Use nextTick to ensure DOM updates are complete
+    nextTick(() => {
+      triggerFieldChangeDetection()
+    })
+  },
+  { 
+    deep: true, 
+    flush: 'post' // Execute after DOM updates
+  }
+)
+
+// Initialize when component mounts
+onMounted(async () => {
+  console.log('FormScriptEngine: Component mounted, initializing...')
+  
+  // Initialize script context
+  const success = initializeScript()
+  
+  if (success) {
+    // Execute onLoad handler first
+    await executeOnLoad()
+    
+    // Set initial previousFormData AFTER onLoad execution
+    // This prevents initial setField calls from being detected as changes
+    await nextTick()
+    previousFormData.value = { ...props.formData }
+    
+    isInitialized.value = true
+    console.log('FormScriptEngine: Initialization complete')
+  } else {
+    console.error('FormScriptEngine: Initialization failed')
+  }
+})
+
+// Public method to manually trigger change detection
+const manualTrigger = () => {
+  console.log('FormScriptEngine: Manual trigger requested')
+  triggerFieldChangeDetection()
+}
+
+// Expose public methods
+defineExpose({
+  manualTrigger,
+  isInitialized
+})
+
+// Emit events
+const emit = defineEmits(['fieldUpdate'])
+</script>
+```
+
+### Integration with Form Builder
+
+#### Form Builder Canvas Integration
+```vue
+<!-- In FormBuilderCanvas.vue -->
+<template>
+  <div class="form-canvas">
+    <!-- Form components render here -->
+    <ComponentPreview 
+      v-for="component in formComponents"
+      :key="component.id"
+      :component="component"
+      :is-preview="isPreview"
+    />
+    
+    <!-- JavaScript execution engine -->
+    <FormScriptEngine
+      v-if="isPreview && formScript"
+      :form-data="previewFormData"
+      :script="formScript"
+      @field-update="handleScriptFieldUpdate"
+    />
+  </div>
+</template>
+
+<script setup>
+import FormScriptEngine from '~/components/FormScriptEngine.vue'
+
+// Handle script-triggered field updates
+const handleScriptFieldUpdate = ({ fieldName, value }) => {
+  console.log('Canvas: Script updated field:', fieldName, '=', value)
+  
+  // Update preview form data
+  previewFormData.value[fieldName] = value
+  
+  // Trigger UI refresh
+  nextTick(() => {
+    refreshFormComponents()
+  })
+}
+</script>
+```
+
+#### Main Form Builder Integration
+```vue
+<!-- In pages/form-builder/index.vue -->
+<script setup>
+// Enhanced FormKit input handler with script engine integration
+const handleFormKitInput = (event) => {
+  console.log('FormKit input event:', event)
+  
+  // Update preview form data
+  previewFormData.value = { ...event }
+  
+  // Trigger script engine change detection
+  if (formScriptEngineRef.value) {
+    nextTick(() => {
+      formScriptEngineRef.value.manualTrigger()
+    })
+  }
+}
+
+// Template ref for script engine
+const formScriptEngineRef = ref(null)
+</script>
+
+<template>
+  <div class="form-builder">
+    <!-- Canvas with integrated script engine -->
+    <FormBuilderCanvas
+      ref="formScriptEngineRef"
+      :form-script="formStore.currentForm?.script"
+      @form-kit-input="handleFormKitInput"
+    />
+  </div>
+</template>
+```
+
+### Event Handler API Reference
+
+#### onLoad Handler
+Executes once when the form loads. Use for initialization.
+
+```javascript
+onLoad: function() {
+    // Initialize default values
+    setField('status', 'active');
+    setField('created_date', new Date().toISOString().split('T')[0]);
+    
+    // Perform initial calculations
+    calculateInitialValues();
+}
+```
+
+#### onFieldChange Handler
+Executes when any field value changes.
+
+```javascript
+onFieldChange: function(fieldName, value) {
+    console.log('Field changed:', fieldName, 'New value:', value);
+    
+    // Handle specific field changes
+    switch(fieldName) {
+        case 'quantity':
+        case 'price':
+            updateTotal();
+            break;
+            
+        case 'country':
+            updateTaxRate(value);
+            break;
+    }
+}
+```
+
+### Error Handling and Debugging
+
+#### Script Execution Errors
+```javascript
+// Comprehensive error handling in script execution
+const executeHandler = async (handler, ...args) => {
+  try {
+    if (typeof handler === 'function') {
+      const result = await handler(...args)
+      return { success: true, result }
+    }
+    return { success: false, error: 'Handler is not a function' }
+  } catch (error) {
+    console.error('Script execution error:', error)
+    
+    // Emit error event for debugging
+    emit('scriptError', {
+      error: error.message,
+      stack: error.stack,
+      handler: handler.name || 'anonymous',
+      args
+    })
+    
+    return { success: false, error: error.message }
+  }
+}
+```
+
+#### Debug Mode Features
+```javascript
+// Enhanced logging in development mode
+const debugLog = (message, data) => {
+  if (isDev) {
+    console.log(`[FormScriptEngine Debug] ${message}`, data)
+  }
+}
+
+// Field change tracing
+const traceFieldChange = (fieldName, oldValue, newValue) => {
+  if (isDev) {
+    console.group(`Field Change: ${fieldName}`)
+    console.log('Old Value:', oldValue)
+    console.log('New Value:', newValue)
+    console.log('Timestamp:', new Date().toISOString())
+    console.groupEnd()
+  }
+}
+```
+
+### Performance Optimization
+
+#### Change Detection Optimization
+```javascript
+// Efficient change detection using shallow comparison
+const hasDataChanged = (newData, oldData) => {
+  const newKeys = Object.keys(newData)
+  const oldKeys = Object.keys(oldData)
+  
+  // Quick length check
+  if (newKeys.length !== oldKeys.length) return true
+  
+  // Value comparison
+  return newKeys.some(key => newData[key] !== oldData[key])
+}
+
+// Debounced change detection for rapid updates
+const debouncedChangeDetection = useDebounceFn(
+  triggerFieldChangeDetection, 
+  100 // 100ms debounce
+)
+```
+
+#### Memory Management
+```javascript
+// Cleanup when component unmounts
+onUnmounted(() => {
+  console.log('FormScriptEngine: Cleaning up...')
+  
+  // Clear references
+  handlers.value = null
+  scriptContext.value = null
+  previousFormData.value = null
+  
+  // Remove event listeners if any
+  cleanupEventListeners()
+})
+```
+
+### Security Considerations
+
+#### Script Sandboxing
+```javascript
+// Restricted execution context - only safe functions exposed
+const createSecureContext = () => {
+  return {
+    // Form manipulation functions
+    setField,
+    getField,
+    
+    // Safe global functions
+    console: {
+      log: console.log,
+      warn: console.warn,
+      error: console.error
+    },
+    
+    // Math and date functions
+    Math,
+    Date,
+    parseFloat,
+    parseInt,
+    isNaN,
+    
+    // String functions
+    String,
+    
+    // No access to:
+    // - window object
+    // - document object  
+    // - eval function
+    // - Function constructor
+    // - import/require
+  }
+}
+```
+
+#### Input Validation
+```javascript
+// Validate script before execution
+const validateScript = (script) => {
+  const dangerousPatterns = [
+    /eval\s*\(/,
+    /Function\s*\(/,
+    /window\./,
+    /document\./,
+    /import\s+/,
+    /require\s*\(/,
+    /fetch\s*\(/,
+    /XMLHttpRequest/
+  ]
+  
+  return !dangerousPatterns.some(pattern => pattern.test(script))
+}
+```
+
 ## Testing Strategy
+
+### JavaScript Engine Tests
+
+```javascript
+// FormScriptEngine unit tests
+describe('FormScriptEngine', () => {
+  let wrapper
+  let mockFormData
+  
+  beforeEach(() => {
+    mockFormData = ref({
+      quantity: 0,
+      price: 0,
+      total: 0
+    })
+    
+    wrapper = mount(FormScriptEngine, {
+      props: {
+        formData: mockFormData.value,
+        script: `
+          onLoad: function() {
+            setField('quantity', 1);
+            setField('price', 10);
+          }
+          
+          onFieldChange: function(fieldName, value) {
+            if (fieldName === 'quantity' || fieldName === 'price') {
+              const total = getField('quantity') * getField('price');
+              setField('total', total);
+            }
+          }
+        `
+      }
+    })
+  })
+  
+  test('should initialize script and execute onLoad', async () => {
+    await nextTick()
+    
+    expect(mockFormData.value.quantity).toBe(1)
+    expect(mockFormData.value.price).toBe(10)
+  })
+  
+  test('should execute onFieldChange when data changes', async () => {
+    await nextTick()
+    
+    // Simulate field change
+    mockFormData.value.quantity = 5
+    await nextTick()
+    
+    expect(mockFormData.value.total).toBe(50)
+  })
+  
+  test('should handle script errors gracefully', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+    
+    const wrapper = mount(FormScriptEngine, {
+      props: {
+        formData: mockFormData.value,
+        script: `
+          onLoad: function() {
+            // Intentional error
+            undefinedFunction();
+          }
+        `
+      }
+    })
+    
+    await nextTick()
+    
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+  
+  test('should validate and sanitize script input', () => {
+    const dangerousScript = `
+      onLoad: function() {
+        eval('alert("XSS")');
+        window.location = 'http://malicious.com';
+      }
+    `
+    
+    const isValid = wrapper.vm.validateScript(dangerousScript)
+    expect(isValid).toBe(false)
+  })
+})
+
+// Real-time calculation tests
+describe('Real-time Calculations', () => {
+  test('should update total when quantity changes', async () => {
+    const formData = ref({ quantity: 2, price: 15.99, total: 0 })
+    
+    const wrapper = mount(TestFormWithScript, {
+      props: { initialData: formData.value }
+    })
+    
+    // Change quantity
+    await wrapper.find('input[name="quantity"]').setValue('3')
+    await nextTick()
+    
+    expect(formData.value.total).toBe(47.97)
+  })
+  
+  test('should handle edge cases in calculations', async () => {
+    const formData = ref({ quantity: '', price: 'invalid', total: 0 })
+    
+    const wrapper = mount(TestFormWithScript, {
+      props: { initialData: formData.value }
+    })
+    
+    // Should handle invalid inputs gracefully
+    await nextTick()
+    expect(formData.value.total).toBe(0)
+  })
+})
+
+// Performance tests
+describe('FormScriptEngine Performance', () => {
+  test('should not trigger excessive re-renders', async () => {
+    const executeHandlerSpy = jest.spyOn(FormScriptEngine.methods, 'executeOnFieldChange')
+    
+    const wrapper = mount(FormScriptEngine, {
+      props: {
+        formData: { field1: '', field2: '', field3: '' },
+        script: `
+          onFieldChange: function(fieldName, value) {
+            console.log('Changed:', fieldName);
+          }
+        `
+      }
+    })
+    
+    // Make multiple rapid changes
+    for (let i = 0; i < 10; i++) {
+      wrapper.setProps({ formData: { field1: `value${i}`, field2: '', field3: '' } })
+      await nextTick()
+    }
+    
+    // Should be debounced/optimized
+    expect(executeHandlerSpy.mock.calls.length).toBeLessThan(10)
+  })
+})
+```
+
+### Integration Tests
+
+```javascript
+// Full form workflow tests with JavaScript
+describe('Form Builder with JavaScript Integration', () => {
+  test('should execute calculations in preview mode', async () => {
+    const wrapper = mount(FormBuilder)
+    
+    // Add form components
+    await wrapper.find('[data-component="number"]').trigger('click')
+    await wrapper.find('[data-component="number"]').trigger('click')
+    await wrapper.find('[data-component="number"]').trigger('click')
+    
+    // Configure fields
+    const components = wrapper.vm.formStore.formComponents
+    components[0].props.name = 'quantity'
+    components[1].props.name = 'price'
+    components[2].props.name = 'total'
+    
+    // Add JavaScript
+    wrapper.vm.formStore.currentForm.script = `
+      onFieldChange: function(fieldName, value) {
+        if (fieldName === 'quantity' || fieldName === 'price') {
+          const quantity = parseFloat(getField('quantity')) || 0;
+          const price = parseFloat(getField('price')) || 0;
+          setField('total', quantity * price);
+        }
+      }
+    `
+    
+    // Switch to preview mode
+    await wrapper.find('[data-testid="preview-toggle"]').trigger('click')
+    
+    // Input values
+    await wrapper.find('input[name="quantity"]').setValue('5')
+    await wrapper.find('input[name="price"]').setValue('19.99')
+    
+    await nextTick()
+    
+    // Check calculated total
+    const totalField = wrapper.find('input[name="total"]')
+    expect(totalField.element.value).toBe('99.95')
+  })
+  
+  test('should handle form builder to preview data flow', async () => {
+    const wrapper = mount(FormBuilder)
+    
+    // Build form with JavaScript
+    await addFormComponents(wrapper)
+    await addJavaScriptLogic(wrapper)
+    
+    // Test preview functionality
+    await wrapper.find('[data-testid="preview-button"]').trigger('click')
+    
+    // Verify script execution
+    expect(wrapper.find('.script-engine').exists()).toBe(true)
+    expect(wrapper.vm.isPreviewMode).toBe(true)
+    
+    // Test field interactions
+    await simulateUserInput(wrapper)
+    await verifyCalculations(wrapper)
+  })
+})
+```
 
 ### Unit Tests
 

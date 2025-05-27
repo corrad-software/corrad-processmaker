@@ -19,6 +19,8 @@ The documentation is organized into the following sections:
 ### Form Builder
 - [User Guide](./form-builder/USER_GUIDE.md) - How to use the Form Builder
 - [Technical Guide](./form-builder/TECHNICAL_GUIDE.md) - Technical details of the Form Builder implementation
+- [JavaScript API Reference](./form-builder/JAVASCRIPT_API.md) - Complete JavaScript API for dynamic forms and calculations
+- [Grid System Guide](./form-builder/grid-system.md) - Visual grid system and layout documentation
 
 ### Process Execution
 - [User Guide](./process-execution/USER_GUIDE.md) - How to use the Process Execution interface
@@ -48,4 +50,15 @@ When contributing to this documentation:
 
 If you have questions about this documentation or need help with the system, please contact the development team. 
 
-Last updated: July 10, 2024 
+Last updated: December 2024
+
+## Recent Updates
+
+### December 2024 - Major Form Builder Enhancements
+- **JavaScript Execution Engine**: Added FormScriptEngine component for real-time calculations
+- **Dynamic Field Updates**: Implemented onFieldChange and onLoad event handlers
+- **Real-time Calculations**: Forms now support live mathematical calculations and field dependencies
+- **Enhanced Debugging**: Comprehensive logging and error handling for JavaScript execution
+- **API Documentation**: Complete JavaScript API reference with practical examples
+- **Performance Optimizations**: Improved change detection and memory management
+- **Security Enhancements**: Sandboxed JavaScript execution with input validation 

@@ -312,6 +312,35 @@
             "null"
           ]
         },
+        "customScript": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "customCSS": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "formEvents": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "scriptMode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "safe"
+        },
         "formStatus": {
           "type": "string",
           "default": "active"

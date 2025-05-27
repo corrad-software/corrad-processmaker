@@ -823,6 +823,11 @@ export const useFormBuilderStore = defineStore('formBuilder', {
       });
     },
     
+    // Update preview form data
+    updatePreviewFormData(data) {
+      this.previewFormData = { ...data };
+    },
+    
     // Optimize the grid layout by analyzing the current components
     // and adjusting their sizes to fill available spaces
     optimizeGridLayout() {
