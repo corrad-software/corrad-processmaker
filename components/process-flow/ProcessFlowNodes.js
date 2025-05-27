@@ -484,6 +484,87 @@ export const BusinessRuleNode = markRaw({
   }
 });
 
+// Notification node
+export const NotificationNode = markRaw({
+  props: ['id', 'type', 'label', 'selected', 'data'],
+  computed: {
+    nodeLabel() {
+      // Get label from either prop or data, with fallback
+      return this.label || (this.data && this.data.label) || 'Notification';
+    },
+    notificationType() {
+      return this.data?.notificationType || 'info';
+    },
+    notificationTypeIcon() {
+      const types = {
+        info: 'material-symbols:info-outline',
+        success: 'material-symbols:check-circle-outline',
+        warning: 'material-symbols:warning-outline',
+        error: 'material-symbols:error-outline'
+      };
+      return types[this.notificationType] || types.info;
+    },
+    notificationTypeColor() {
+      const colors = {
+        info: 'text-blue-500',
+        success: 'text-green-500',
+        warning: 'text-yellow-500',
+        error: 'text-red-500'
+      };
+      return colors[this.notificationType] || colors.info;
+    },
+    recipientType() {
+      return this.data?.recipientType || 'user';
+    },
+    recipientLabel() {
+      const types = {
+        user: 'User',
+        role: 'Role',
+        variable: 'Variable',
+        email: 'Email'
+      };
+      return types[this.recipientType] || 'User';
+    },
+    isConfigured() {
+      // Check if notification has required fields
+      return !!(this.data?.subject && this.data?.message);
+    }
+  },
+  render() {
+    return h(CustomNode, {
+      id: this.id,
+      type: 'notification',
+      label: this.nodeLabel,
+      selected: this.selected,
+      data: this.data,
+      onClick: () => this.$emit('node-click', this.id)
+    }, {
+      icon: () => h('i', { class: `material-icons ${this.notificationTypeColor}` }, 'notifications'),
+      default: () => h('div', { class: 'node-details' }, [
+        h('p', { class: 'node-description' }, this.data?.description || 'Send notification'),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Type:'),
+          h('span', { 
+            class: `node-rule-detail-value ml-1 font-medium ${this.notificationTypeColor}` 
+          }, this.notificationType.charAt(0).toUpperCase() + this.notificationType.slice(1))
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Recipient:'),
+          h('span', { 
+            class: 'node-rule-detail-value ml-1 font-medium text-blue-600' 
+          }, this.recipientLabel)
+        ]),
+        h('div', { class: 'node-rule-detail flex items-center justify-between text-xs mt-1' }, [
+          h('span', { class: 'node-rule-detail-label' }, 'Status:'),
+          h('span', { 
+            class: this.isConfigured ? 'node-rule-detail-value ml-1 font-medium text-green-600' : 'node-rule-detail-value ml-1 font-medium text-red-600'
+          }, this.isConfigured ? 'Configured' : 'Not configured')
+        ])
+      ])
+    });
+  }
+});
+
 // Export the node types object to use with Vue Flow
 export const nodeTypes = markRaw({
   task: TaskNode,
@@ -493,7 +574,8 @@ export const nodeTypes = markRaw({
   form: FormNode,
   script: ScriptNode,
   'business-rule': BusinessRuleNode,
-  api: ApiCallNode
+  api: ApiCallNode,
+  notification: NotificationNode
 });
 
 // Default CSS for the nodes to be imported where needed

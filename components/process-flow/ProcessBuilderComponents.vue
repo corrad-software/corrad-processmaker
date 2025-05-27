@@ -120,22 +120,6 @@ const availableComponents = [
     }
   },
   {
-    type: 'business-rule',
-    name: 'Business Rule',
-    category: 'Core',
-    icon: 'material-symbols:rule',
-    description: 'Apply business rules to process data',
-    defaultProps: {
-      label: 'Business Rule',
-      data: {
-        description: 'Applies business rules to process data',
-        conditions: [],
-        actions: [],
-        priority: 'medium'
-      }
-    }
-  },
-  {
     type: 'gateway',
     name: 'Decision Point',
     category: 'Core',
@@ -147,6 +131,69 @@ const availableComponents = [
         description: 'Decision point for branching the workflow',
         conditions: [],
         defaultPath: 'Default'
+      }
+    }
+  },
+  {
+    type: 'notification',
+    name: 'Notification',
+    category: 'Core',
+    icon: 'material-symbols:notifications-outline',
+    description: 'Send notifications to users',
+    defaultProps: {
+      label: 'Notification',
+      data: {
+        description: 'Send notification to users',
+        notificationType: 'info',
+        recipientType: 'user',
+        recipientUser: '',
+        recipientRole: '',
+        recipientVariable: '',
+        recipientEmail: '',
+        subject: '',
+        message: '',
+        priority: 'medium',
+        deliveryOptions: {
+          inApp: true,
+          email: false,
+          sms: false
+        },
+        expiration: {
+          enabled: false,
+          value: 24,
+          unit: 'hours'
+        }
+      }
+    }
+  },
+  // Advanced components
+  {
+    type: 'script',
+    name: 'Script Task',
+    category: 'Advanced',
+    icon: 'material-symbols:code',
+    description: 'Execute custom code',
+    defaultProps: {
+      label: 'Script',
+      data: {
+        description: 'Script execution',
+        language: 'JavaScript',
+        script: ''
+      }
+    }
+  },
+  {
+    type: 'business-rule',
+    name: 'Business Rule',
+    category: 'Advanced',
+    icon: 'material-symbols:rule',
+    description: 'Apply business rules to data',
+    defaultProps: {
+      label: 'Business Rule',
+      data: {
+        description: 'Apply business rules',
+        ruleGroups: [],
+        priority: 'medium'
       }
     }
   }

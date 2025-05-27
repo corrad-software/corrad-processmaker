@@ -17,6 +17,7 @@ import FormNodeConfigurationModal from '~/components/process-flow/FormNodeConfig
 import TaskNodeConfiguration from '~/components/process-flow/TaskNodeConfiguration.vue';
 import BusinessRuleNodeConfiguration from '~/components/process-flow/BusinessRuleNodeConfiguration.vue';
 import BusinessRuleNodeConfigurationModal from '~/components/process-flow/BusinessRuleNodeConfigurationModal.vue';
+import NotificationNodeConfigurationModal from '~/components/process-flow/NotificationNodeConfigurationModal.vue';
 
 // Define page meta
 definePageMeta({
@@ -64,6 +65,7 @@ const showFormConfigModal = ref(false);
 const showApiConfigModal = ref(false);
 const showGatewayConfigModal = ref(false);
 const showBusinessRuleConfigModal = ref(false);
+const showNotificationConfigModal = ref(false);
 
 // Component definitions
 const components = [
@@ -717,6 +719,14 @@ const handleDefaultPathUpdate = (path) => {
     updateNodeInStore();
   }
 };
+
+// Handle notification node update
+const handleNotificationNodeUpdate = (updatedData) => {
+  if (selectedNodeData.value) {
+    selectedNodeData.value.data = { ...updatedData };
+    updateNodeInStore();
+  }
+};
 </script>
 
 <template>
@@ -851,6 +861,13 @@ const handleDefaultPathUpdate = (path) => {
                 Configure Business Rule
               </RsButton>
             </div>
+            
+            <!-- Notification Configuration -->
+            <div v-if="selectedNodeData.type === 'notification'">
+              <RsButton @click="showNotificationConfigModal = true" variant="primary" class="w-full">
+                Configure Notification
+              </RsButton>
+            </div>
           </div>
         </div>
       </div>
@@ -957,6 +974,15 @@ const handleDefaultPathUpdate = (path) => {
       :availableVariables="gatewayAvailableVariables"
       @update="handleBusinessRuleUpdate"
     />
+    
+    <!-- Notification Configuration Modal -->
+    <NotificationNodeConfigurationModal
+      v-if="selectedNodeData && selectedNodeData.type === 'notification'"
+      v-model="showNotificationConfigModal"
+      :nodeData="selectedNodeData.data"
+      :availableVariables="gatewayAvailableVariables"
+      @update="handleNotificationNodeUpdate"
+    />
   </div>
 </template>
 
@@ -1018,6 +1044,13 @@ const handleDefaultPathUpdate = (path) => {
   background: white;
   border: 1px solid #ddd;
   border-left: 4px solid #9333ea;  /* Purple border to match our icon color */
+}
+
+:deep(.node-notification) {
+  min-width: 160px;
+  background: white;
+  border: 1px solid #ddd;
+  border-left: 4px solid #3b82f6;  /* Blue border to match our icon color */
 }
 
 :deep(.node-details) {
