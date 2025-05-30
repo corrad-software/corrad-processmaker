@@ -18,6 +18,59 @@ export default defineEventHandler(async (event) => {
         error: 'Form name is required'
       };
     }
+
+    // First, get the current form data to save to history
+    let currentForm;
+    try {
+      currentForm = await prisma.form.findFirst({
+        where: {
+          OR: [
+            { formUUID: id },
+            { formID: !isNaN(parseInt(id)) ? parseInt(id) : -1 }
+          ]
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching current form for history:', e);
+    }
+
+    // If we found the current form, save it to history before updating
+    if (currentForm) {
+      try {
+        // Get the next version number
+        const lastHistory = await prisma.formHistory.findFirst({
+          where: { formID: currentForm.formID },
+          orderBy: { versionNumber: 'desc' }
+        });
+        
+        const nextVersionNumber = lastHistory ? lastHistory.versionNumber + 1 : 1;
+
+        // Save current form data to history
+        await prisma.formHistory.create({
+          data: {
+            formID: currentForm.formID,
+            formUUID: currentForm.formUUID,
+            formName: currentForm.formName,
+            formDescription: currentForm.formDescription,
+            formComponents: currentForm.formComponents,
+            formStatus: currentForm.formStatus,
+            customCSS: currentForm.customCSS,
+            customScript: currentForm.customScript,
+            formEvents: currentForm.formEvents,
+            scriptMode: currentForm.scriptMode,
+            versionNumber: nextVersionNumber,
+            changeDescription: body.changeDescription || null,
+            savedBy: body.savedBy || currentForm.formCreatedBy,
+            savedDate: currentForm.formModifiedDate || currentForm.formCreatedDate
+          }
+        });
+
+        console.log(`Saved form ${currentForm.formUUID} version ${nextVersionNumber} to history`);
+      } catch (historyError) {
+        console.error('Error saving form to history:', historyError);
+        // Continue with update even if history save fails
+      }
+    }
     
     // Prepare update data
     const updateData = {
@@ -51,7 +104,7 @@ export default defineEventHandler(async (event) => {
     if (body.scriptMode !== undefined) {
       updateData.scriptMode = body.scriptMode;
     }
-    
+
     // Try to update by UUID first
     let form;
     try {
@@ -73,7 +126,8 @@ export default defineEventHandler(async (event) => {
     
     return {
       success: true,
-      form
+      form,
+      versionSaved: currentForm ? true : false
     };
   } catch (error) {
     console.error(`Error updating form ${id}:`, error);

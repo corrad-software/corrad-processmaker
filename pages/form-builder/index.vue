@@ -2,27 +2,27 @@
   <div class="flex flex-col h-screen bg-gray-50">
     <!-- Header Bar -->
     <header
-      class="bg-gray-800 px-4 py-4 flex items-center justify-between text-white shadow-md"
+      class="bg-gray-800 px-6 py-3 flex items-center justify-between text-white shadow-lg border-b border-gray-700"
     >
       <!-- Left section - Logo and navigation -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-4">
         <Icon
           @click="navigateTo('/', { external: true })"
           name="ph:arrow-circle-left-duotone"
-          class="cursor-pointer w-6 h-6"
+          class="cursor-pointer w-6 h-6 hover:text-gray-300 transition-colors"
         />
         <img
           src="@/assets/img/logo/logo-word-white.svg"
           alt="Corrad Logo"
           class="h-7"
         />
-        <div v-if="isPreview" class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full ml-2">
+        <div v-if="isPreview" class="bg-blue-500 text-white text-xs px-3 py-1 rounded-full ml-2 font-medium">
           Preview Mode
         </div>
       </div>
 
       <!-- Middle section - Form name -->
-      <div class="flex-1 flex justify-center items-center mx-4">
+      <div class="flex-1 flex justify-center items-center mx-8">
         <FormKit
           v-if="!isPreview"
           type="text"
@@ -41,45 +41,54 @@
       </div>
 
       <!-- Right section - Actions -->
-      <div class="flex items-center">
-        <!-- Primary actions -->
-        <div class="flex items-center mr-2 border-r border-gray-600 pr-2">
-          <RsButton v-if="!isPreview" @click="handleSave" variant="primary" size="sm" class="mr-2">
-          <Icon name="material-symbols:save" class="mr-1" />
+      <div class="flex items-center space-x-3">
+        <!-- Primary Action Group -->
+        <div class="flex items-center space-x-2">
+          <RsButton v-if="!isPreview" @click="handleSave" variant="primary" size="sm">
+            <Icon name="material-symbols:save" class="mr-1.5" />
             Save
-        </RsButton>
+          </RsButton>
 
           <RsButton @click="togglePreview" :variant="isPreview ? 'primary' : 'secondary'" size="sm">
-            <Icon :name="isPreview ? 'material-symbols:edit' : 'material-symbols:preview'" class="mr-1" />
+            <Icon :name="isPreview ? 'material-symbols:edit' : 'material-symbols:preview'" class="mr-1.5" />
             {{ isPreview ? 'Edit' : 'Preview' }}
-        </RsButton>
+          </RsButton>
         </div>
         
-        <!-- Templates button -->
-        <div v-if="!isPreview" class="mr-2 border-r border-gray-600 pr-2">
+        <!-- Secondary Action Group -->
+        <div v-if="!isPreview" class="flex items-center space-x-2">
           <RsButton @click="showTemplatesModal = true" variant="secondary" size="sm">
-            <Icon name="material-symbols:description-outline" class="mr-1" />
+            <Icon name="material-symbols:description-outline" class="mr-1.5" />
             Templates
-        </RsButton>
+          </RsButton>
+          
+          <!-- Form History button - only show if form is saved -->
+          <RsButton 
+            v-if="formStore.currentFormId" 
+            @click="showFormHistoryModal = true" 
+            variant="secondary" 
+            size="sm"
+          >
+            <Icon name="material-symbols:history" class="mr-1.5" />
+            History
+          </RsButton>
         </div>
         
-        <!-- Secondary actions - only in edit mode -->
-        <div v-if="!isPreview" class="flex items-center">
-          <div class="dropdown relative">
-            <RsButton @click="showDropdown = !showDropdown" variant="tertiary" size="sm" class="flex items-center">
-              <Icon name="material-symbols:more-vert" class="w-5 h-5" />
-            </RsButton>
-            
-            <div v-if="showDropdown" class="dropdown-menu absolute right-0 mt-2 bg-white rounded shadow-lg py-1 z-10 w-48 text-gray-800">
-              <button @click="showFormSettings = true; showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-                <Icon name="material-symbols:code" class="mr-2 w-4 h-4" />
-                <span>Form Settings</span>
-              </button>
-              <button @click="navigateToManage(); showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-                <Icon name="material-symbols:settings" class="mr-2 w-4 h-4" />
-                <span>Manage Forms</span>
-              </button>
-            </div>
+        <!-- More Actions Dropdown -->
+        <div v-if="!isPreview" class="relative">
+          <RsButton @click="showDropdown = !showDropdown" variant="tertiary" size="sm" class="flex items-center">
+            <Icon name="material-symbols:more-vert" class="w-5 h-5" />
+          </RsButton>
+          
+          <div v-if="showDropdown" class="dropdown-menu absolute right-0 mt-2 bg-white rounded-lg shadow-lg py-2 z-10 w-48 text-gray-800 border border-gray-200">
+            <button @click="showFormSettings = true; showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center transition-colors">
+              <Icon name="material-symbols:code" class="mr-3 w-4 h-4 text-gray-500" />
+              <span>Form Settings</span>
+            </button>
+            <button @click="navigateToManage(); showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center transition-colors">
+              <Icon name="material-symbols:settings" class="mr-3 w-4 h-4 text-gray-500" />
+              <span>Manage Forms</span>
+            </button>
           </div>
         </div>
       </div>
@@ -861,6 +870,14 @@
       @close="showFieldSettings = false"
     />
 
+    <!-- Form History Modal -->
+    <FormHistoryModal
+      :is-open="showFormHistoryModal"
+      :form-id="formStore.currentFormId"
+      @close="showFormHistoryModal = false"
+      @restored="handleFormRestored"
+    />
+
         </div>
   </template>
 
@@ -872,6 +889,7 @@ import FormTemplatesModal from '~/components/FormTemplatesModal.vue';
 import FormBuilderFieldSettingsModal from '~/components/FormBuilderFieldSettingsModal.vue';
 import FormScriptEngine from '~/components/FormScriptEngine.vue';
 import ConditionalLogicEngine from '~/components/ConditionalLogicEngine.vue';
+import FormHistoryModal from '~/components/FormHistoryModal.vue';
 
 definePageMeta({
   title: "Form Builder",
@@ -911,6 +929,7 @@ const showDropdown = ref(false);
 const showTemplatesModal = ref(false);
 const showFieldSettings = ref(false);
 const showFieldSettingsPanel = ref(false);
+const showFormHistoryModal = ref(false);
 const previewForm = ref(null);
 const formScriptEngine = ref(null);
 const conditionalLogicEngine = ref(null);
@@ -2442,6 +2461,12 @@ const handleConditionalLogicGenerated = (script) => {
   // Add the generated script to the form's custom script
   formStore.formCustomScript += `\n// Conditional Logic Script\n${script}`;
   toast.success('Conditional logic script added successfully');
+};
+
+const handleFormRestored = (restoredForm) => {
+  // Handle form restoration logic
+  console.log('Form restored:', restoredForm);
+  // You might want to update the form state or show a success message
 };
 </script>
 

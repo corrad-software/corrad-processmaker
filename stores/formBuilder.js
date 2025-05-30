@@ -28,6 +28,9 @@ export const useFormBuilderStore = defineStore('formBuilder', {
     
     // Form preview data
     previewFormData: {},
+    
+    // Form history tracking
+    lastChangeDescription: null,
   }),
   
   getters: {
@@ -651,7 +654,10 @@ export const useFormBuilderStore = defineStore('formBuilder', {
           customScript: this.formCustomScript,
           customCSS: this.formCustomCSS,
           formEvents: this.formEvents,
-          scriptMode: this.scriptMode
+          scriptMode: this.scriptMode,
+          // Add user info and change description for history tracking
+          savedBy: 1, // TODO: Get from authenticated user
+          changeDescription: this.lastChangeDescription || null
         };
         
         // Determine if this is a new form or an update
@@ -684,12 +690,14 @@ export const useFormBuilderStore = defineStore('formBuilder', {
           // Update store state with the saved form
           this.currentFormId = result.form.formUUID;
           this.hasUnsavedChanges = false;
+          this.lastChangeDescription = null; // Reset after save
           
           // Record in history
           this.recordHistory('save_form', {
             formName: this.formName,
             formDescription: this.formDescription,
-            componentCount: this.formComponents.length
+            componentCount: this.formComponents.length,
+            versionSaved: result.versionSaved
           });
           
           return result.form;
@@ -931,6 +939,115 @@ export const useFormBuilderStore = defineStore('formBuilder', {
           }
         };
       }
+    },
+
+    // Get form history/versions
+    async getFormHistory(formId = null) {
+      try {
+        const id = formId || this.currentFormId;
+        if (!id) {
+          throw new Error('No form ID provided');
+        }
+
+        const response = await fetch(`/api/forms/${id}/history`);
+        const result = await response.json();
+
+        if (result.success) {
+          return result;
+        } else {
+          throw new Error(result.error || 'Failed to fetch form history');
+        }
+      } catch (error) {
+        console.error('Error fetching form history:', error);
+        throw error;
+      }
+    },
+
+    // Get specific form version details
+    async getFormVersion(formId, versionId) {
+      try {
+        const response = await fetch(`/api/forms/${formId}/version/${versionId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          return result;
+        } else {
+          throw new Error(result.error || 'Failed to fetch form version');
+        }
+      } catch (error) {
+        console.error('Error fetching form version:', error);
+        throw error;
+      }
+    },
+
+    // Restore form to a specific version
+    async restoreFormVersion(formId, versionData, changeDescription = null) {
+      try {
+        const response = await fetch(`/api/forms/${formId}/restore`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            versionNumber: versionData.versionNumber,
+            historyID: versionData.historyID,
+            restoredBy: 1, // TODO: Get from authenticated user
+            changeDescription: changeDescription || `Restored to version ${versionData.versionNumber}`
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Reload the form to reflect the restored state
+          await this.loadForm(formId);
+          
+          return result;
+        } else {
+          throw new Error(result.error || 'Failed to restore form version');
+        }
+      } catch (error) {
+        console.error('Error restoring form version:', error);
+        throw error;
+      }
+    },
+
+    // Load form version for preview (without changing current form)
+    async loadFormVersionPreview(formId, versionId) {
+      try {
+        const versionResult = await this.getFormVersion(formId, versionId);
+        
+        if (versionResult.success) {
+          const version = versionResult.version;
+          
+          // Return the version data in a format compatible with form preview
+          return {
+            formName: version.formName,
+            formDescription: version.formDescription,
+            formComponents: version.formComponents,
+            customScript: version.customScript,
+            customCSS: version.customCSS,
+            formEvents: version.formEvents,
+            scriptMode: version.scriptMode,
+            versionInfo: {
+              versionNumber: version.versionNumber,
+              savedDate: version.savedDate,
+              savedBy: version.savedByUser,
+              changeDescription: version.changeDescription
+            }
+          };
+        } else {
+          throw new Error('Failed to load version preview');
+        }
+      } catch (error) {
+        console.error('Error loading form version preview:', error);
+        throw error;
+      }
+    },
+
+    // Set change description for next save
+    setChangeDescription(description) {
+      this.lastChangeDescription = description;
     }
   },
   

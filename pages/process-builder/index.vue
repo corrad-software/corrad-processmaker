@@ -20,6 +20,7 @@ import BusinessRuleNodeConfigurationModal from '~/components/process-flow/Busine
 import NotificationNodeConfigurationModal from '~/components/process-flow/NotificationNodeConfigurationModal.vue';
 import ProcessTemplatesModal from '~/components/ProcessTemplatesModal.vue';
 import ProcessSettingsModal from '~/components/process-flow/ProcessSettingsModal.vue';
+import ProcessHistoryModal from '~/components/ProcessHistoryModal.vue';
 
 // Define page meta
 definePageMeta({
@@ -88,6 +89,7 @@ const showNotificationConfigModal = ref(false);
 const showTemplatesModal = ref(false);
 const showProcessSettings = ref(false);
 const showDropdown = ref(false);
+const showProcessHistoryModal = ref(false);
 
 // Component definitions
 const components = [
@@ -997,6 +999,14 @@ const handleNotificationNodeUpdate = (updatedData) => {
   }
 };
 
+// Handle process restoration from history
+const handleProcessRestored = (restoredProcess) => {
+  // The process has been restored in the backend, so we need to reload it
+  console.log('Process restored:', restoredProcess);
+  // The current process will be automatically updated by the store
+  toast.success('Process has been restored successfully');
+};
+
 // Navigate to variables page
 const navigateToVariables = () => {
   confirmNavigation('/variables');
@@ -1086,6 +1096,14 @@ watch(() => processStore.hasUnsavedChanges, (hasChanges) => {
             Templates
           </RsButton>
         </div>
+
+        <!-- Process History button - only show if process is saved -->
+        <div v-if="processStore.currentProcess && processStore.currentProcess.id" class="mr-2 border-r border-gray-600 pr-2">
+          <RsButton @click="showProcessHistoryModal = true" variant="secondary" size="sm">
+            <Icon name="material-symbols:history" class="mr-1" />
+            History
+          </RsButton>
+        </div>
         
         <!-- Secondary actions -->
         <div class="flex items-center">
@@ -1098,10 +1116,6 @@ watch(() => processStore.hasUnsavedChanges, (hasChanges) => {
               <button @click="showProcessSettings = true; showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
                 <Icon name="material-symbols:tune" class="mr-2 w-4 h-4" />
                 <span>Process Settings</span>
-              </button>
-              <button @click="navigateToVariables(); showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-                <Icon name="material-symbols:data-object" class="mr-2 w-4 h-4" />
-                <span>Variables</span>
               </button>
               <button @click="confirmNavigation('/process-builder/manage'); showDropdown = false" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
                 <Icon name="material-symbols:settings" class="mr-2 w-4 h-4" />
@@ -1331,6 +1345,14 @@ watch(() => processStore.hasUnsavedChanges, (hasChanges) => {
     <!-- Process Settings Modal -->
     <ProcessSettingsModal
       v-model="showProcessSettings"
+    />
+
+    <!-- Process History Modal -->
+    <ProcessHistoryModal
+      :is-open="showProcessHistoryModal"
+      :process-id="processStore.currentProcess?.id"
+      @close="showProcessHistoryModal = false"
+      @restored="handleProcessRestored"
     />
   </div>
 </template>

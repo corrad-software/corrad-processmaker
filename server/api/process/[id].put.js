@@ -18,95 +18,23 @@ export default defineEventHandler(async (event) => {
 
     // Parse the request body
     const body = await readBody(event);
+    
+    // Validate required fields
+    if (!body.processName) {
+      return {
+        success: false,
+        error: 'Process name is required'
+      };
+    }
 
     // Check if the ID is a UUID or numeric ID
     const isUUID = processId.length === 36 && processId.includes('-');
     
-    // Build update data
-    const updateData = {};
-    
-    // Basic fields
-    if (body.processName !== undefined) updateData.processName = body.processName;
-    if (body.processDescription !== undefined) updateData.processDescription = body.processDescription;
-    if (body.processCategory !== undefined) updateData.processCategory = body.processCategory;
-    if (body.processPriority !== undefined) updateData.processPriority = body.processPriority;
-    if (body.processOwner !== undefined) updateData.processOwner = body.processOwner;
-    if (body.isTemplate !== undefined) updateData.isTemplate = body.isTemplate;
-    if (body.templateCategory !== undefined) updateData.templateCategory = body.templateCategory;
-
-    // Get current process to check status
-    const currentProcess = await prisma.process.findFirst({
+    // Find the existing process first to save its current state to history
+    const existingProcess = await prisma.process.findFirst({
       where: isUUID 
         ? { processUUID: processId }
         : { processID: parseInt(processId) },
-      select: { 
-        processStatus: true, 
-        processVersion: true 
-      }
-    });
-
-    if (!currentProcess) {
-      return {
-        success: false,
-        error: 'Process not found'
-      };
-    }
-
-    // Handle status changes with validation
-    if (body.processStatus !== undefined) {
-      const currentStatus = currentProcess.processStatus;
-      const newStatus = body.processStatus;
-      
-      // Validate status transitions
-      if (currentStatus === 'published' && newStatus === 'draft') {
-        // Allow unpublishing only if explicitly requested
-        if (body.allowUnpublish !== true) {
-          return {
-            success: false,
-            error: 'Cannot change published process to draft without explicit confirmation. Use allowUnpublish: true.'
-          };
-        }
-      }
-      
-      updateData.processStatus = newStatus;
-    }
-    // If no status provided, preserve current status (don't change it)
-
-    // Process definition (nodes, edges, viewport)
-    if (body.nodes !== undefined || body.edges !== undefined || body.viewport !== undefined) {
-      updateData.processDefinition = {
-        nodes: body.nodes || [],
-        edges: body.edges || [],
-        viewport: body.viewport || { x: 0, y: 0, zoom: 1 }
-      };
-    }
-
-    // Process variables
-    if (body.variables !== undefined) {
-      updateData.processVariables = Object.keys(body.variables).length > 0 ? body.variables : null;
-    }
-
-    // Process settings
-    if (body.settings !== undefined) {
-      updateData.processSettings = Object.keys(body.settings).length > 0 ? body.settings : null;
-    }
-
-    // Process permissions
-    if (body.permissions !== undefined) {
-      updateData.processPermissions = Object.keys(body.permissions).length > 0 ? body.permissions : null;
-    }
-
-    // Version increment if major changes
-    if (body.incrementVersion === true) {
-      updateData.processVersion = currentProcess.processVersion + 1;
-    }
-
-    // Update the process
-    const updatedProcess = await prisma.process.update({
-      where: isUUID 
-        ? { processUUID: processId }
-        : { processID: parseInt(processId) },
-      data: updateData,
       include: {
         creator: {
           select: {
@@ -118,20 +46,97 @@ export default defineEventHandler(async (event) => {
       }
     });
 
-    return {
-      success: true,
-      process: updatedProcess
-    };
-  } catch (error) {
-    console.error('Error updating process:', error);
-    
-    // Handle specific Prisma errors
-    if (error.code === 'P2025') {
+    if (!existingProcess) {
       return {
         success: false,
         error: 'Process not found'
       };
     }
+
+    // Get the next version number for history
+    const lastHistory = await prisma.processHistory.findFirst({
+      where: { processID: existingProcess.processID },
+      orderBy: { versionNumber: 'desc' },
+      select: { versionNumber: true }
+    });
+
+    const nextVersionNumber = (lastHistory?.versionNumber || 0) + 1;
+
+    // Save current state to history before updating
+    await prisma.processHistory.create({
+      data: {
+        processID: existingProcess.processID,
+        processUUID: existingProcess.processUUID,
+        processName: existingProcess.processName,
+        processDescription: existingProcess.processDescription,
+        processDefinition: existingProcess.processDefinition,
+        processVersion: existingProcess.processVersion,
+        processStatus: existingProcess.processStatus,
+        processCategory: existingProcess.processCategory,
+        processOwner: existingProcess.processOwner,
+        processPermissions: existingProcess.processPermissions,
+        processPriority: existingProcess.processPriority,
+        processSettings: existingProcess.processSettings,
+        processVariables: existingProcess.processVariables,
+        templateCategory: existingProcess.templateCategory,
+        versionNumber: nextVersionNumber,
+        changeDescription: body.changeDescription || null,
+        savedBy: body.savedBy || existingProcess.processCreatedBy
+      }
+    });
+
+    // Prepare process definition
+    const processDefinition = {
+      nodes: body.nodes || [],
+      edges: body.edges || [],
+      viewport: body.viewport || { x: 0, y: 0, zoom: 1 }
+    };
+
+    // Prepare process variables (if any)
+    const processVariables = body.variables || {};
+
+    // Prepare process settings (if any)  
+    const processSettings = body.settings || {};
+
+    // Prepare process permissions (if any)
+    const processPermissions = body.permissions || {};
+
+    // Update the process
+    const updatedProcess = await prisma.process.update({
+      where: isUUID 
+        ? { processUUID: processId }
+        : { processID: parseInt(processId) },
+      data: {
+        processName: body.processName,
+        processDescription: body.processDescription || null,
+        processCategory: body.processCategory || null,
+        processPriority: body.processPriority || 'normal',
+        processOwner: body.processOwner || null,
+        processDefinition: processDefinition,
+        processVariables: Object.keys(processVariables).length > 0 ? processVariables : null,
+        processSettings: Object.keys(processSettings).length > 0 ? processSettings : null,
+        processPermissions: Object.keys(processPermissions).length > 0 ? processPermissions : null,
+        processStatus: body.processStatus || existingProcess.processStatus,
+        processVersion: existingProcess.processVersion + 1
+      },
+      include: {
+        creator: {
+          select: {
+            userID: true,
+            userFullName: true,
+            userUsername: true
+          }
+        }
+      }
+    });
+    
+    return {
+      success: true,
+      process: updatedProcess,
+      message: 'Process updated successfully and previous version saved to history'
+    };
+  } catch (error) {
+    console.error('Error updating process:', error);
     
     return {
       success: false,

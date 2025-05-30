@@ -69,10 +69,22 @@
             "$ref": "#/definitions/form"
           }
         },
+        "formHistoryEntries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/formHistory"
+          }
+        },
         "processes": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/process"
+          }
+        },
+        "processHistoryEntries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/processHistory"
           }
         },
         "userrole": {
@@ -228,6 +240,99 @@
               "type": "null"
             }
           ]
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/formHistory"
+          }
+        }
+      }
+    },
+    "formHistory": {
+      "type": "object",
+      "properties": {
+        "historyID": {
+          "type": "integer"
+        },
+        "formUUID": {
+          "type": "string"
+        },
+        "formName": {
+          "type": "string"
+        },
+        "formDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "formComponents": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "formStatus": {
+          "type": "string"
+        },
+        "customCSS": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "customScript": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "formEvents": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "scriptMode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "versionNumber": {
+          "type": "integer"
+        },
+        "changeDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "savedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "form": {
+          "$ref": "#/definitions/form"
+        },
+        "savedByUser": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/user"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -353,6 +458,128 @@
               "type": "null"
             }
           ]
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/processHistory"
+          }
+        }
+      }
+    },
+    "processHistory": {
+      "type": "object",
+      "properties": {
+        "historyID": {
+          "type": "integer"
+        },
+        "processUUID": {
+          "type": "string"
+        },
+        "processName": {
+          "type": "string"
+        },
+        "processDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processDefinition": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "processVersion": {
+          "type": "integer"
+        },
+        "processStatus": {
+          "type": "string"
+        },
+        "processCategory": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processOwner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processPermissions": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "processPriority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processSettings": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "processVariables": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "templateCategory": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "versionNumber": {
+          "type": "integer"
+        },
+        "changeDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "savedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "process": {
+          "$ref": "#/definitions/process"
+        },
+        "savedByUser": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/user"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }
@@ -371,8 +598,14 @@
     "form": {
       "$ref": "#/definitions/form"
     },
+    "formHistory": {
+      "$ref": "#/definitions/formHistory"
+    },
     "process": {
       "$ref": "#/definitions/process"
+    },
+    "processHistory": {
+      "$ref": "#/definitions/processHistory"
     }
   }
 }

@@ -10,7 +10,8 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     selectedEdgeId: null,
     history: [],
     historyIndex: -1,
-    unsavedChanges: false
+    unsavedChanges: false,
+    lastChangeDescription: ''
   }),
 
   getters: {
@@ -737,6 +738,148 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
         });
       }
       this.historyIndex = 0;
+    },
+
+    /**
+     * Get process version history
+     */
+    async getProcessHistory(processId) {
+      try {
+        const response = await $fetch(`/api/process/${processId}/history`);
+        
+        if (response.success) {
+          return response.data;
+        } else {
+          throw new Error(response.error || 'Failed to get process history');
+        }
+      } catch (error) {
+        console.error('Error getting process history:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Get specific process version details
+     */
+    async getProcessVersion(processId, versionId) {
+      try {
+        const response = await $fetch(`/api/process/${processId}/version/${versionId}`);
+        
+        if (response.success) {
+          return response.data;
+        } else {
+          throw new Error(response.error || 'Failed to get process version');
+        }
+      } catch (error) {
+        console.error('Error getting process version:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Restore process to a previous version
+     */
+    async restoreProcessVersion(processId, version) {
+      try {
+        const requestData = {
+          historyId: version.historyID,
+          versionNumber: version.versionNumber,
+          restoredBy: 1 // TODO: Get from auth store
+        };
+
+        const response = await $fetch(`/api/process/${processId}/restore`, {
+          method: 'POST',
+          body: requestData
+        });
+
+        if (response.success) {
+          // Update local state with restored process
+          if (this.currentProcess && this.currentProcess.id === processId) {
+            await this.loadProcess(processId);
+          }
+          
+          return response;
+        } else {
+          throw new Error(response.error || 'Failed to restore process version');
+        }
+      } catch (error) {
+        console.error('Error restoring process version:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Load process version for preview (without changing current process)
+     */
+    async loadProcessVersionPreview(processId, versionId) {
+      try {
+        const response = await $fetch(`/api/process/${processId}/version/${versionId}`);
+        
+        if (response.success) {
+          return response.data;
+        } else {
+          throw new Error(response.error || 'Failed to load process version preview');
+        }
+      } catch (error) {
+        console.error('Error loading process version preview:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Set change description for next save
+     */
+    setChangeDescription(description) {
+      this.lastChangeDescription = description;
+    },
+
+    /**
+     * Enhanced save process with change tracking
+     */
+    async saveProcessWithDescription(changeDescription = '') {
+      if (!this.currentProcess) return false;
+
+      try {
+        const processData = {
+          processName: this.currentProcess.name,
+          processDescription: this.currentProcess.description,
+          nodes: this.currentProcess.nodes,
+          edges: this.currentProcess.edges,
+          viewport: this.currentProcess.viewport || { x: 0, y: 0, zoom: 1 },
+          variables: useVariableStore().getAllVariables.process || {},
+          settings: this.currentProcess.settings || {},
+          permissions: this.currentProcess.permissions || {},
+          changeDescription: changeDescription || this.lastChangeDescription,
+          savedBy: 1 // TODO: Get from auth store
+        };
+
+        const response = await $fetch(`/api/process/${this.currentProcess.id}`, {
+          method: 'PUT',
+          body: processData
+        });
+
+        if (response.success) {
+          // Update local state with server response
+          const apiProcess = response.process;
+          this.currentProcess.updatedAt = apiProcess.processModifiedDate;
+          this.currentProcess.version = apiProcess.processVersion;
+          
+          // Update in processes array if it exists there
+          const index = this.processes.findIndex(p => p.id === this.currentProcess.id);
+          if (index !== -1) {
+            this.processes[index] = { ...this.currentProcess };
+          }
+
+          this.unsavedChanges = false;
+          this.lastChangeDescription = '';
+          return response;
+        } else {
+          throw new Error(response.error || 'Failed to save process');
+        }
+      } catch (error) {
+        console.error('Error saving process:', error);
+        throw error;
+      }
     }
   }
 }); 

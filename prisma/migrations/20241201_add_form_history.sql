@@ -1,0 +1,25 @@
+-- Create formHistory table for form versioning
+CREATE TABLE `formHistory` (
+  `historyID` int NOT NULL AUTO_INCREMENT,
+  `formID` int NOT NULL,
+  `formUUID` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `formName` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `formDescription` text COLLATE utf8mb4_unicode_ci,
+  `formComponents` json NOT NULL,
+  `formStatus` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `customCSS` text COLLATE utf8mb4_unicode_ci,
+  `customScript` longtext COLLATE utf8mb4_unicode_ci,
+  `formEvents` json DEFAULT NULL,
+  `scriptMode` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `versionNumber` int NOT NULL,
+  `changeDescription` text COLLATE utf8mb4_unicode_ci,
+  `savedBy` int DEFAULT NULL,
+  `savedDate` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`historyID`),
+  KEY `FK_formHistory_form` (`formID`),
+  KEY `FK_formHistory_savedBy` (`savedBy`),
+  KEY `IDX_formHistory_uuid` (`formUUID`),
+  KEY `IDX_formHistory_date` (`savedDate`),
+  CONSTRAINT `FK_formHistory_form` FOREIGN KEY (`formID`) REFERENCES `form` (`formID`) ON DELETE CASCADE,
+  CONSTRAINT `FK_formHistory_savedBy` FOREIGN KEY (`savedBy`) REFERENCES `user` (`userID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 

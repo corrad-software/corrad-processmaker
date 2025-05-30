@@ -13,19 +13,21 @@ datasource db {
 }
 
 model user {
-  userID           Int        @id @default(autoincrement())
-  userSecretKey    String?    @db.VarChar(255)
-  userUsername     String?    @db.VarChar(255)
-  userPassword     String?    @db.VarChar(255)
-  userFullName     String?    @db.VarChar(255)
-  userEmail        String?    @db.VarChar(255)
-  userPhone        String?    @db.VarChar(255)
-  userStatus       String?    @db.VarChar(255)
-  userCreatedDate  DateTime?  @db.DateTime(0)
-  userModifiedDate DateTime?  @db.DateTime(0)
-  forms            form[]     @relation("FormCreator")
-  processes        process[]  @relation("ProcessCreator")
-  userrole         userrole[]
+  userID                Int              @id @default(autoincrement())
+  userSecretKey         String?          @db.VarChar(255)
+  userUsername          String?          @db.VarChar(255)
+  userPassword          String?          @db.VarChar(255)
+  userFullName          String?          @db.VarChar(255)
+  userEmail             String?          @db.VarChar(255)
+  userPhone             String?          @db.VarChar(255)
+  userStatus            String?          @db.VarChar(255)
+  userCreatedDate       DateTime?        @db.DateTime(0)
+  userModifiedDate      DateTime?        @db.DateTime(0)
+  forms                 form[]           @relation("FormCreator")
+  formHistoryEntries    formHistory[]
+  processes             process[]        @relation("ProcessCreator")
+  processHistoryEntries processHistory[]
+  userrole              userrole[]
 }
 
 model role {
@@ -51,48 +53,104 @@ model userrole {
 }
 
 model form {
-  formID           Int       @id @default(autoincrement())
-  formUUID         String    @unique @db.VarChar(36)
-  formName         String    @db.VarChar(255)
-  formDescription  String?   @db.Text
+  formID           Int           @id @default(autoincrement())
+  formUUID         String        @unique @db.VarChar(36)
+  formName         String        @db.VarChar(255)
+  formDescription  String?       @db.Text
   formComponents   Json
-  formStatus       String    @default("active") @db.VarChar(50)
+  formStatus       String        @default("active") @db.VarChar(50)
   formCreatedBy    Int?
-  formCreatedDate  DateTime  @default(now()) @db.DateTime(0)
-  formModifiedDate DateTime? @updatedAt @db.DateTime(0)
-  customCSS        String?   @db.Text
-  customScript     String?   @db.LongText
+  formCreatedDate  DateTime      @default(now()) @db.DateTime(0)
+  formModifiedDate DateTime?     @updatedAt @db.DateTime(0)
+  customCSS        String?       @db.Text
+  customScript     String?       @db.LongText
   formEvents       Json?
-  scriptMode       String?   @default("safe") @db.VarChar(20)
-  creator          user?     @relation("FormCreator", fields: [formCreatedBy], references: [userID])
+  scriptMode       String?       @default("safe") @db.VarChar(20)
+  creator          user?         @relation("FormCreator", fields: [formCreatedBy], references: [userID])
+  history          formHistory[] @relation("FormHistoryEntries")
 
   @@index([formCreatedBy], map: "FK_form_creator")
 }
 
+model formHistory {
+  historyID         Int      @id @default(autoincrement())
+  formID            Int
+  formUUID          String   @db.VarChar(36)
+  formName          String   @db.VarChar(255)
+  formDescription   String?  @db.Text
+  formComponents    Json
+  formStatus        String   @db.VarChar(50)
+  customCSS         String?  @db.Text
+  customScript      String?  @db.LongText
+  formEvents        Json?
+  scriptMode        String?  @db.VarChar(20)
+  versionNumber     Int
+  changeDescription String?  @db.Text
+  savedBy           Int?
+  savedDate         DateTime @default(now()) @db.DateTime(0)
+  form              form     @relation("FormHistoryEntries", fields: [formID], references: [formID], onDelete: Cascade)
+  savedByUser       user?    @relation(fields: [savedBy], references: [userID])
+
+  @@index([formID], map: "FK_formHistory_form")
+  @@index([savedBy], map: "FK_formHistory_savedBy")
+  @@index([formUUID], map: "IDX_formHistory_uuid")
+  @@index([savedDate], map: "IDX_formHistory_date")
+}
+
 model process {
-  processID           Int       @id @default(autoincrement())
-  processUUID         String    @unique @db.VarChar(36)
-  processName         String    @db.VarChar(255)
-  processDescription  String?   @db.Text
+  processID           Int              @id @default(autoincrement())
+  processUUID         String           @unique @db.VarChar(36)
+  processName         String           @db.VarChar(255)
+  processDescription  String?          @db.Text
   processDefinition   Json
-  processVersion      Int       @default(1)
-  processStatus       String    @default("draft") @db.VarChar(50)
+  processVersion      Int              @default(1)
+  processStatus       String           @default("draft") @db.VarChar(50)
   processCreatedBy    Int?
-  processCreatedDate  DateTime  @default(now()) @db.DateTime(0)
-  processModifiedDate DateTime? @updatedAt @db.DateTime(0)
-  isTemplate          Boolean   @default(false)
-  processCategory     String?   @db.VarChar(100)
-  processOwner        String?   @db.VarChar(255)
+  processCreatedDate  DateTime         @default(now()) @db.DateTime(0)
+  processModifiedDate DateTime?        @updatedAt @db.DateTime(0)
+  isTemplate          Boolean          @default(false)
+  processCategory     String?          @db.VarChar(100)
+  processOwner        String?          @db.VarChar(255)
   processPermissions  Json?
-  processPriority     String?   @default("normal") @db.VarChar(50)
+  processPriority     String?          @default("normal") @db.VarChar(50)
   processSettings     Json?
   processVariables    Json?
-  templateCategory    String?   @db.VarChar(100)
-  processDeletedDate  DateTime? @db.DateTime(0)
-  creator             user?     @relation("ProcessCreator", fields: [processCreatedBy], references: [userID])
+  templateCategory    String?          @db.VarChar(100)
+  processDeletedDate  DateTime?        @db.DateTime(0)
+  creator             user?            @relation("ProcessCreator", fields: [processCreatedBy], references: [userID])
+  history             processHistory[] @relation("ProcessHistoryEntries")
 
   @@index([processCreatedBy], map: "FK_process_creator")
   @@index([processStatus], map: "IDX_process_status")
   @@index([processCategory], map: "IDX_process_category")
   @@index([isTemplate], map: "IDX_process_template")
+}
+
+model processHistory {
+  historyID          Int      @id @default(autoincrement())
+  processID          Int
+  processUUID        String   @db.VarChar(36)
+  processName        String   @db.VarChar(255)
+  processDescription String?  @db.Text
+  processDefinition  Json
+  processVersion     Int
+  processStatus      String   @db.VarChar(50)
+  processCategory    String?  @db.VarChar(100)
+  processOwner       String?  @db.VarChar(255)
+  processPermissions Json?
+  processPriority    String?  @db.VarChar(50)
+  processSettings    Json?
+  processVariables   Json?
+  templateCategory   String?  @db.VarChar(100)
+  versionNumber      Int
+  changeDescription  String?  @db.Text
+  savedBy            Int?
+  savedDate          DateTime @default(now()) @db.DateTime(0)
+  process            process  @relation("ProcessHistoryEntries", fields: [processID], references: [processID], onDelete: Cascade)
+  savedByUser        user?    @relation(fields: [savedBy], references: [userID])
+
+  @@index([processID], map: "FK_processHistory_process")
+  @@index([savedBy], map: "FK_processHistory_savedBy")
+  @@index([processUUID], map: "IDX_processHistory_uuid")
+  @@index([savedDate], map: "IDX_processHistory_date")
 }
