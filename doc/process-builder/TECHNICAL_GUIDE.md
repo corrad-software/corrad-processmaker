@@ -4,6 +4,23 @@ This document provides technical implementation details for developers working w
 
 > For user documentation and usage guidelines, please refer to [Process Builder Documentation](USER_GUIDE.md)
 
+## Recent Updates (December 2024)
+
+### Critical Bug Fixes and Enhancements
+- **Process Definition Loading**: Fixed issue where processes with empty nodes array but nodes embedded in edges wouldn't display on canvas
+- **URL Parameter Support**: Added direct linking to processes via `/process-builder?id=uuid` pattern
+- **Save Functionality**: Enhanced with success/error messages and proper state management
+- **Navigation State**: Fixed unsaved changes modal appearing after successful saves
+- **Connection Dragging**: Resolved Vue Flow interference with connector dragging functionality
+- **Database Integration**: Full API integration with comprehensive error handling and validation
+- **Toast Notifications**: Implemented user feedback system for all operations
+- **Form Builder Consistency**: Updated form builder manage page to match process builder design
+
+### Breaking Changes
+- Process store now requires API integration for all operations
+- Local state has been eliminated in favor of database-driven architecture
+- URL parameters are now required for process editing workflows
+
 ## Architecture Overview
 
 ### Technology Stack
@@ -53,6 +70,640 @@ composables/
 └── useProcessValidation.js # Process validation
 types/
 └── process-builder.d.ts    # TypeScript definitions
+```
+
+## URL Parameter System
+
+The Process Builder now supports direct linking to specific processes via URL parameters, enabling seamless navigation and bookmarking.
+
+### Implementation
+
+#### Route Handling
+```javascript
+// pages/process-builder/index.vue
+const route = useRoute();
+const router = useRouter();
+
+// Watch for URL parameter changes
+watch(() => route.query.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    try {
+      await loadProcessFromUrl(newId);
+    } catch (error) {
+      console.error('Error loading process from URL:', error);
+      // Redirect to clean state on error
+      router.push('/process-builder');
+    }
+  }
+}, { immediate: true });
+
+// Load process from URL parameter
+const loadProcessFromUrl = async (processId) => {
+  if (!processId || processId === 'new') return;
+  
+  try {
+    setLoading(true);
+    await processStore.loadProcess(processId);
+    
+    if (!processStore.currentProcess) {
+      throw new Error('Process not found');
+    }
+    
+    // Update URL without triggering navigation
+    await router.replace({ 
+      path: '/process-builder', 
+      query: { id: processId } 
+    });
+    
+  } catch (error) {
+    console.error('Failed to load process:', error);
+    toast.error('Failed to load process: ' + (error.message || 'Unknown error'));
+    
+    // Clear invalid URL parameter
+    await router.replace('/process-builder');
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+#### Navigation Updates
+```javascript
+// Create new process with URL update
+const createNewProcess = async () => {
+  try {
+    processStore.clearProcess();
+    // Navigate to clean URL for new process
+    await router.push('/process-builder');
+  } catch (error) {
+    console.error('Error creating new process:', error);
+  }
+};
+
+// Save process with URL synchronization
+const saveProcess = async () => {
+  try {
+    const result = await processStore.saveProcess();
+    
+    if (result && result.id) {
+      // Update URL with saved process ID
+      await router.replace({ 
+        path: '/process-builder', 
+        query: { id: result.id } 
+      });
+      
+      toast.success('Process saved successfully');
+    }
+  } catch (error) {
+    toast.error('Failed to save process');
+  }
+};
+```
+
+### URL Patterns
+
+- **New Process**: `/process-builder` (no parameters)
+- **Edit Process**: `/process-builder?id={uuid}` 
+- **Navigation**: Automatic URL updates when saving new processes
+- **Validation**: Invalid IDs redirect to clean builder state
+
+### Error Handling
+
+- **Invalid Process ID**: Graceful fallback to new process state
+- **Network Errors**: User-friendly error messages with toast notifications
+- **Missing Processes**: Automatic cleanup of invalid URL parameters
+- **Loading States**: Visual feedback during process loading
+
+### Integration Points
+
+- **Process Management**: Direct links from manage page to builder
+- **Form Builder**: Consistent URL pattern across builders
+- **Navigation Guards**: Unsaved changes detection with URL awareness
+- **Bookmarking**: Users can bookmark specific processes for quick access
+
+## Database Integration & API System
+
+The Process Builder now features comprehensive database integration with a RESTful API system, replacing local state management with persistent storage.
+
+### API Endpoints
+
+#### Core Process Operations
+```javascript
+// GET /api/process - List all processes with pagination
+GET /api/process?page=1&limit=10&search=workflow&status=draft
+
+// GET /api/process/[id] - Get specific process
+GET /api/process/550e8400-e29b-41d4-a716-446655440000
+
+// POST /api/process - Create new process
+POST /api/process
+{
+  "name": "New Workflow",
+  "description": "Process description",
+  "processDefinition": { nodes: [], edges: [] },
+  "processVariables": [],
+  "isTemplate": false
+}
+
+// PUT /api/process/[id] - Update existing process
+PUT /api/process/550e8400-e29b-41d4-a716-446655440000
+{
+  "name": "Updated Workflow",
+  "processDefinition": { /* updated definition */ }
+}
+
+// DELETE /api/process/[id] - Delete process
+DELETE /api/process/550e8400-e29b-41d4-a716-446655440000
+```
+
+#### Advanced Operations
+```javascript
+// POST /api/process/[id]/duplicate - Duplicate process
+POST /api/process/550e8400-e29b-41d4-a716-446655440000/duplicate
+{
+  "name": "Workflow Copy",
+  "regenerateIds": true
+}
+
+// POST /api/process/[id]/publish - Publish process
+POST /api/process/550e8400-e29b-41d4-a716-446655440000/publish
+{
+  "version": "1.0.0",
+  "notes": "Initial release"
+}
+
+// GET /api/process/templates - Get process templates
+GET /api/process/templates
+```
+
+### Process Store Integration
+
+#### Enhanced Store Methods
+```javascript
+// stores/processBuilder.js
+export const useProcessBuilderStore = defineStore('processBuilder', () => {
+  
+  // Load process from API with error handling
+  const loadProcess = async (processId) => {
+    try {
+      loading.value = true;
+      const { data } = await $fetch(`/api/process/${processId}`);
+      
+      if (!data) {
+        throw new Error('Process not found');
+      }
+      
+      currentProcess.value = data;
+      
+      // Handle backward compatibility for process definitions
+      if (data.processDefinition) {
+        if (data.processDefinition.nodes?.length === 0 && 
+            data.processDefinition.edges?.length > 0) {
+          // Extract nodes from edges for backward compatibility
+          const extractedNodes = extractNodesFromEdges(data.processDefinition.edges);
+          nodes.value = extractedNodes;
+          edges.value = data.processDefinition.edges;
+        } else {
+          nodes.value = data.processDefinition.nodes || [];
+          edges.value = data.processDefinition.edges || [];
+        }
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error loading process:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  };
+  
+  // Save process with validation and success feedback
+  const saveProcess = async () => {
+    try {
+      loading.value = true;
+      
+      const processData = {
+        name: localProcess.value.name,
+        description: localProcess.value.description,
+        processDefinition: {
+          nodes: nodes.value,
+          edges: edges.value
+        },
+        processVariables: processVariables.value,
+        processSettings: {
+          // Process configuration settings
+          processType: localProcess.value.processType,
+          priority: localProcess.value.priority,
+          category: localProcess.value.category,
+          timeoutDuration: localProcess.value.timeoutDuration,
+          allowParallel: localProcess.value.allowParallel,
+          enableErrorRecovery: localProcess.value.enableErrorRecovery,
+          sendNotifications: localProcess.value.sendNotifications
+        }
+      };
+      
+      let result;
+      if (currentProcess.value?.id) {
+        // Update existing process
+        result = await $fetch(`/api/process/${currentProcess.value.id}`, {
+          method: 'PUT',
+          body: processData
+        });
+      } else {
+        // Create new process
+        result = await $fetch('/api/process', {
+          method: 'POST',
+          body: processData
+        });
+      }
+      
+      if (result?.data) {
+        currentProcess.value = result.data;
+        hasUnsavedChanges.value = false;
+        lastSavedState.value = JSON.stringify(processData);
+        return result.data;
+      }
+      
+      throw new Error('Save operation failed');
+    } catch (error) {
+      console.error('Error saving process:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  };
+  
+  // Fetch all processes with filtering
+  const fetchProcesses = async (options = {}) => {
+    try {
+      const params = new URLSearchParams({
+        page: options.page || 1,
+        limit: options.limit || 20,
+        ...(options.search && { search: options.search }),
+        ...(options.status && { status: options.status })
+      });
+      
+      const response = await $fetch(`/api/process?${params}`);
+      processes.value = response.data || [];
+      return response;
+    } catch (error) {
+      console.error('Error fetching processes:', error);
+      throw error;
+    }
+  };
+  
+  return {
+    // State
+    currentProcess: readonly(currentProcess),
+    processes: readonly(processes),
+    loading: readonly(loading),
+    hasUnsavedChanges: readonly(hasUnsavedChanges),
+    
+    // Actions
+    loadProcess,
+    saveProcess,
+    fetchProcesses,
+    clearProcess,
+    duplicateProcess,
+    deleteProcess
+  };
+});
+```
+
+### Backward Compatibility
+
+#### Process Definition Loading
+```javascript
+// Handle legacy process definitions with embedded nodes in edges
+const extractNodesFromEdges = (edges) => {
+  const nodeMap = new Map();
+  
+  edges.forEach(edge => {
+    // Extract source node
+    if (edge.sourceNode && !nodeMap.has(edge.source)) {
+      nodeMap.set(edge.source, {
+        id: edge.source,
+        type: edge.sourceNode.type,
+        position: edge.sourceNode.position || { x: 0, y: 0 },
+        data: edge.sourceNode.data || {}
+      });
+    }
+    
+    // Extract target node
+    if (edge.targetNode && !nodeMap.has(edge.target)) {
+      nodeMap.set(edge.target, {
+        id: edge.target,
+        type: edge.targetNode.type,
+        position: edge.targetNode.position || { x: 0, y: 0 },
+        data: edge.targetNode.data || {}
+      });
+    }
+  });
+  
+  return Array.from(nodeMap.values());
+};
+```
+
+### Error Handling & Validation
+
+#### API Error Responses
+```javascript
+// Standardized error response format
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Process name is required",
+    "details": {
+      "field": "name",
+      "value": "",
+      "constraint": "required"
+    }
+  }
+}
+
+// Network error handling
+try {
+  await processStore.saveProcess();
+} catch (error) {
+  if (error.statusCode === 404) {
+    toast.error('Process not found');
+  } else if (error.statusCode === 422) {
+    toast.error('Validation error: ' + error.data?.error?.message);
+  } else {
+    toast.error('An unexpected error occurred');
+  }
+}
+```
+
+#### Data Validation
+```javascript
+// Process validation using Zod schemas
+import { z } from 'zod';
+
+const ProcessSchema = z.object({
+  name: z.string().min(1, 'Process name is required'),
+  description: z.string().optional(),
+  processDefinition: z.object({
+    nodes: z.array(z.any()),
+    edges: z.array(z.any())
+  }),
+  processVariables: z.array(z.any()).default([]),
+  isTemplate: z.boolean().default(false)
+});
+
+// Validate before save
+const validateProcess = (processData) => {
+  try {
+    return ProcessSchema.parse(processData);
+  } catch (error) {
+    throw new Error(`Validation failed: ${error.message}`);
+  }
+};
+```
+
+## Vue Flow Integration & Performance Fixes
+
+Critical fixes were implemented to resolve interference between state management and Vue Flow's internal operations, particularly affecting connection dragging functionality.
+
+### Connection Dragging Bug Fix
+
+#### Problem
+The aggressive syncing of node positions and edge updates was interfering with Vue Flow's native drag-and-drop functionality, causing connections to fail when dragging from node handles.
+
+#### Solution
+```javascript
+// stores/processBuilder.js - Optimized node sync handling
+const syncNodePositions = (vueFlowNodes) => {
+  if (!vueFlowNodes || dragging.value) return; // Skip sync during dragging
+  
+  const positionsChanged = vueFlowNodes.some(vfNode => {
+    const storeNode = nodes.value.find(n => n.id === vfNode.id);
+    if (!storeNode) return false;
+    
+    return Math.abs(storeNode.position.x - vfNode.position.x) > 1 || 
+           Math.abs(storeNode.position.y - vfNode.position.y) > 1;
+  });
+  
+  if (positionsChanged) {
+    vueFlowNodes.forEach(vfNode => {
+      const nodeIndex = nodes.value.findIndex(n => n.id === vfNode.id);
+      if (nodeIndex !== -1) {
+        nodes.value[nodeIndex].position = { ...vfNode.position };
+      }
+    });
+  }
+};
+
+// Enhanced edge handling with change detection
+const handleEdgeChanges = (changes, currentEdges) => {
+  if (!changes || changes.length === 0) return;
+  
+  let hasChanges = false;
+  
+  changes.forEach(change => {
+    if (change.type === 'add' && change.item) {
+      // Only add if it doesn't already exist
+      const exists = edges.value.some(e => e.id === change.item.id);
+      if (!exists) {
+        addEdge(change.item);
+        hasChanges = true;
+      }
+    } else if (change.type === 'remove') {
+      const index = edges.value.findIndex(e => e.id === change.id);
+      if (index !== -1) {
+        edges.value.splice(index, 1);
+        hasChanges = true;
+      }
+    }
+  });
+  
+  if (hasChanges) {
+    markUnsavedChanges();
+  }
+};
+```
+
+#### Canvas Component Updates
+```vue
+<!-- components/process-flow/ProcessFlowCanvas.vue -->
+<template>
+  <VueFlow
+    v-model:nodes="flowNodes"
+    v-model:edges="flowEdges"
+    :node-types="nodeTypes"
+    @nodes-change="handleNodesChange"
+    @edges-change="handleEdgesChange"
+    @connect="handleConnect"
+    @node-drag-start="onNodeDragStart"
+    @node-drag-stop="onNodeDragStop"
+    :default-edge-options="defaultEdgeOptions"
+    :connection-mode="ConnectionMode.Loose"
+    :delete-key-code="'Delete'"
+    :selection-key-code="'Shift'"
+    :multi-selection-key-code="'Control'"
+    class="vue-flow-container"
+  >
+    <!-- Vue Flow components -->
+  </VueFlow>
+</template>
+
+<script setup>
+import { ref, computed, watch } from 'vue';
+import { VueFlow, ConnectionMode } from '@vue-flow/core';
+
+// Drag state management
+const isDragging = ref(false);
+
+const onNodeDragStart = () => {
+  isDragging.value = true;
+  processStore.setDragging(true);
+};
+
+const onNodeDragStop = (event) => {
+  isDragging.value = false;
+  processStore.setDragging(false);
+  
+  // Sync positions after drag is complete
+  if (event.nodes && event.nodes.length > 0) {
+    processStore.syncNodePositions(event.nodes);
+  }
+};
+
+// Optimized change handlers
+const handleNodesChange = (changes) => {
+  // Let Vue Flow handle internal changes first
+  nextTick(() => {
+    if (!isDragging.value) {
+      processStore.handleNodeChanges(changes, flowNodes.value);
+    }
+  });
+};
+
+const handleEdgesChange = (changes) => {
+  processStore.handleEdgeChanges(changes, flowEdges.value);
+};
+
+// Enhanced connection handling
+const handleConnect = (connection) => {
+  if (!connection.source || !connection.target) return;
+  
+  const newEdge = {
+    id: `${connection.source}-${connection.target}`,
+    source: connection.source,
+    target: connection.target,
+    sourceHandle: connection.sourceHandle,
+    targetHandle: connection.targetHandle,
+    type: 'smoothstep',
+    animated: true
+  };
+  
+  processStore.addEdge(newEdge);
+};
+</script>
+```
+
+### Performance Optimizations
+
+#### Reduced Re-renders
+```javascript
+// Computed properties for reactive data binding
+const flowNodes = computed({
+  get: () => processStore.nodes,
+  set: (newNodes) => {
+    if (!isDragging.value) {
+      processStore.updateNodes(newNodes);
+    }
+  }
+});
+
+const flowEdges = computed({
+  get: () => processStore.edges,
+  set: (newEdges) => {
+    processStore.updateEdges(newEdges);
+  }
+});
+
+// Debounced position sync for smooth dragging
+import { debounce } from 'lodash-es';
+
+const debouncedSync = debounce((nodes) => {
+  processStore.syncNodePositions(nodes);
+}, 100);
+```
+
+#### Memory Management
+```javascript
+// Cleanup watchers and event listeners
+onBeforeUnmount(() => {
+  // Clear any pending debounced calls
+  debouncedSync.cancel();
+  
+  // Reset dragging state
+  processStore.setDragging(false);
+  
+  // Clear selections
+  if (vueFlowInstance.value) {
+    vueFlowInstance.value.setSelectedNodes([]);
+    vueFlowInstance.value.setSelectedEdges([]);
+  }
+});
+```
+
+### State Synchronization
+
+#### Bidirectional Data Flow
+```javascript
+// Process Store - Enhanced state management
+export const useProcessBuilderStore = defineStore('processBuilder', () => {
+  const dragging = ref(false);
+  
+  const setDragging = (value) => {
+    dragging.value = value;
+  };
+  
+  const updateNodes = (newNodes) => {
+    if (!dragging.value) {
+      nodes.value = newNodes.map(node => ({
+        ...node,
+        position: { ...node.position }
+      }));
+      markUnsavedChanges();
+    }
+  };
+  
+  const updateEdges = (newEdges) => {
+    edges.value = newEdges.map(edge => ({ ...edge }));
+    markUnsavedChanges();
+  };
+  
+  // Smart change detection
+  const markUnsavedChanges = () => {
+    const currentState = JSON.stringify({
+      nodes: nodes.value,
+      edges: edges.value,
+      variables: processVariables.value
+    });
+    
+    if (currentState !== lastSavedState.value) {
+      hasUnsavedChanges.value = true;
+    }
+  };
+  
+  return {
+    // State
+    dragging: readonly(dragging),
+    
+    // Actions
+    setDragging,
+    updateNodes,
+    updateEdges,
+    syncNodePositions,
+    handleNodeChanges,
+    handleEdgeChanges
+  };
+});
 ```
 
 ## Component Architecture
@@ -1622,16 +2273,7 @@ const saveSettings = () => {
         autoTimeout: localProcess.value.autoTimeout,
         allowParallel: localProcess.value.allowParallel,
         enableErrorRecovery: localProcess.value.enableErrorRecovery,
-        sendNotifications: localProcess.value.sendNotifications,
-        dataPersistence: localProcess.value.dataPersistence,
-        logVariableChanges: localProcess.value.logVariableChanges,
-        encryptSensitiveData: localProcess.value.encryptSensitiveData,
-        dataRetentionPolicy: localProcess.value.dataRetentionPolicy,
-        executionPermission: localProcess.value.executionPermission,
-        allowedRoles: localProcess.value.allowedRoles,
-        modificationPermission: localProcess.value.modificationPermission,
-        requireApproval: localProcess.value.requireApproval,
-        enableAuditTrail: localProcess.value.enableAuditTrail
+        sendNotifications: localProcess.value.sendNotifications
       }
     }
     

@@ -4,6 +4,40 @@
 
 The Process Builder is a visual workflow designer that allows you to create, edit, and manage business processes using the BPMN (Business Process Model and Notation) standard. With an intuitive drag-and-drop interface, you can design complex workflows that model your organization's business processes.
 
+## Recent Updates (December 2024)
+
+### New Features & Improvements
+
+#### **Direct Process Linking**
+- **URL Parameters**: Access specific processes directly via `/process-builder?id={process-id}`
+- **Bookmarkable Links**: Share and bookmark direct links to processes
+- **Navigation Integration**: Seamless navigation from process management to builder
+- **Error Handling**: Graceful fallback for invalid or missing process IDs
+
+#### **Enhanced Save & Navigation**
+- **Success Notifications**: Toast messages confirm successful saves and operations
+- **Smart Navigation**: Automatic URL updates when creating or editing processes
+- **Unsaved Changes Detection**: Improved modal that correctly detects when changes are saved
+- **Loading States**: Visual feedback during save, load, and navigation operations
+
+#### **Database Integration**
+- **Persistent Storage**: All processes now saved to database with comprehensive API
+- **Real-time Sync**: Changes automatically persisted with proper error handling
+- **Backup Compatibility**: Legacy process definitions automatically upgraded
+- **Data Validation**: Robust validation ensures data integrity
+
+#### **Connection System Fixes**
+- **Reliable Dragging**: Fixed issue with connector dragging between nodes
+- **Performance Optimized**: Reduced interference with Vue Flow's internal operations
+- **Smooth Interactions**: Improved responsiveness during node manipulation
+- **Connection Feedback**: Better visual feedback during connection creation
+
+#### **Process Management Consistency**
+- **Unified Design**: Process and form management pages now share consistent UI
+- **Search & Filter**: Enhanced search functionality across all management interfaces
+- **Action Buttons**: Standardized edit, duplicate, and delete operations
+- **Loading States**: Consistent loading indicators and error handling
+
 ## Getting Started
 
 ### Accessing the Process Builder

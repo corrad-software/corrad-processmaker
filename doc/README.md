@@ -73,6 +73,18 @@ Last updated: December 2024
 - **Advanced Configuration Options**: Professional-grade settings comparable to enterprise BPM platforms
 - **Enhanced State Management**: Improved process store with settings persistence and history tracking
 
+### December 2024 - Process Builder Critical Fixes & Database Integration
+- **Database Integration**: Complete API system with REST endpoints for all process operations
+- **URL Parameter Support**: Direct process linking via `/process-builder?id={uuid}` pattern
+- **Save Functionality**: Enhanced with success/error messages and proper state management
+- **Navigation Improvements**: Fixed unsaved changes detection and automatic URL synchronization
+- **Connection Dragging Fix**: Resolved Vue Flow interference preventing connector dragging
+- **Backward Compatibility**: Legacy process definitions with embedded nodes automatically upgraded
+- **Toast Notifications**: Comprehensive user feedback system for all operations
+- **Performance Optimizations**: Reduced re-renders and improved memory management
+- **Error Handling**: Robust validation and graceful error recovery throughout system
+- **UI Consistency**: Updated form builder management to match process builder design patterns
+
 ### December 2024 - Major Form Builder Enhancements
 - **JavaScript Execution Engine**: Added FormScriptEngine component for real-time calculations
 - **Dynamic Field Updates**: Implemented onFieldChange and onLoad event handlers

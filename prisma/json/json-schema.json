@@ -1,73 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "audit": {
-      "type": "object",
-      "properties": {
-        "auditID": {
-          "type": "integer"
-        },
-        "auditIP": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "auditURL": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "auditURLMethod": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "auditURLPayload": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "auditCreatedDate": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time"
-        },
-        "auditAction": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "auditDetails": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "auditUsername": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "user": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/user"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
     "user": {
       "type": "object",
       "properties": {
@@ -130,12 +63,6 @@
           ],
           "format": "date-time"
         },
-        "audit": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/audit"
-          }
-        },
         "forms": {
           "type": "array",
           "items": {
@@ -146,12 +73,6 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/process"
-          }
-        },
-        "assignedTasks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/task"
           }
         },
         "userrole": {
@@ -208,64 +129,6 @@
         }
       }
     },
-    "lookup": {
-      "type": "object",
-      "properties": {
-        "lookupID": {
-          "type": "integer"
-        },
-        "lookupOrder": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "lookupTitle": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "lookupRefCode": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "lookupValue": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "lookupType": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "lookupStatus": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "lookupCreatedDate": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time"
-        },
-        "lookupModifiedDate": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time"
-        }
-      }
-    },
     "userrole": {
       "type": "object",
       "properties": {
@@ -312,13 +175,28 @@
             "null"
           ]
         },
-        "customScript": {
+        "formStatus": {
+          "type": "string",
+          "default": "active"
+        },
+        "formCreatedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "formModifiedDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "customCSS": {
           "type": [
             "string",
             "null"
           ]
         },
-        "customCSS": {
+        "customScript": {
           "type": [
             "string",
             "null"
@@ -341,21 +219,6 @@
           ],
           "default": "safe"
         },
-        "formStatus": {
-          "type": "string",
-          "default": "active"
-        },
-        "formCreatedDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "formModifiedDate": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time"
-        },
         "creator": {
           "anyOf": [
             {
@@ -365,12 +228,6 @@
               "type": "null"
             }
           ]
-        },
-        "formTasks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/task"
-          }
         }
       }
     },
@@ -421,43 +278,23 @@
           ],
           "format": "date-time"
         },
-        "creator": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/user"
-            },
-            {
-              "type": "null"
-            }
+        "isTemplate": {
+          "type": "boolean",
+          "default": false
+        },
+        "processCategory": {
+          "type": [
+            "string",
+            "null"
           ]
         },
-        "tasks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/task"
-          }
-        }
-      }
-    },
-    "task": {
-      "type": "object",
-      "properties": {
-        "taskID": {
-          "type": "integer"
+        "processOwner": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
-        "taskUUID": {
-          "type": "string"
-        },
-        "taskNodeId": {
-          "type": "string"
-        },
-        "taskName": {
-          "type": "string"
-        },
-        "taskType": {
-          "type": "string"
-        },
-        "taskData": {
+        "processPermissions": {
           "type": [
             "number",
             "string",
@@ -467,22 +304,40 @@
             "null"
           ]
         },
-        "taskStatus": {
-          "type": "string",
-          "default": "pending"
-        },
-        "taskCreatedDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "taskModifiedDate": {
+        "processPriority": {
           "type": [
             "string",
             "null"
           ],
-          "format": "date-time"
+          "default": "normal"
         },
-        "assignee": {
+        "processSettings": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "processVariables": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "templateCategory": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "creator": {
           "anyOf": [
             {
               "$ref": "#/definitions/user"
@@ -491,36 +346,17 @@
               "type": "null"
             }
           ]
-        },
-        "form": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/form"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "process": {
-          "$ref": "#/definitions/process"
         }
       }
     }
   },
   "type": "object",
   "properties": {
-    "audit": {
-      "$ref": "#/definitions/audit"
-    },
     "user": {
       "$ref": "#/definitions/user"
     },
     "role": {
       "$ref": "#/definitions/role"
-    },
-    "lookup": {
-      "$ref": "#/definitions/lookup"
     },
     "userrole": {
       "$ref": "#/definitions/userrole"
@@ -530,9 +366,6 @@
     },
     "process": {
       "$ref": "#/definitions/process"
-    },
-    "task": {
-      "$ref": "#/definitions/task"
     }
   }
 }

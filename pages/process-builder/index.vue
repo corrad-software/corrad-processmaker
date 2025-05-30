@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted, computed, shallowRef, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, computed, shallowRef, onUnmounted, nextTick, watch } from 'vue';
 import { useProcessBuilderStore } from '~/stores/processBuilder';
 import { useVariableStore } from '~/stores/variableStore';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import ProcessFlowCanvas from '~/components/process-flow/ProcessFlowCanvas.vue';
 import ProcessBuilderComponents from '~/components/process-flow/ProcessBuilderComponents.vue';
 import FormSelector from '~/components/process-flow/FormSelector.vue';
@@ -33,7 +33,22 @@ definePageMeta({
 // Initialize the store and router
 const processStore = useProcessBuilderStore();
 const router = useRouter();
+const route = useRoute();
 const variableStore = useVariableStore();
+
+// Initialize toast with fallback
+let toast;
+try {
+  toast = useToast();
+} catch (error) {
+  // Create a simple toast object if composable is not available
+  toast = {
+    success: (msg) => console.log('Success:', msg),
+    error: (msg) => console.error('Error:', msg),
+    info: (msg) => console.info('Info:', msg),
+    warning: (msg) => console.warn('Warning:', msg)
+  };
+}
 
 // Track selected node local state (syncs with store)
 // Using shallowRef to avoid making Vue components reactive
@@ -58,6 +73,7 @@ const showUnsavedChangesModal = ref(false);
 const pendingNavigation = ref(null);
 const navigationTarget = ref(null);
 const navigationConfirmed = ref(false);
+const isSaving = ref(false);
 
 // Add a ref for the ProcessFlowCanvas component
 const processFlowCanvas = ref(null);
@@ -364,10 +380,10 @@ const onNodesChange = (changes, currentNodes) => {
     }
   }
   
-  // Handle position changes
+  // Handle position changes (only when dragging is complete)
   const positionChanges = {};
   changes
-    .filter(change => change.type === 'position' && change.position)
+    .filter(change => change.type === 'position' && change.position && !change.dragging)
     .forEach(change => {
       positionChanges[change.id] = change.position;
     });
@@ -405,22 +421,61 @@ const onEdgesChange = (changes, currentEdges) => {
     }
   }
   
-  // Sync all edges
-  processStore.currentProcess.edges = currentEdges;
+  // Handle edge additions (new connections)
+  const addedEdges = changes.filter(change => change.type === 'add');
+  
+  if (addedEdges.length > 0) {
+    addedEdges.forEach(change => {
+      const edge = currentEdges.find(e => e.id === change.id);
+      if (edge) {
+        processStore.addEdge({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label || '',
+          type: edge.type || 'smoothstep',
+          animated: edge.animated !== undefined ? edge.animated : true,
+          data: edge.data || {}
+        });
+      }
+    });
+  }
 };
 
 // Handle creating a new process
-const createNewProcess = () => {
-  if (!newProcessName.value.trim()) return;
+const createNewProcess = async () => {
+  if (!newProcessName.value.trim()) {
+    toast.error('Please enter a process name');
+    return;
+  }
   
-  processStore.createProcess(
-    newProcessName.value.trim(),
-    newProcessDescription.value.trim()
-  );
-  
-  isCreatingProcess.value = false;
-  newProcessName.value = '';
-  newProcessDescription.value = '';
+  try {
+    const newProcess = await processStore.createProcess(
+      newProcessName.value.trim(),
+      newProcessDescription.value.trim()
+    );
+    
+    if (newProcess && newProcess.id) {
+      // Update the URL to include the new process ID
+      router.replace(`/process-builder?id=${newProcess.id}`);
+      
+      // Show success message
+      toast.success(`Process "${newProcess.name}" created successfully`);
+      
+      // Reset form
+      isCreatingProcess.value = false;
+      newProcessName.value = '';
+      newProcessDescription.value = '';
+      
+      // Reset navigation confirmation
+      navigationConfirmed.value = false;
+    } else {
+      toast.error('Failed to create process. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error creating process:', error);
+    toast.error(`Failed to create process: ${error.message || 'Unknown error'}`);
+  }
 };
 
 // Add navigation guard
@@ -450,8 +505,17 @@ const cancelNavigation = () => {
 
 // Update the confirmNavigation function to handle targets
 const confirmNavigation = (target) => {
+  // Force check unsaved changes by calling the getter
+  const hasChanges = processStore.hasUnsavedChanges;
+  
   // If already confirmed or no unsaved changes, navigate directly
-  if (navigationConfirmed.value || !processStore.hasUnsavedChanges) {
+  if (navigationConfirmed.value || !hasChanges) {
+    // Clear the current process when navigating away
+    if (target !== '/process-builder') {
+      processStore.clearCurrentProcess();
+    }
+    // Reset navigation confirmation
+    navigationConfirmed.value = false;
     router.push(target);
     return;
   }
@@ -468,6 +532,10 @@ const proceedWithNavigation = () => {
   if (pendingNavigation.value) {
     pendingNavigation.value();
   } else if (navigationTarget.value) {
+    // Clear the current process when navigating away
+    if (navigationTarget.value !== '/process-builder') {
+      processStore.clearCurrentProcess();
+    }
     navigationConfirmed.value = true; // Mark as confirmed before navigating
     router.push(navigationTarget.value);
   }
@@ -488,7 +556,23 @@ const goToManage = () => {
 
 // Add events for beforeunload
 onMounted(() => {
-  // No automatic process creation - let the user create one explicitly
+  // Check if there's a process ID in the URL query parameters
+  const processId = route.query.id;
+  
+  if (processId) {
+    // Load the specific process
+    processStore.loadProcess(processId).then((result) => {
+      if (!result.success) {
+        console.error('Failed to load process:', processId, result.error);
+        // Could show an error notification here
+        // For now, just redirect back to manage page
+        router.push('/process-builder/manage');
+      }
+    }).catch((error) => {
+      console.error('Error loading process:', error);
+      router.push('/process-builder/manage');
+    });
+  }
   
   // Add the beforeunload event listener
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -612,8 +696,42 @@ const deleteEdge = () => {
 };
 
 // Save current process
-const saveProcess = () => {
-  processStore.saveProcess();
+const saveProcess = async () => {
+  if (!processStore.currentProcess) {
+    toast.error('No process to save');
+    return;
+  }
+  
+  if (!processStore.currentProcess.name.trim()) {
+    toast.error('Please enter a process name before saving');
+    return;
+  }
+  
+  if (isSaving.value) {
+    return; // Prevent multiple simultaneous save operations
+  }
+  
+  try {
+    isSaving.value = true;
+    const success = await processStore.saveProcess();
+    
+    if (success) {
+      toast.success(`Process "${processStore.currentProcess.name}" saved successfully`);
+      
+      // Reset navigation confirmation since changes are now saved
+      navigationConfirmed.value = false;
+      
+      // Force a reactivity update to ensure unsavedChanges is properly reflected
+      await nextTick();
+    } else {
+      toast.error('Failed to save process. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error saving process:', error);
+    toast.error(`Failed to save process: ${error.message || 'Unknown error'}`);
+  } finally {
+    isSaving.value = false;
+  }
 };
 
 // Add a component handler to add components from the component panel
@@ -826,6 +944,33 @@ const handleNotificationNodeUpdate = (updatedData) => {
 const navigateToVariables = () => {
   confirmNavigation('/variables');
 };
+
+// Watch for route changes to handle process ID changes
+watch(() => route.query.id, (newProcessId, oldProcessId) => {
+  // Only react if the process ID actually changed and it's not empty
+  if (newProcessId && newProcessId !== oldProcessId) {
+    processStore.loadProcess(newProcessId).then((result) => {
+      if (!result.success) {
+        console.error('Failed to load process:', newProcessId, result.error);
+        router.push('/process-builder/manage');
+      }
+    }).catch((error) => {
+      console.error('Error loading process:', error);
+      router.push('/process-builder/manage');
+    });
+  } else if (!newProcessId && oldProcessId) {
+    // If the ID was removed from the URL, clear the current process
+    processStore.clearCurrentProcess();
+  }
+});
+
+// Watch for unsaved changes to reset navigation confirmation
+watch(() => processStore.hasUnsavedChanges, (hasChanges) => {
+  // If there are no more unsaved changes, reset navigation confirmation
+  if (!hasChanges) {
+    navigationConfirmed.value = false;
+  }
+});
 </script>
 
 <template>
@@ -870,9 +1015,10 @@ const navigateToVariables = () => {
       <div class="flex items-center">
         <!-- Primary actions -->
         <div class="flex items-center mr-2 border-r border-gray-600 pr-2">
-          <RsButton @click="saveProcess" variant="primary" size="sm" class="mr-2" :disabled="!hasCurrentProcess">
-            <Icon name="material-symbols:save" class="mr-1" />
-            Save
+          <RsButton @click="saveProcess" variant="primary" size="sm" class="mr-2" :disabled="!hasCurrentProcess || isSaving">
+            <Icon v-if="isSaving" name="material-symbols:progress-activity" class="mr-1 animate-spin" />
+            <Icon v-else name="material-symbols:save" class="mr-1" />
+            {{ isSaving ? 'Saving...' : 'Save' }}
           </RsButton>
         </div>
         

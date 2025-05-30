@@ -12,22 +12,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model audit {
-  auditID          Int       @id @default(autoincrement())
-  auditIP          String?   @db.VarChar(255)
-  auditURL         String?   @db.VarChar(255)
-  auditURLMethod   String?   @db.VarChar(255)
-  auditURLPayload  String?   @db.Text
-  auditCreatedDate DateTime? @default(now()) @db.DateTime(0)
-  auditAction      String?   @db.VarChar(255)
-  auditDetails     String?   @db.Text
-  auditUserID      Int?
-  auditUsername    String?   @db.VarChar(255)
-  user             user?     @relation(fields: [auditUserID], references: [userID])
-
-  @@index([auditUserID], map: "FK_audit_user")
-}
-
 model user {
   userID           Int        @id @default(autoincrement())
   userSecretKey    String?    @db.VarChar(255)
@@ -39,10 +23,8 @@ model user {
   userStatus       String?    @db.VarChar(255)
   userCreatedDate  DateTime?  @db.DateTime(0)
   userModifiedDate DateTime?  @db.DateTime(0)
-  audit            audit[]
   forms            form[]     @relation("FormCreator")
   processes        process[]  @relation("ProcessCreator")
-  assignedTasks    task[]     @relation("TaskAssignee")
   userrole         userrole[]
 }
 
@@ -54,18 +36,6 @@ model role {
   roleCreatedDate  DateTime?  @db.DateTime(0)
   roleModifiedDate DateTime?  @db.DateTime(0)
   userrole         userrole[]
-}
-
-model lookup {
-  lookupID           Int       @id @default(autoincrement())
-  lookupOrder        Int?
-  lookupTitle        String?   @db.VarChar(255)
-  lookupRefCode      String?   @db.VarChar(255)
-  lookupValue        String?   @db.VarChar(255)
-  lookupType         String?   @db.VarChar(255)
-  lookupStatus       String?   @db.VarChar(255)
-  lookupCreatedDate  DateTime? @db.DateTime(0)
-  lookupModifiedDate DateTime? @db.DateTime(0)
 }
 
 model userrole {
@@ -86,16 +56,15 @@ model form {
   formName         String    @db.VarChar(255)
   formDescription  String?   @db.Text
   formComponents   Json
-  customScript     String?   @db.LongText
-  customCSS        String?   @db.Text
-  formEvents       Json?
-  scriptMode       String?   @default("safe") @db.VarChar(20)
   formStatus       String    @default("active") @db.VarChar(50)
   formCreatedBy    Int?
   formCreatedDate  DateTime  @default(now()) @db.DateTime(0)
   formModifiedDate DateTime? @updatedAt @db.DateTime(0)
+  customCSS        String?   @db.Text
+  customScript     String?   @db.LongText
+  formEvents       Json?
+  scriptMode       String?   @default("safe") @db.VarChar(20)
   creator          user?     @relation("FormCreator", fields: [formCreatedBy], references: [userID])
-  formTasks        task[]    @relation("FormTask")
 
   @@index([formCreatedBy], map: "FK_form_creator")
 }
@@ -111,30 +80,18 @@ model process {
   processCreatedBy    Int?
   processCreatedDate  DateTime  @default(now()) @db.DateTime(0)
   processModifiedDate DateTime? @updatedAt @db.DateTime(0)
+  isTemplate          Boolean   @default(false)
+  processCategory     String?   @db.VarChar(100)
+  processOwner        String?   @db.VarChar(255)
+  processPermissions  Json?
+  processPriority     String?   @default("normal") @db.VarChar(50)
+  processSettings     Json?
+  processVariables    Json?
+  templateCategory    String?   @db.VarChar(100)
   creator             user?     @relation("ProcessCreator", fields: [processCreatedBy], references: [userID])
-  tasks               task[]
 
   @@index([processCreatedBy], map: "FK_process_creator")
-}
-
-model task {
-  taskID           Int       @id @default(autoincrement())
-  taskUUID         String    @unique @db.VarChar(36)
-  taskNodeId       String    @db.VarChar(255)
-  taskName         String    @db.VarChar(255)
-  taskType         String    @db.VarChar(50)
-  taskData         Json?
-  taskProcessId    Int
-  taskFormId       Int?
-  taskAssigneeId   Int?
-  taskStatus       String    @default("pending") @db.VarChar(50)
-  taskCreatedDate  DateTime  @default(now()) @db.DateTime(0)
-  taskModifiedDate DateTime? @updatedAt @db.DateTime(0)
-  assignee         user?     @relation("TaskAssignee", fields: [taskAssigneeId], references: [userID])
-  form             form?     @relation("FormTask", fields: [taskFormId], references: [formID])
-  process          process   @relation(fields: [taskProcessId], references: [processID])
-
-  @@index([taskProcessId], map: "FK_task_process")
-  @@index([taskFormId], map: "FK_task_form")
-  @@index([taskAssigneeId], map: "FK_task_assignee")
+  @@index([processStatus], map: "IDX_process_status")
+  @@index([processCategory], map: "IDX_process_category")
+  @@index([isTemplate], map: "IDX_process_template")
 }

@@ -4,7 +4,7 @@ import { useVariableStore } from './variableStore';
 
 export const useProcessBuilderStore = defineStore('processBuilder', {
   state: () => ({
-    processes: [],
+    processes: [], // Only populated from database via fetchProcesses()
     currentProcess: null,
     selectedNodeId: null,
     selectedEdgeId: null,
@@ -63,26 +63,55 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     /**
      * Create a new process
      */
-    createProcess(name, description = '') {
-      const process = {
-        id: crypto.randomUUID(),
-        name,
-        description,
-        nodes: [],
-        edges: [],
-        variables: {},
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+    async createProcess(name, description = '') {
+      try {
+        const processData = {
+          processName: name,
+          processDescription: description,
+          nodes: [],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          variables: {},
+          settings: {},
+          permissions: {},
+          createdBy: 1 // TODO: Get from auth store
+        };
 
-      this.processes.push(process);
-      this.currentProcess = process;
-      this.unsavedChanges = true;
+        const response = await $fetch('/api/process/create', {
+          method: 'POST',
+          body: processData
+        });
 
-      // Clear any existing variables
-      useVariableStore().clearProcessVariables();
+        if (response.success) {
+          const process = {
+            id: response.process.processUUID,
+            name: response.process.processName,
+            description: response.process.processDescription,
+            nodes: response.process.processDefinition.nodes || [],
+            edges: response.process.processDefinition.edges || [],
+            variables: response.process.processVariables || {},
+            settings: response.process.processSettings || {},
+            permissions: response.process.processPermissions || {},
+            createdAt: response.process.processCreatedDate,
+            updatedAt: response.process.processModifiedDate
+          };
 
-      return process;
+          // Set as current process but DON'T add to processes array
+          // The processes array should only be populated from fetchProcesses()
+          this.currentProcess = process;
+          this.unsavedChanges = false;
+
+          // Clear any existing variables
+          useVariableStore().clearProcessVariables();
+
+          return process;
+        } else {
+          throw new Error(response.error || 'Failed to create process');
+        }
+      } catch (error) {
+        console.error('Error creating process:', error);
+        throw error;
+      }
     },
 
     /**
@@ -90,10 +119,71 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
      */
     async loadProcess(processId) {
       try {
-        // TODO: Implement API call to load process
-        // For now, just load from local state
-        const process = this.processes.find(p => p.id === processId);
-        if (process) {
+        const response = await $fetch(`/api/process/${processId}`);
+        
+        if (response.success) {
+          const apiProcess = response.process;
+          const definition = apiProcess.processDefinition;
+          
+          let nodes = definition.nodes || [];
+          let edges = definition.edges || [];
+          
+          // If nodes array is empty but edges contain node data, extract nodes from edges
+          if (nodes.length === 0 && edges.length > 0) {
+            const nodeMap = new Map();
+            
+            // Extract unique nodes from edge sourceNode and targetNode
+            edges.forEach(edge => {
+              if (edge.sourceNode) {
+                nodeMap.set(edge.sourceNode.id, {
+                  id: edge.sourceNode.id,
+                  type: edge.sourceNode.type,
+                  label: edge.sourceNode.data?.label || edge.sourceNode.label,
+                  position: edge.sourceNode.position,
+                  data: edge.sourceNode.data || {}
+                });
+              }
+              
+              if (edge.targetNode) {
+                nodeMap.set(edge.targetNode.id, {
+                  id: edge.targetNode.id,
+                  type: edge.targetNode.type,
+                  label: edge.targetNode.data?.label || edge.targetNode.label,
+                  position: edge.targetNode.position,
+                  data: edge.targetNode.data || {}
+                });
+              }
+            });
+            
+            // Convert to array
+            nodes = Array.from(nodeMap.values());
+            
+            // Clean up edges to remove embedded node data (Vue Flow doesn't need it)
+            edges = edges.map(edge => ({
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              label: edge.label || '',
+              type: edge.type || 'smoothstep',
+              animated: edge.animated !== undefined ? edge.animated : true,
+              data: edge.data || {}
+            }));
+          }
+          
+          const process = {
+            id: apiProcess.processUUID,
+            name: apiProcess.processName,
+            description: apiProcess.processDescription,
+            nodes: nodes,
+            edges: edges,
+            viewport: definition.viewport || { x: 0, y: 0, zoom: 1 },
+            variables: apiProcess.processVariables || {},
+            settings: apiProcess.processSettings || {},
+            permissions: apiProcess.processPermissions || {},
+            createdAt: apiProcess.processCreatedDate,
+            updatedAt: apiProcess.processModifiedDate
+          };
+
           this.currentProcess = process;
           
           // Load variables into variable store
@@ -104,17 +194,22 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
             });
           }
           
-          return true;
+          this.unsavedChanges = false;
+          return { success: true, process };
+        } else {
+          const errorMessage = response.error || 'Failed to load process';
+          console.error('Load process failed:', errorMessage);
+          return { success: false, error: errorMessage };
         }
-        return false;
       } catch (error) {
-        console.error('Error loading process:', error);
-        return false;
+        const errorMessage = error.data?.error || error.message || 'Network error occurred';
+        console.error('Error loading process:', errorMessage);
+        return { success: false, error: errorMessage };
       }
     },
 
     /**
-     * Set the current process
+     * Set the current process from the processes list
      */
     setCurrentProcess(processId) {
       const process = this.processes.find(p => p.id === processId);
@@ -147,26 +242,41 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
      * Save the current process
      */
     async saveProcess() {
-      if (!this.currentProcess) return;
+      if (!this.currentProcess) return false;
 
       try {
-        // Save process data
         const processData = {
-          ...this.currentProcess,
-          variables: useVariableStore().getAllVariables.process
+          processName: this.currentProcess.name,
+          processDescription: this.currentProcess.description,
+          nodes: this.currentProcess.nodes,
+          edges: this.currentProcess.edges,
+          viewport: this.currentProcess.viewport || { x: 0, y: 0, zoom: 1 },
+          variables: useVariableStore().getAllVariables.process || {},
+          settings: this.currentProcess.settings || {},
+          permissions: this.currentProcess.permissions || {}
         };
 
-        // TODO: Implement API call to save process
-        // For now, just update local state
-        const index = this.processes.findIndex(p => p.id === this.currentProcess.id);
-        if (index !== -1) {
-          this.processes[index] = processData;
-        } else {
-          this.processes.push(processData);
-        }
+        const response = await $fetch(`/api/process/${this.currentProcess.id}`, {
+          method: 'PUT',
+          body: processData
+        });
 
-        this.unsavedChanges = false;
-        return true;
+        if (response.success) {
+          // Update local state with server response
+          const apiProcess = response.process;
+          this.currentProcess.updatedAt = apiProcess.processModifiedDate;
+          
+          // Update in processes array if it exists there
+          const index = this.processes.findIndex(p => p.id === this.currentProcess.id);
+          if (index !== -1) {
+            this.processes[index] = { ...this.currentProcess };
+          }
+
+          this.unsavedChanges = false;
+          return true;
+        } else {
+          throw new Error(response.error || 'Failed to save process');
+        }
       } catch (error) {
         console.error('Error saving process:', error);
         return false;
@@ -176,17 +286,175 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
     /**
      * Delete a process
      */
-    deleteProcess(processId) {
-      const index = this.processes.findIndex(p => p.id === processId);
-      if (index !== -1) {
-        this.processes.splice(index, 1);
-        if (this.currentProcess && this.currentProcess.id === processId) {
-          this.currentProcess = null;
-          this.selectedNodeId = null;
-          this.selectedEdgeId = null;
-          this.clearHistory();
+    async deleteProcess(processId) {
+      try {
+        const response = await $fetch(`/api/process/${processId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.success) {
+          // Remove from local processes array
+          const index = this.processes.findIndex(p => p.id === processId);
+          if (index !== -1) {
+            this.processes.splice(index, 1);
+          }
+          
+          // Clear current process if it's the one being deleted
+          if (this.currentProcess && this.currentProcess.id === processId) {
+            this.currentProcess = null;
+            this.selectedNodeId = null;
+            this.selectedEdgeId = null;
+            this.clearHistory();
+          }
+          
+          return true;
+        } else {
+          throw new Error(response.error || 'Failed to delete process');
         }
+      } catch (error) {
+        console.error('Error deleting process:', error);
+        return false;
       }
+    },
+
+    /**
+     * Fetch all processes from database
+     */
+    async fetchProcesses(options = {}) {
+      try {
+        const queryParams = new URLSearchParams();
+        
+        if (options.page) queryParams.append('page', options.page);
+        if (options.limit) queryParams.append('limit', options.limit);
+        if (options.status) queryParams.append('status', options.status);
+        if (options.category) queryParams.append('category', options.category);
+        if (options.search) queryParams.append('search', options.search);
+        if (options.isTemplate !== undefined) queryParams.append('isTemplate', options.isTemplate);
+        if (options.sortBy) queryParams.append('sortBy', options.sortBy);
+        if (options.sortOrder) queryParams.append('sortOrder', options.sortOrder);
+
+        const url = `/api/process${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        const response = await $fetch(url);
+
+        if (response.success) {
+          // Replace the entire processes array with fresh data from database
+          this.processes = response.data.processes.map(apiProcess => ({
+            id: apiProcess.processUUID,
+            name: apiProcess.processName,
+            description: apiProcess.processDescription,
+            category: apiProcess.processCategory,
+            priority: apiProcess.processPriority,
+            owner: apiProcess.processOwner,
+            status: apiProcess.processStatus,
+            isTemplate: apiProcess.isTemplate,
+            templateCategory: apiProcess.templateCategory,
+            createdAt: apiProcess.processCreatedDate,
+            updatedAt: apiProcess.processModifiedDate,
+            creator: apiProcess.creator
+          }));
+          
+          return response.data;
+        } else {
+          throw new Error(response.error || 'Failed to fetch processes');
+        }
+      } catch (error) {
+        console.error('Error fetching processes:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Publish a process
+     */
+    async publishProcess(processId) {
+      try {
+        const response = await $fetch(`/api/process/${processId}/publish`, {
+          method: 'POST'
+        });
+
+        if (response.success) {
+          // Update local state if process exists in the array
+          const process = this.processes.find(p => p.id === processId);
+          if (process) {
+            process.status = 'published';
+            process.updatedAt = response.process.processModifiedDate;
+          }
+          
+          // Update current process if it's the same one
+          if (this.currentProcess && this.currentProcess.id === processId) {
+            this.currentProcess.status = 'published';
+            this.currentProcess.updatedAt = response.process.processModifiedDate;
+          }
+          
+          return true;
+        } else {
+          throw new Error(response.error || 'Failed to publish process');
+        }
+      } catch (error) {
+        console.error('Error publishing process:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Duplicate a process
+     */
+    async duplicateProcess(processId, newName = null, asTemplate = false) {
+      try {
+        const response = await $fetch(`/api/process/${processId}/duplicate`, {
+          method: 'POST',
+          body: {
+            newName,
+            asTemplate,
+            createdBy: 1 // TODO: Get from auth store
+          }
+        });
+
+        if (response.success) {
+          const apiProcess = response.process;
+          const newProcess = {
+            id: apiProcess.processUUID,
+            name: apiProcess.processName,
+            description: apiProcess.processDescription,
+            category: apiProcess.processCategory,
+            priority: apiProcess.processPriority,
+            owner: apiProcess.processOwner,
+            status: apiProcess.processStatus,
+            isTemplate: apiProcess.isTemplate,
+            templateCategory: apiProcess.templateCategory,
+            createdAt: apiProcess.processCreatedDate,
+            updatedAt: apiProcess.processModifiedDate,
+            creator: apiProcess.creator
+          };
+
+          // DON'T add to processes array - let fetchProcesses() handle that
+          // The manage page should call fetchProcesses() after duplication
+          return newProcess;
+        } else {
+          throw new Error(response.error || 'Failed to duplicate process');
+        }
+      } catch (error) {
+        console.error('Error duplicating process:', error);
+        throw error;
+      }
+    },
+
+    /**
+     * Clear the processes list (useful when switching contexts)
+     */
+    clearProcesses() {
+      this.processes = [];
+    },
+
+    /**
+     * Clear the current process (useful when starting fresh)
+     */
+    clearCurrentProcess() {
+      this.currentProcess = null;
+      this.selectedNodeId = null;
+      this.selectedEdgeId = null;
+      this.clearHistory();
+      this.unsavedChanges = false;
     },
 
     /**
