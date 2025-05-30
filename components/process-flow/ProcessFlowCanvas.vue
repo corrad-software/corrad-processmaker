@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, shallowRef, watch, defineExpose } from 'vue';
+import { ref, onMounted, computed, shallowRef, watch, defineExpose, nextTick } from 'vue';
 import { VueFlow, useVueFlow, Panel } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -94,6 +94,10 @@ const flowOptions = ref({
 // Use shallowRef for selected node to avoid unnecessary reactivity
 const selectedNode = shallowRef(null);
 
+// State management for preventing recursive updates
+const isUpdatingNodes = ref(false);
+const isUpdatingEdges = ref(false);
+
 // Handle node selection
 const onNodeClick = ({ node }) => {
   // Check if node exists and has required properties
@@ -178,20 +182,63 @@ onMounted(() => {
 
 // Watch for changes to initialNodes prop and update the canvas
 watch(() => props.initialNodes, async (newNodes, oldNodes) => {
-  if (newNodes && Array.isArray(newNodes)) {
-    // console.log('ProcessFlowCanvas: Updating nodes, count:', newNodes.length);
+  if (newNodes && Array.isArray(newNodes) && !isUpdatingNodes.value) {
+    isUpdatingNodes.value = true;
     
-    // Clear existing nodes and add new ones
-    nodes.value = [];
-    
-    if (newNodes.length > 0) {
-      addNodes([...newNodes]); // Create a copy to avoid reactivity issues
+    try {
+      // console.log('ProcessFlowCanvas: Updating nodes, count:', newNodes.length);
       
-      // Fit view to show all nodes after both nodes and edges are processed
-      await nextTick();
+      // Instead of clearing all nodes, sync them intelligently
+      const currentNodeIds = new Set(nodes.value.map(n => n.id));
+      const newNodeIds = new Set(newNodes.map(n => n.id));
+      
+      // Remove nodes that are no longer in the new list
+      const nodesToRemove = nodes.value.filter(node => !newNodeIds.has(node.id));
+      if (nodesToRemove.length > 0) {
+        removeNodes(nodesToRemove);
+      }
+      
+      // Add new nodes that aren't already present
+      const nodesToAdd = newNodes.filter(node => !currentNodeIds.has(node.id));
+      if (nodesToAdd.length > 0) {
+        addNodes([...nodesToAdd]); // Create a copy to avoid reactivity issues
+      }
+      
+      // Update existing nodes that have changed
+      newNodes.forEach(newNode => {
+        const existingNode = nodes.value.find(n => n.id === newNode.id);
+        if (existingNode) {
+          // Check if the node has actually changed before updating
+          const hasChanges = (
+            existingNode.label !== newNode.label ||
+            JSON.stringify(existingNode.data) !== JSON.stringify(newNode.data) ||
+            Math.abs(existingNode.position.x - newNode.position.x) > 1 ||
+            Math.abs(existingNode.position.y - newNode.position.y) > 1
+          );
+          
+          if (hasChanges) {
+            Object.assign(existingNode, {
+              label: newNode.label,
+              data: { ...newNode.data },
+              position: { ...newNode.position }
+            });
+            updateNodeInternals([newNode.id]);
+          }
+        }
+      });
+      
+      // Fit view only if we added new nodes and this is significant change
+      if (nodesToAdd.length > 0) {
+        await nextTick();
+        setTimeout(() => {
+          fitView();
+        }, 100);
+      }
+    } finally {
+      // Use a small delay to prevent immediate re-triggering
       setTimeout(() => {
-        fitView();
-      }, 100);
+        isUpdatingNodes.value = false;
+      }, 50);
     }
   }
 }, { deep: true });
@@ -199,78 +246,118 @@ watch(() => props.initialNodes, async (newNodes, oldNodes) => {
 // Watch for changes to initialEdges prop and update the canvas
 // This watcher depends on nodes being already present
 watch(() => [props.initialEdges, nodes.value.length], async ([newEdges, nodeCount]) => {
-  if (newEdges && Array.isArray(newEdges) && nodeCount > 0) {
-    // console.log('ProcessFlowCanvas: Updating edges, count:', newEdges.length, 'nodeCount:', nodeCount);
+  if (newEdges && Array.isArray(newEdges) && nodeCount > 0 && !isUpdatingEdges.value) {
+    isUpdatingEdges.value = true;
     
-    // Clear existing edges
-    edges.value = [];
-    
-    if (newEdges.length > 0) {
-      // Verify all nodes exist before adding edges
-      const validEdges = newEdges.filter(edge => {
-        const sourceExists = nodes.value.some(node => node.id === edge.source);
-        const targetExists = nodes.value.some(node => node.id === edge.target);
-        
-        if (!sourceExists || !targetExists) {
-          console.warn(`Skipping edge ${edge.id}: source ${edge.source} exists: ${sourceExists}, target ${edge.target} exists: ${targetExists}`);
-          return false;
-        }
-        
-        return true;
-      });
+    try {
+      // console.log('ProcessFlowCanvas: Updating edges, count:', newEdges.length, 'nodeCount:', nodeCount);
       
-      if (validEdges.length > 0) {
-        // Ensure all edges have proper handle specifications
-        const edgesWithHandles = validEdges.map(edge => {
-          // If edge already has sourceHandle and targetHandle, use them
-          if (edge.sourceHandle && edge.targetHandle) {
-            return edge;
+      // Instead of clearing all edges, sync them intelligently
+      const currentEdgeIds = new Set(edges.value.map(e => e.id));
+      const newEdgeIds = new Set(newEdges.map(e => e.id));
+      
+      // Remove edges that are no longer in the new list
+      const edgesToRemove = edges.value.filter(edge => !newEdgeIds.has(edge.id));
+      if (edgesToRemove.length > 0) {
+        removeEdges(edgesToRemove);
+      }
+      
+      if (newEdges.length > 0) {
+        // Verify all nodes exist before adding edges
+        const validEdges = newEdges.filter(edge => {
+          const sourceExists = nodes.value.some(node => node.id === edge.source);
+          const targetExists = nodes.value.some(node => node.id === edge.target);
+          
+          if (!sourceExists || !targetExists) {
+            console.warn(`Skipping edge ${edge.id}: source ${edge.source} exists: ${sourceExists}, target ${edge.target} exists: ${targetExists}`);
+            return false;
           }
           
-          // Otherwise, generate default handles based on node types
-          const sourceNode = nodes.value.find(n => n.id === edge.source);
-          const targetNode = nodes.value.find(n => n.id === edge.target);
-          
-          let sourceHandle = edge.sourceHandle;
-          let targetHandle = edge.targetHandle;
-          
-          // Generate default source handle if missing
-          if (!sourceHandle && sourceNode) {
-            if (sourceNode.type === 'start') {
-              sourceHandle = `${edge.source}-bottom`; // Start nodes prefer bottom output
-            } else if (sourceNode.type === 'gateway') {
-              sourceHandle = `${edge.source}-right`; // Gateway nodes prefer right output for first connection
-            } else {
-              sourceHandle = `${edge.source}-bottom`; // Most nodes prefer bottom output
-            }
-          }
-          
-          // Generate default target handle if missing
-          if (!targetHandle && targetNode) {
-            if (targetNode.type === 'end') {
-              targetHandle = `${edge.target}-top`; // End nodes prefer top input
-            } else {
-              targetHandle = `${edge.target}-top`; // Most nodes prefer top input
-            }
-          }
-          
-          return {
-            ...edge,
-            sourceHandle,
-            targetHandle
-          };
+          return true;
         });
         
-        addEdges([...edgesWithHandles]); // Create a copy to avoid reactivity issues
-        // console.log('ProcessFlowCanvas: Successfully added edges with handles:', edgesWithHandles.length);
+        // Add new edges that aren't already present
+        const edgesToAdd = validEdges.filter(edge => !currentEdgeIds.has(edge.id));
+        
+        if (edgesToAdd.length > 0) {
+          // Ensure all edges have proper handle specifications
+          const edgesWithHandles = edgesToAdd.map(edge => {
+            // If edge already has sourceHandle and targetHandle, use them
+            if (edge.sourceHandle && edge.targetHandle) {
+              return edge;
+            }
+            
+            // Otherwise, generate default handles based on node types
+            const sourceNode = nodes.value.find(n => n.id === edge.source);
+            const targetNode = nodes.value.find(n => n.id === edge.target);
+            
+            let sourceHandle = edge.sourceHandle;
+            let targetHandle = edge.targetHandle;
+            
+            // Generate default source handle if missing
+            if (!sourceHandle && sourceNode) {
+              if (sourceNode.type === 'start') {
+                sourceHandle = `${edge.source}-bottom`; // Start nodes prefer bottom output
+              } else if (sourceNode.type === 'gateway') {
+                sourceHandle = `${edge.source}-right`; // Gateway nodes prefer right output for first connection
+              } else {
+                sourceHandle = `${edge.source}-bottom`; // Most nodes prefer bottom output
+              }
+            }
+            
+            // Generate default target handle if missing
+            if (!targetHandle && targetNode) {
+              if (targetNode.type === 'end') {
+                targetHandle = `${edge.target}-top`; // End nodes prefer top input
+              } else {
+                targetHandle = `${edge.target}-top`; // Most nodes prefer top input
+              }
+            }
+            
+            return {
+              ...edge,
+              sourceHandle,
+              targetHandle
+            };
+          });
+          
+          addEdges([...edgesWithHandles]); // Create a copy to avoid reactivity issues
+          // console.log('ProcessFlowCanvas: Successfully added edges with handles:', edgesWithHandles.length);
+        }
+        
+        // Update existing edges that have changed
+        newEdges.forEach(newEdge => {
+          const existingEdge = edges.value.find(e => e.id === newEdge.id);
+          if (existingEdge) {
+            // Check if the edge has actually changed before updating
+            const hasChanges = (
+              existingEdge.label !== newEdge.label ||
+              existingEdge.sourceHandle !== newEdge.sourceHandle ||
+              existingEdge.targetHandle !== newEdge.targetHandle ||
+              JSON.stringify(existingEdge.style) !== JSON.stringify(newEdge.style)
+            );
+            
+            if (hasChanges) {
+              Object.assign(existingEdge, {
+                label: newEdge.label,
+                sourceHandle: newEdge.sourceHandle,
+                targetHandle: newEdge.targetHandle,
+                style: newEdge.style ? { ...newEdge.style } : undefined
+              });
+            }
+          }
+        });
       }
+    } finally {
+      // Use a small delay to prevent immediate re-triggering
+      setTimeout(() => {
+        isUpdatingEdges.value = false;
+      }, 50);
     }
   } else if (newEdges && Array.isArray(newEdges) && newEdges.length > 0 && nodeCount === 0) {
     // console.log('ProcessFlowCanvas: Edges provided but no nodes yet, waiting...');
   }
 }, { deep: true });
-
-// Remove the deep watch as it's causing recursive updates
 
 // Handle node changes
 onNodesChange((changes) => {
@@ -339,8 +426,11 @@ const handleConnect = (connection) => {
     target: connection.target
   });
 
+  // Add the edge directly to Vue Flow for immediate visual feedback
   addEdges([newEdge]);
-  emit('edgesChange', edges.value);
+  
+  // Emit the edge change in the format the parent expects
+  emit('edgesChange', [{ type: 'add', id: newEdge.id }], edges.value);
 };
 
 // Handle node removal
@@ -427,7 +517,8 @@ defineExpose({
   updateNode,
   addNode,
   removeNode,
-  fitView
+  fitView,
+  syncCanvas
 });
 
 // Update an existing node
@@ -467,6 +558,155 @@ function removeNode(nodeId) {
   
   removeNodes([nodeToRemove]);
   return nodeToRemove;
+}
+
+// Add explicit sync method to manually update canvas
+function syncCanvas(newNodes, newEdges) {
+  console.log('Explicit canvas sync called:', newNodes?.length, 'nodes,', newEdges?.length, 'edges');
+  
+  // Force clear the updating flags first to ensure we can process
+  isUpdatingNodes.value = false;
+  isUpdatingEdges.value = false;
+  
+  // Wait a moment for any ongoing operations to complete
+  setTimeout(() => {
+    try {
+      console.log('Starting canvas sync operation...');
+      
+      // Sync nodes first
+      if (newNodes && Array.isArray(newNodes)) {
+        const currentNodeIds = new Set(nodes.value.map(n => n.id));
+        const newNodeIds = new Set(newNodes.map(n => n.id));
+        
+        console.log('Current nodes:', currentNodeIds.size, 'New nodes:', newNodeIds.size);
+        
+        // Remove nodes that are no longer in the new list
+        const nodesToRemove = nodes.value.filter(node => !newNodeIds.has(node.id));
+        if (nodesToRemove.length > 0) {
+          console.log('Removing nodes:', nodesToRemove.map(n => n.id));
+          removeNodes(nodesToRemove);
+        }
+        
+        // Add new nodes that aren't already present
+        const nodesToAdd = newNodes.filter(node => !currentNodeIds.has(node.id));
+        if (nodesToAdd.length > 0) {
+          console.log('Adding nodes:', nodesToAdd.map(n => n.id));
+          addNodes([...nodesToAdd]);
+        }
+        
+        // Update existing nodes
+        newNodes.forEach(newNode => {
+          const existingNode = nodes.value.find(n => n.id === newNode.id);
+          if (existingNode) {
+            Object.assign(existingNode, {
+              label: newNode.label,
+              data: { ...newNode.data },
+              position: { ...newNode.position }
+            });
+            updateNodeInternals([newNode.id]);
+          }
+        });
+      }
+      
+      console.log('Nodes processed, current count:', nodes.value.length);
+      
+      // Sync edges after nodes are updated
+      if (newEdges && Array.isArray(newEdges) && nodes.value.length > 0) {
+        const currentEdgeIds = new Set(edges.value.map(e => e.id));
+        const newEdgeIds = new Set(newEdges.map(e => e.id));
+        
+        console.log('Current edges:', currentEdgeIds.size, 'New edges:', newEdgeIds.size);
+        
+        // Remove edges that are no longer in the new list
+        const edgesToRemove = edges.value.filter(edge => !newEdgeIds.has(edge.id));
+        if (edgesToRemove.length > 0) {
+          console.log('Removing edges:', edgesToRemove.map(e => e.id));
+          removeEdges(edgesToRemove);
+        }
+        
+        // Add new edges that aren't already present
+        const edgesToAdd = newEdges.filter(edge => !currentEdgeIds.has(edge.id));
+        if (edgesToAdd.length > 0) {
+          console.log('Processing new edges:', edgesToAdd.map(e => `${e.source}->${e.target}`));
+          
+          // Verify nodes exist and add handles
+          const validEdges = edgesToAdd.filter(edge => {
+            const sourceExists = nodes.value.some(node => node.id === edge.source);
+            const targetExists = nodes.value.some(node => node.id === edge.target);
+            
+            if (!sourceExists || !targetExists) {
+              console.warn(`Skipping edge ${edge.id}: source ${edge.source} exists: ${sourceExists}, target ${edge.target} exists: ${targetExists}`);
+              return false;
+            }
+            
+            return true;
+          });
+          
+          console.log('Valid edges to add:', validEdges.length);
+          
+          const edgesWithHandles = validEdges.map(edge => {
+            // If edge already has sourceHandle and targetHandle, use them
+            if (edge.sourceHandle && edge.targetHandle) {
+              console.log(`Edge ${edge.id} already has handles:`, edge.sourceHandle, '->', edge.targetHandle);
+              return edge;
+            }
+            
+            const sourceNode = nodes.value.find(n => n.id === edge.source);
+            const targetNode = nodes.value.find(n => n.id === edge.target);
+            
+            let sourceHandle = edge.sourceHandle;
+            let targetHandle = edge.targetHandle;
+            
+            if (!sourceHandle && sourceNode) {
+              if (sourceNode.type === 'start') {
+                sourceHandle = `${edge.source}-bottom`;
+              } else if (sourceNode.type === 'gateway') {
+                sourceHandle = `${edge.source}-right`;
+              } else {
+                sourceHandle = `${edge.source}-bottom`;
+              }
+            }
+            
+            if (!targetHandle && targetNode) {
+              if (targetNode.type === 'end') {
+                targetHandle = `${edge.target}-top`;
+              } else {
+                targetHandle = `${edge.target}-top`;
+              }
+            }
+            
+            console.log(`Generated handles for edge ${edge.id}:`, sourceHandle, '->', targetHandle);
+            return { ...edge, sourceHandle, targetHandle };
+          });
+          
+          if (edgesWithHandles.length > 0) {
+            console.log('Adding edges with handles:', edgesWithHandles.length);
+            addEdges([...edgesWithHandles]);
+          }
+        }
+        
+        // Update existing edges
+        newEdges.forEach(newEdge => {
+          const existingEdge = edges.value.find(e => e.id === newEdge.id);
+          if (existingEdge) {
+            Object.assign(existingEdge, {
+              label: newEdge.label,
+              sourceHandle: newEdge.sourceHandle,
+              targetHandle: newEdge.targetHandle,
+              style: newEdge.style ? { ...newEdge.style } : undefined
+            });
+          }
+        });
+      } else if (newEdges && Array.isArray(newEdges) && newEdges.length > 0) {
+        console.warn('Cannot add edges: nodes not ready. Node count:', nodes.value.length);
+      }
+      
+      console.log('Canvas sync completed - Final count: nodes:', nodes.value.length, 'edges:', edges.value.length);
+      
+    } catch (error) {
+      console.error('Error during canvas sync:', error);
+    }
+  }, 50); // Small delay to allow any pending operations to complete
 }
 </script>
 

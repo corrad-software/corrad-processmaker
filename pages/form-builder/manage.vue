@@ -33,22 +33,36 @@
     <div class="flex-1 p-6 overflow-auto">
       <!-- Filters and Search -->
       <div class="mb-6 flex flex-col sm:flex-row gap-4">
-        <div class="relative flex-1 max-w-md">
-          <input
+        <div class="flex-1 max-w-md">
+          <FormKit
             v-model="searchQuery"
             type="text"
             placeholder="Search forms..."
-            class="w-full px-4 py-2 pl-10 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <Icon name="material-symbols:search" class="text-lg" />
-          </span>
+            :classes="{
+              outer: 'mb-0',
+              wrapper: 'relative',
+              inner: 'relative',
+              input: 'w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+              prefixIcon: 'absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none'
+            }"
+          >
+            <template #prefixIcon>
+              <Icon name="material-symbols:search" class="text-lg" />
+            </template>
+          </FormKit>
         </div>
         
-        <RsButton @click="loadForms" variant="tertiary" size="sm" :disabled="loading">
-          <Icon name="material-symbols:refresh" class="mr-1" />
-          Refresh
-        </RsButton>
+        <div class="flex gap-2">
+          <RsButton @click="clearFilters" variant="secondary" size="sm" :disabled="loading" v-if="searchQuery">
+            <Icon name="material-symbols:filter-alt-off" class="mr-1" />
+            Clear Filters
+          </RsButton>
+          
+          <RsButton @click="loadForms" variant="tertiary" size="sm" :disabled="loading">
+            <Icon name="material-symbols:refresh" class="mr-1" />
+            Refresh
+          </RsButton>
+        </div>
       </div>
       
       <!-- Loading State -->
@@ -77,14 +91,28 @@
               <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                 <div class="flex flex-col items-center">
                   <Icon name="material-symbols:description-outline" class="w-12 h-12 text-gray-300 mb-2" />
-                  <p class="text-lg font-medium mb-1">No forms found</p>
-                  <p class="text-sm">
+                  <p class="text-lg font-medium mb-1">
+                    {{ searchQuery ? 'No forms match your search' : 'No forms found' }}
+                  </p>
+                  <p class="text-sm mb-2">
                     {{ searchQuery ? 'Try adjusting your search terms' : 'Create your first form to get started' }}
                   </p>
-                  <RsButton v-if="!searchQuery" @click="createNewForm" variant="primary" size="sm" class="mt-4">
-                    <Icon name="material-symbols:add" class="mr-1" />
-                    Create New Form
-                  </RsButton>
+                  
+                  <!-- Show current search if any -->
+                  <div v-if="searchQuery" class="text-xs text-gray-400 mb-4">
+                    <div>Search: "{{ searchQuery }}"</div>
+                  </div>
+                  
+                  <div class="flex gap-2">
+                    <RsButton v-if="searchQuery" @click="clearFilters" variant="secondary" size="sm">
+                      <Icon name="material-symbols:filter-alt-off" class="mr-1" />
+                      Clear Filters
+                    </RsButton>
+                    <RsButton v-if="!searchQuery" @click="createNewForm" variant="primary" size="sm">
+                      <Icon name="material-symbols:add" class="mr-1" />
+                      Create New Form
+                    </RsButton>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -207,7 +235,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import { useFormBuilderStore } from '~/stores/formBuilder';
 import { useRouter } from 'vue-router';
 
@@ -399,6 +427,28 @@ const goToDashboard = () => {
 // Load forms on component mount
 onMounted(async () => {
   await loadForms();
+});
+
+// Watch for changes in search and reload forms
+watch([searchQuery], () => {
+  // Debounce the search to avoid too many API calls
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    loadForms();
+  }, 500);
+});
+
+let searchTimeout = null;
+
+// Clear all filters
+const clearFilters = () => {
+  searchQuery.value = '';
+  // loadForms will be called automatically by the watcher
+};
+
+// Clean up the search timeout on component unmount
+onUnmounted(() => {
+  clearTimeout(searchTimeout);
 });
 </script>
 

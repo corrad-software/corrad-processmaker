@@ -18,13 +18,13 @@ export default defineEventHandler(async (event) => {
     // Check if the ID is a UUID or numeric ID
     const isUUID = processId.length === 36 && processId.includes('-');
     
-    // First, check if the process exists and isn't already deleted
+    // First, check if the process exists and is deleted
     const existingProcess = await prisma.process.findFirst({
       where: {
         ...(isUUID 
           ? { processUUID: processId }
           : { processID: parseInt(processId) }),
-        processStatus: { not: 'deleted' } // Exclude already deleted processes
+        processStatus: 'deleted'
       },
       select: {
         processID: true,
@@ -36,39 +36,38 @@ export default defineEventHandler(async (event) => {
     if (!existingProcess) {
       return {
         success: false,
-        error: 'Process not found or already deleted'
+        error: 'Deleted process not found'
       };
     }
 
-    // Optional: Prevent deletion of published processes
-    if (existingProcess.processStatus === 'published') {
-      return {
-        success: false,
-        error: 'Cannot delete published processes. Please unpublish the process first.'
-      };
-    }
-
-    // Soft delete: Update status to 'deleted' instead of actual deletion
-    // This preserves all associated data and relationships
-    await prisma.process.update({
+    // Restore the process by setting status back to draft
+    const restoredProcess = await prisma.process.update({
       where: isUUID 
         ? { processUUID: processId }
         : { processID: parseInt(processId) },
       data: {
-        processStatus: 'deleted',
-        // Optionally add deletion metadata
-        processDeletedDate: new Date(),
+        processStatus: 'draft', // Restore as draft for safety
+        processDeletedDate: null, // Clear deletion date
         processModifiedDate: new Date()
+      },
+      include: {
+        creator: {
+          select: {
+            userID: true,
+            userFullName: true,
+            userUsername: true
+          }
+        }
       }
     });
 
     return {
       success: true,
-      message: `Process "${existingProcess.processName}" has been moved to trash`,
-      note: 'Process data has been preserved and can be restored if needed'
+      message: `Process "${existingProcess.processName}" has been restored`,
+      process: restoredProcess
     };
   } catch (error) {
-    console.error('Error deleting process:', error);
+    console.error('Error restoring process:', error);
     
     // Handle specific Prisma errors
     if (error.code === 'P2025') {
@@ -80,7 +79,7 @@ export default defineEventHandler(async (event) => {
     
     return {
       success: false,
-      error: 'Failed to delete process',
+      error: 'Failed to restore process',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     };
   }

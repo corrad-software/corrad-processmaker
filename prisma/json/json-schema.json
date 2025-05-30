@@ -337,6 +337,13 @@
             "null"
           ]
         },
+        "processDeletedDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
         "creator": {
           "anyOf": [
             {

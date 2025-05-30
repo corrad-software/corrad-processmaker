@@ -75,51 +75,65 @@
       </div>
 
       <!-- Variable List -->
-      <div v-else-if="filteredVariables.length" class="space-y-4">
+      <div v-else-if="filteredVariables.length" class="space-y-2">
         <div
           v-for="variable in filteredVariables"
           :key="variable.name"
-          class="variable-item group"
+          class="variable-item bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all duration-150 group"
         >
-          <div
-            class="bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 overflow-hidden"
-          >
-            <!-- Header with Name and Actions -->
-            <div class="flex items-center justify-between p-5 pb-3">
-              <div class="flex items-center gap-3 flex-1 min-w-0">
+          <!-- Variable Header -->
+          <div class="px-4 py-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
                 <!-- Variable Icon -->
-                <div class="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <Icon 
-                    :name="getVariableIcon(variable.type)" 
-                    class="w-5 h-5 text-blue-600" 
-                  />
+                <div class="flex-shrink-0">
+                  <div 
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold"
+                    :class="{
+                      'bg-blue-100 text-blue-700': variable.type === 'string',
+                      'bg-purple-100 text-purple-700': ['int', 'decimal'].includes(variable.type),
+                      'bg-indigo-100 text-indigo-700': variable.type === 'boolean',
+                      'bg-amber-100 text-amber-700': ['date', 'datetime'].includes(variable.type),
+                      'bg-emerald-100 text-emerald-700': variable.type === 'object',
+                      'bg-gray-100 text-gray-700': !['string', 'int', 'decimal', 'boolean', 'date', 'datetime', 'object'].includes(variable.type)
+                    }"
+                  >
+                    <Icon :name="getVariableIcon(variable.type)" class="w-4 h-4" />
+                  </div>
                 </div>
                 
-                <!-- Variable Name -->
-                <div class="flex-1 min-w-0">
-                  <h4 class="text-lg font-semibold text-gray-900 truncate">
-                    {{ variable.name }}
-                  </h4>
-                  <div class="flex items-center gap-2 mt-1">
-                    <RsBadge :variant="getTypeColor(variable.type)" size="sm" class="font-medium">
+                <!-- Variable Info -->
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <h4 class="text-sm font-medium text-gray-900 truncate">{{ variable.name }}</h4>
+                    <RsBadge 
+                      :variant="getTypeColor(variable.type)" 
+                      size="sm"
+                      class="flex-shrink-0"
+                    >
                       {{ variable.type }}
                     </RsBadge>
                   </div>
+                  
+                  <!-- Description -->
+                  <p v-if="variable.description" class="text-xs text-gray-500 line-clamp-1">
+                    {{ variable.description }}
+                  </p>
                 </div>
               </div>
               
-              <!-- Action Buttons -->
-              <div class="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+              <!-- Actions -->
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   @click="editVariable(variable)"
-                  class="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                   title="Edit variable"
                 >
                   <Icon name="material-symbols:edit" class="w-4 h-4" />
                 </button>
                 <button
                   @click="deleteVariable(variable)"
-                  class="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                   title="Delete variable"
                 >
                   <Icon name="material-symbols:delete" class="w-4 h-4" />
@@ -127,34 +141,14 @@
               </div>
             </div>
             
-            <!-- Description -->
-            <div v-if="variable.description" class="px-5 pb-3">
-              <p class="text-sm text-gray-600 leading-relaxed">
-                {{ variable.description }}
-              </p>
-            </div>
-            
-            <!-- Current Value (if set) -->
-            <div v-if="variable.value !== undefined && variable.value !== ''" class="px-5 pb-4">
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                <div class="flex items-center gap-2 mb-2">
-                  <Icon name="material-symbols:code" class="w-4 h-4 text-gray-500" />
-                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Current Value</span>
+            <!-- Default Value Display -->
+            <div v-if="variable.defaultValue !== undefined && variable.defaultValue !== ''" class="mt-3">
+              <div class="bg-amber-50 rounded-md p-2 border border-amber-100">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <Icon name="material-symbols:settings" class="w-3.5 h-3.5 text-amber-600" />
+                  <span class="text-xs font-medium text-amber-700 uppercase tracking-wide">Default Value</span>
                 </div>
-                <div class="font-mono text-sm text-gray-800 break-all">
-                  {{ formatValue(variable.value, variable.type) }}
-                </div>
-              </div>
-            </div>
-            
-            <!-- Default Value (if no current value but has default) -->
-            <div v-else-if="variable.defaultValue !== undefined && variable.defaultValue !== ''" class="px-5 pb-4">
-              <div class="bg-amber-50 rounded-lg p-3 border border-amber-100">
-                <div class="flex items-center gap-2 mb-2">
-                  <Icon name="material-symbols:settings" class="w-4 h-4 text-amber-600" />
-                  <span class="text-xs font-medium text-amber-600 uppercase tracking-wide">Default Value</span>
-                </div>
-                <div class="font-mono text-sm text-amber-800 break-all">
+                <div class="font-mono text-xs text-amber-800 break-all">
                   {{ formatValue(variable.defaultValue, variable.type) }}
                 </div>
               </div>
@@ -232,6 +226,19 @@
         />
 
         <FormKit
+          name="defaultValue"
+          v-model="variableForm.defaultValue"
+          :type="getInputTypeForVariableType(variableForm.type)"
+          :label="`Default Value${variableForm.type === 'boolean' ? '' : ' (Optional)'}`"
+          :placeholder="getPlaceholderForType(variableForm.type)"
+          :options="variableForm.type === 'boolean' ? [
+            { label: 'True', value: true },
+            { label: 'False', value: false }
+          ] : undefined"
+          :help="getHelpTextForType(variableForm.type)"
+        />
+
+        <FormKit
           name="description"
           v-model="variableForm.description"
           type="textarea"
@@ -269,6 +276,7 @@ const variableForm = ref({
   type: "string",
   scope: "global",
   description: "",
+  defaultValue: ""
 });
 
 // Variable type options with descriptions
@@ -281,6 +289,67 @@ const variableTypes = [
   { label: 'Date - Date values only', value: 'date' },
   { label: 'Boolean - True/False values', value: 'boolean' }
 ];
+
+// Helper functions for default value input
+const getInputTypeForVariableType = (type) => {
+  switch (type) {
+    case 'int':
+    case 'decimal':
+      return 'number';
+    case 'boolean':
+      return 'select';
+    case 'date':
+      return 'date';
+    case 'datetime':
+      return 'datetime-local';
+    case 'object':
+      return 'textarea';
+    default:
+      return 'text';
+  }
+};
+
+const getPlaceholderForType = (type) => {
+  switch (type) {
+    case 'string':
+      return 'Enter default text value';
+    case 'int':
+      return 'Enter default number (e.g. 0, 100)';
+    case 'decimal':
+      return 'Enter default decimal (e.g. 0.0, 99.99)';
+    case 'object':
+      return 'Enter default JSON object (e.g. {"key": "value"})';
+    case 'date':
+      return 'Select default date';
+    case 'datetime':
+      return 'Select default date and time';
+    case 'boolean':
+      return 'Select default boolean value';
+    default:
+      return 'Enter default value';
+  }
+};
+
+const getHelpTextForType = (type) => {
+  switch (type) {
+    case 'string':
+      return 'Default text that will be used when the variable is first created';
+    case 'int':
+      return 'Default whole number (no decimals)';
+    case 'decimal':
+      return 'Default decimal number (with decimal places)';
+    case 'object':
+      return 'Default JSON object - must be valid JSON format';
+    case 'date':
+      return 'Default date value for this variable';
+    case 'datetime':
+      return 'Default date and time value for this variable';
+    case 'boolean':
+      return 'Default true/false value for this variable';
+    default:
+      return 'Default value that will be used when the variable is first created';
+  }
+};
 
 // Computed
 const variables = computed(() => {
@@ -304,7 +373,10 @@ const filteredVariables = computed(() => {
 // Methods
 const editVariable = (variable) => {
   editingVariable.value = variable;
-  variableForm.value = { ...variable };
+  variableForm.value = { 
+    ...variable,
+    defaultValue: variable.defaultValue || ""
+  };
   showAddVariable.value = true;
 };
 
@@ -319,7 +391,8 @@ const resetForm = () => {
     name: "",
     type: "string",
     scope: "global",
-    description: ""
+    description: "",
+    defaultValue: ""
   };
   editingVariable.value = null;
 };
@@ -331,12 +404,29 @@ const closeModal = () => {
 
 const saveVariable = async (formData) => {
   try {
+    // Process default value based on type
+    let processedDefaultValue = formData.defaultValue;
+    
+    if (formData.type === 'int' && processedDefaultValue !== '') {
+      processedDefaultValue = parseInt(processedDefaultValue);
+    } else if (formData.type === 'decimal' && processedDefaultValue !== '') {
+      processedDefaultValue = parseFloat(processedDefaultValue);
+    } else if (formData.type === 'object' && processedDefaultValue !== '') {
+      try {
+        processedDefaultValue = JSON.parse(processedDefaultValue);
+      } catch (e) {
+        alert('Invalid JSON format for object type. Please enter valid JSON.');
+        return;
+      }
+    }
+
     // Create a new variable object
     const newVariable = {
       name: formData.name,
       type: formData.type,
       scope: "global",
-      description: formData.description
+      description: formData.description,
+      defaultValue: processedDefaultValue
     };
 
     if (editingVariable.value) {
@@ -355,7 +445,7 @@ const saveVariable = async (formData) => {
     closeModal();
   } catch (error) {
     console.error("Error saving variable:", error);
-    // You might want to show an error message to the user here
+    alert('Error saving variable. Please check your input and try again.');
   }
 };
 
@@ -424,6 +514,13 @@ const getVariableIcon = (type) => {
 
 .variable-item:hover {
   @apply transform -translate-y-0.5;
+}
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Light styling for FormKit form */

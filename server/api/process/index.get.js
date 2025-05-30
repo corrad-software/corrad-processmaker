@@ -21,8 +21,18 @@ export default defineEventHandler(async (event) => {
     // Build where clause
     const where = {};
     
-    if (status) {
+    // Exclude deleted processes by default unless explicitly requested
+    if (query.includeDeleted !== 'true') {
+      where.processStatus = { not: 'deleted' };
+    }
+    
+    if (status && status !== 'deleted') {
+      // If status filter is provided and it's not 'deleted', filter by that status
+      // and still exclude deleted processes
       where.processStatus = status;
+    } else if (status === 'deleted') {
+      // If specifically requesting deleted processes, only show those
+      where.processStatus = 'deleted';
     }
     
     if (category) {

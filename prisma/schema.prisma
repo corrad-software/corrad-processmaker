@@ -88,6 +88,7 @@ model process {
   processSettings     Json?
   processVariables    Json?
   templateCategory    String?   @db.VarChar(100)
+  processDeletedDate  DateTime? @db.DateTime(0)
   creator             user?     @relation("ProcessCreator", fields: [processCreatedBy], references: [userID])
 
   @@index([processCreatedBy], map: "FK_process_creator")

@@ -331,7 +331,7 @@ const settingsTabs = [
   { key: 'execution', label: 'Execution', icon: 'material-symbols:play-circle-outline' },
   { key: 'variables', label: 'Variables & Data', icon: 'material-symbols:data-object' },
   { key: 'permissions', label: 'Permissions', icon: 'material-symbols:security' },
-  { key: 'json', label: 'JSON Export', icon: 'material-symbols:code' }
+  { key: 'json', label: 'Source', icon: 'material-symbols:code' }
 ]
 
 const activeTab = ref('info')

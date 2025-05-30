@@ -31,9 +31,46 @@ export default defineEventHandler(async (event) => {
     if (body.processCategory !== undefined) updateData.processCategory = body.processCategory;
     if (body.processPriority !== undefined) updateData.processPriority = body.processPriority;
     if (body.processOwner !== undefined) updateData.processOwner = body.processOwner;
-    if (body.processStatus !== undefined) updateData.processStatus = body.processStatus;
     if (body.isTemplate !== undefined) updateData.isTemplate = body.isTemplate;
     if (body.templateCategory !== undefined) updateData.templateCategory = body.templateCategory;
+
+    // Get current process to check status
+    const currentProcess = await prisma.process.findFirst({
+      where: isUUID 
+        ? { processUUID: processId }
+        : { processID: parseInt(processId) },
+      select: { 
+        processStatus: true, 
+        processVersion: true 
+      }
+    });
+
+    if (!currentProcess) {
+      return {
+        success: false,
+        error: 'Process not found'
+      };
+    }
+
+    // Handle status changes with validation
+    if (body.processStatus !== undefined) {
+      const currentStatus = currentProcess.processStatus;
+      const newStatus = body.processStatus;
+      
+      // Validate status transitions
+      if (currentStatus === 'published' && newStatus === 'draft') {
+        // Allow unpublishing only if explicitly requested
+        if (body.allowUnpublish !== true) {
+          return {
+            success: false,
+            error: 'Cannot change published process to draft without explicit confirmation. Use allowUnpublish: true.'
+          };
+        }
+      }
+      
+      updateData.processStatus = newStatus;
+    }
+    // If no status provided, preserve current status (don't change it)
 
     // Process definition (nodes, edges, viewport)
     if (body.nodes !== undefined || body.edges !== undefined || body.viewport !== undefined) {
@@ -61,16 +98,7 @@ export default defineEventHandler(async (event) => {
 
     // Version increment if major changes
     if (body.incrementVersion === true) {
-      const currentProcess = await prisma.process.findFirst({
-        where: isUUID 
-          ? { processUUID: processId }
-          : { processID: parseInt(processId) },
-        select: { processVersion: true }
-      });
-      
-      if (currentProcess) {
-        updateData.processVersion = currentProcess.processVersion + 1;
-      }
+      updateData.processVersion = currentProcess.processVersion + 1;
     }
 
     // Update the process

@@ -23,7 +23,6 @@ export default [
           {
             title: "Visual Builder",
             path: "/process-builder",
-            icon: "material-symbols:schema",
             child: [],
             meta: {
               description: "Design workflows with drag-and-drop interface"
@@ -32,7 +31,6 @@ export default [
           {
             title: "Manage Processes",
             path: "/process-builder/manage",
-            icon: "material-symbols:folder-open",
             child: [],
             meta: {
               description: "View and manage all your processes"
@@ -47,7 +45,6 @@ export default [
           {
             title: "Form Builder",
             path: "/form-builder",
-            icon: "material-symbols:edit-document",
             child: [],
             meta: {
               description: "Create dynamic forms with advanced components"
@@ -56,7 +53,6 @@ export default [
           {
             title: "Manage Forms",
             path: "/form-builder/manage",
-            icon: "material-symbols:library-books",
             child: [],
             meta: {
               description: "View and manage all your forms"
@@ -77,7 +73,6 @@ export default [
           {
             title: "Execution Dashboard",
             path: "/execution",
-            icon: "material-symbols:monitoring",
             child: [],
             meta: {
               description: "Monitor active processes and performance metrics"
@@ -86,7 +81,6 @@ export default [
           {
             title: "Start New Process",
             path: "/execution/new-case",
-            icon: "material-symbols:rocket-launch",
             child: [],
             meta: {
               description: "Initiate a new process instance"
@@ -101,7 +95,6 @@ export default [
           {
             title: "My Tasks",
             path: "/execution/inbox",
-            icon: "material-symbols:inbox",
             child: [],
             meta: {
               description: "View and complete assigned tasks"
@@ -110,7 +103,6 @@ export default [
           {
             title: "Process History",
             path: "/execution/history",
-            icon: "material-symbols:history",
             child: [],
             meta: {
               description: "Review completed processes and audit trails"

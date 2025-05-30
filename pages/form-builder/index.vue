@@ -921,7 +921,7 @@ const settingsTabs = [
   { key: 'javascript', label: 'JavaScript', icon: 'material-symbols:code' },
   { key: 'css', label: 'CSS', icon: 'material-symbols:palette-outline' },
   { key: 'events', label: 'Events', icon: 'material-symbols:event-outline' },
-  { key: 'json', label: 'JSON', icon: 'material-symbols:data-object' }
+  { key: 'json', label: 'Source', icon: 'material-symbols:data-object' }
 ];
 
 // Computed property for form name with getter and setter

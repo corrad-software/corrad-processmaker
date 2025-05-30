@@ -254,6 +254,8 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
           variables: useVariableStore().getAllVariables.process || {},
           settings: this.currentProcess.settings || {},
           permissions: this.currentProcess.permissions || {}
+          // Note: processStatus is intentionally NOT included here to preserve current status
+          // Status changes should only happen through explicit publish/unpublish actions
         };
 
         const response = await $fetch(`/api/process/${this.currentProcess.id}`, {
@@ -293,7 +295,7 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
         });
 
         if (response.success) {
-          // Remove from local processes array
+          // Remove from local processes array (since we're filtering out deleted ones)
           const index = this.processes.findIndex(p => p.id === processId);
           if (index !== -1) {
             this.processes.splice(index, 1);
@@ -314,6 +316,28 @@ export const useProcessBuilderStore = defineStore('processBuilder', {
       } catch (error) {
         console.error('Error deleting process:', error);
         return false;
+      }
+    },
+
+    /**
+     * Restore a deleted process
+     */
+    async restoreProcess(processId) {
+      try {
+        const response = await $fetch(`/api/process/${processId}/restore`, {
+          method: 'POST'
+        });
+
+        if (response.success) {
+          // Refresh the processes list to reflect the change
+          // Don't modify local array directly since status filtering might be complex
+          return true;
+        } else {
+          throw new Error(response.error || 'Failed to restore process');
+        }
+      } catch (error) {
+        console.error('Error restoring process:', error);
+        throw error;
       }
     },
 

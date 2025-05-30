@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import { useProcessBuilderStore } from '~/stores/processBuilder';
 import { useRouter } from 'vue-router';
 
@@ -30,29 +30,13 @@ const statusOptions = [
   { value: '', label: 'All Status' },
   { value: 'draft', label: 'Draft' },
   { value: 'published', label: 'Published' },
-  { value: 'archived', label: 'Archived' }
+  { value: 'archived', label: 'Archived' },
+  { value: 'deleted', label: 'Deleted' }
 ];
 
-// Filtered processes
+// Filtered processes - now just returns the processes from store since filtering happens on backend
 const filteredProcesses = computed(() => {
-  let filtered = processStore.processes;
-  
-  // Filter by search query
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    filtered = filtered.filter(
-      process => 
-        process.name.toLowerCase().includes(query) || 
-        (process.description && process.description.toLowerCase().includes(query))
-    );
-  }
-  
-  // Filter by status
-  if (statusFilter.value) {
-    filtered = filtered.filter(process => process.status === statusFilter.value);
-  }
-  
-  return filtered;
+  return processStore.processes;
 });
 
 // Format date for display
@@ -75,18 +59,30 @@ const getStatusVariant = (status) => {
     case 'published': return 'success';
     case 'draft': return 'warning';
     case 'archived': return 'secondary';
+    case 'deleted': return 'danger';
     default: return 'primary';
   }
 };
 
-// Load processes from API
+// Load processes from API with filters
 const loadProcesses = async () => {
   loading.value = true;
   try {
-    await processStore.fetchProcesses({
+    const options = {
       sortBy: sortBy.value,
       sortOrder: sortOrder.value
-    });
+    };
+    
+    // Add filters if they have values
+    if (statusFilter.value) {
+      options.status = statusFilter.value;
+    }
+    
+    if (searchQuery.value.trim()) {
+      options.search = searchQuery.value.trim();
+    }
+    
+    await processStore.fetchProcesses(options);
   } catch (error) {
     console.error('Error loading processes:', error);
     // TODO: Show error notification
@@ -94,6 +90,17 @@ const loadProcesses = async () => {
     loading.value = false;
   }
 };
+
+// Watch for changes in filters and reload processes
+watch([searchQuery, statusFilter], () => {
+  // Debounce the search to avoid too many API calls
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    loadProcesses();
+  }, 500);
+});
+
+let searchTimeout = null;
 
 // Edit a process
 const editProcess = async (processId) => {
@@ -166,6 +173,24 @@ const publishProcess = async (processId) => {
   }
 };
 
+// Restore a deleted process
+const restoreProcess = async (processId) => {
+  try {
+    loading.value = true;
+    await processStore.restoreProcess(processId);
+    
+    // Refresh the process list
+    await loadProcesses();
+    
+    // TODO: Show success notification
+  } catch (error) {
+    console.error('Error restoring process:', error);
+    // TODO: Show error notification
+  } finally {
+    loading.value = false;
+  }
+};
+
 // Show delete confirmation
 const confirmDelete = (processId) => {
   processToDelete.value = processId;
@@ -193,6 +218,18 @@ const goToBuilder = () => {
 // Load processes on component mount
 onMounted(async () => {
   await loadProcesses();
+});
+
+// Clear all filters
+const clearFilters = () => {
+  searchQuery.value = '';
+  statusFilter.value = '';
+  // loadProcesses will be called automatically by the watcher
+};
+
+// Clean up the search timeout on component unmount
+onUnmounted(() => {
+  clearTimeout(searchTimeout);
 });
 </script>
 
@@ -231,31 +268,49 @@ onMounted(async () => {
     <div class="flex-1 p-6 overflow-auto">
       <!-- Filters and Search -->
       <div class="mb-6 flex flex-col sm:flex-row gap-4">
-        <div class="relative flex-1 max-w-md">
-          <input
+        <div class="flex-1 max-w-md">
+          <FormKit
             v-model="searchQuery"
             type="text"
             placeholder="Search processes..."
-            class="w-full px-4 py-2 pl-10 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <Icon name="material-symbols:search" class="text-lg" />
-          </span>
+            :classes="{
+              outer: 'mb-0',
+              wrapper: 'relative',
+              inner: 'relative',
+              input: 'w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+              prefixIcon: 'absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none'
+            }"
+          >
+            <template #prefixIcon>
+              <Icon name="material-symbols:search" class="text-lg" />
+            </template>
+          </FormKit>
         </div>
         
-        <select
-          v-model="statusFilter"
-          class="px-3 py-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
+        <div class="min-w-48">
+          <FormKit
+            v-model="statusFilter"
+            type="select"
+            :options="statusOptions"
+            placeholder="Filter by status"
+            :classes="{
+              outer: 'mb-0',
+              input: 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white'
+            }"
+          />
+        </div>
         
-        <RsButton @click="loadProcesses" variant="tertiary" size="sm" :disabled="loading">
-          <Icon name="material-symbols:refresh" class="mr-1" />
-          Refresh
-        </RsButton>
+        <div class="flex gap-2">
+          <RsButton @click="clearFilters" variant="secondary" size="sm" :disabled="loading" v-if="searchQuery || statusFilter">
+            <Icon name="material-symbols:filter-alt-off" class="mr-1" />
+            Clear Filters
+          </RsButton>
+          
+          <RsButton @click="loadProcesses" variant="tertiary" size="sm" :disabled="loading">
+            <Icon name="material-symbols:refresh" class="mr-1" />
+            Refresh
+          </RsButton>
+        </div>
       </div>
       
       <!-- Loading State -->
@@ -285,14 +340,29 @@ onMounted(async () => {
               <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                 <div class="flex flex-col items-center">
                   <Icon name="material-symbols:folder-open-outline" class="w-12 h-12 text-gray-300 mb-2" />
-                  <p class="text-lg font-medium mb-1">No processes found</p>
-                  <p class="text-sm">
-                    {{ searchQuery || statusFilter ? 'Try adjusting your filters' : 'Create your first process to get started' }}
+                  <p class="text-lg font-medium mb-1">
+                    {{ (searchQuery || statusFilter) ? 'No processes match your filters' : 'No processes found' }}
                   </p>
-                  <RsButton v-if="!searchQuery && !statusFilter" @click="createNewProcess" variant="primary" size="sm" class="mt-4">
-                    <Icon name="material-symbols:add" class="mr-1" />
-                    Create New Process
-                  </RsButton>
+                  <p class="text-sm mb-2">
+                    {{ (searchQuery || statusFilter) ? 'Try adjusting your search or filter criteria' : 'Create your first process to get started' }}
+                  </p>
+                  
+                  <!-- Show current filters if any -->
+                  <div v-if="searchQuery || statusFilter" class="text-xs text-gray-400 mb-4 space-y-1">
+                    <div v-if="searchQuery">Search: "{{ searchQuery }}"</div>
+                    <div v-if="statusFilter">Status: {{ statusOptions.find(opt => opt.value === statusFilter)?.label }}</div>
+                  </div>
+                  
+                  <div class="flex gap-2">
+                    <RsButton v-if="searchQuery || statusFilter" @click="clearFilters" variant="secondary" size="sm">
+                      <Icon name="material-symbols:filter-alt-off" class="mr-1" />
+                      Clear Filters
+                    </RsButton>
+                    <RsButton v-if="!searchQuery && !statusFilter" @click="createNewProcess" variant="primary" size="sm">
+                      <Icon name="material-symbols:add" class="mr-1" />
+                      Create New Process
+                    </RsButton>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -326,42 +396,56 @@ onMounted(async () => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex space-x-2 justify-end">
+                  <!-- Show restore button for deleted processes -->
                   <button 
-                    @click="editProcess(process.id)"
-                    class="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded"
-                    title="Edit Process"
-                    :disabled="loading"
-                  >
-                    <Icon name="material-symbols:edit" class="text-lg" />
-                  </button>
-                  
-                  <button 
-                    v-if="process.status === 'draft'"
-                    @click="publishProcess(process.id)"
+                    v-if="process.status === 'deleted'"
+                    @click="restoreProcess(process.id)"
                     class="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
-                    title="Publish Process"
+                    title="Restore Process"
                     :disabled="loading"
                   >
-                    <Icon name="material-symbols:publish" class="text-lg" />
+                    <Icon name="material-symbols:restore" class="text-lg" />
                   </button>
                   
-                  <button 
-                    @click="duplicateProcess(process)"
-                    class="p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded"
-                    title="Duplicate Process"
-                    :disabled="loading"
-                  >
-                    <Icon name="material-symbols:content-copy" class="text-lg" />
-                  </button>
-                  
-                  <button 
-                    @click="confirmDelete(process.id)"
-                    class="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
-                    title="Delete Process"
-                    :disabled="loading || process.status === 'published'"
-                  >
-                    <Icon name="material-symbols:delete" class="text-lg" />
-                  </button>
+                  <!-- Regular action buttons for non-deleted processes -->
+                  <template v-else>
+                    <button 
+                      @click="editProcess(process.id)"
+                      class="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded"
+                      title="Edit Process"
+                      :disabled="loading"
+                    >
+                      <Icon name="material-symbols:edit" class="text-lg" />
+                    </button>
+                    
+                    <button 
+                      v-if="process.status === 'draft'"
+                      @click="publishProcess(process.id)"
+                      class="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
+                      title="Publish Process"
+                      :disabled="loading"
+                    >
+                      <Icon name="material-symbols:publish" class="text-lg" />
+                    </button>
+                    
+                    <button 
+                      @click="duplicateProcess(process)"
+                      class="p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded"
+                      title="Duplicate Process"
+                      :disabled="loading"
+                    >
+                      <Icon name="material-symbols:content-copy" class="text-lg" />
+                    </button>
+                    
+                    <button 
+                      @click="confirmDelete(process.id)"
+                      class="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                      title="Delete Process"
+                      :disabled="loading || process.status === 'published'"
+                    >
+                      <Icon name="material-symbols:delete" class="text-lg" />
+                    </button>
+                  </template>
                 </div>
               </td>
             </tr>
@@ -379,14 +463,17 @@ onMounted(async () => {
     </div>
     
     <!-- Delete confirmation dialog -->
-    <RsModal v-model="showDeleteConfirm" title="Confirm Delete" size="md" position="center">
+    <RsModal v-model="showDeleteConfirm" title="Move Process to Trash" size="md" position="center">
       <div class="p-4">
         <div class="flex items-center mb-4">
-          <Icon name="material-symbols:warning-outline" class="text-yellow-500 w-8 h-8 mr-3 flex-shrink-0" />
+          <Icon name="material-symbols:delete-outline" class="text-orange-500 w-8 h-8 mr-3 flex-shrink-0" />
           <div>
-            <p class="text-gray-600 font-medium mb-1">Delete Process</p>
+            <p class="text-gray-600 font-medium mb-1">Move to Trash</p>
             <p class="text-gray-600 text-sm">
-              Are you sure you want to delete this process? This action cannot be undone and will permanently remove all process data.
+              This process will be moved to trash but not permanently deleted. You can restore it later from the "Deleted" filter if needed.
+            </p>
+            <p class="text-gray-500 text-xs mt-2">
+              Note: Published processes cannot be deleted and must be unpublished first.
             </p>
           </div>
         </div>
@@ -396,9 +483,9 @@ onMounted(async () => {
           <RsButton @click="cancelDelete" variant="tertiary" :disabled="loading">
             Cancel
           </RsButton>
-          <RsButton @click="deleteProcess" variant="danger" :disabled="loading">
+          <RsButton @click="deleteProcess" variant="warning" :disabled="loading">
             <Icon v-if="loading" name="material-symbols:progress-activity" class="w-4 h-4 animate-spin mr-1" />
-            Delete
+            Move to Trash
           </RsButton>
         </div>
       </template>

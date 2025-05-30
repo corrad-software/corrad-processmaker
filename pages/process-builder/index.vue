@@ -74,6 +74,7 @@ const pendingNavigation = ref(null);
 const navigationTarget = ref(null);
 const navigationConfirmed = ref(false);
 const isSaving = ref(false);
+const isAddingComponent = ref(false); // Flag to prevent canvas reactivity issues during component addition
 
 // Add a ref for the ProcessFlowCanvas component
 const processFlowCanvas = ref(null);
@@ -146,6 +147,19 @@ const components = [
 // Computed to check if we have a current process
 const hasCurrentProcess = computed(() => {
   return !!processStore.currentProcess;
+});
+
+// Create computed properties for canvas props to control reactivity
+const canvasNodes = computed(() => {
+  if (!processStore.currentProcess) return [];
+  // Return a shallow copy to avoid direct reactivity
+  return processStore.currentProcess.nodes.map(node => ({ ...node }));
+});
+
+const canvasEdges = computed(() => {
+  if (!processStore.currentProcess) return [];
+  // Return a shallow copy to avoid direct reactivity  
+  return processStore.currentProcess.edges.map(edge => ({ ...edge }));
 });
 
 // Computed properties for node data
@@ -735,21 +749,47 @@ const saveProcess = async () => {
 };
 
 // Add a component handler to add components from the component panel
-const onAddComponent = (component) => {
-  // Create a new node from the component definition
-  const newNode = {
-    id: `${component.type}_${Date.now()}`,
-    type: component.type,
-    position: { x: 100, y: 100 }, // Default position
-    label: component.label,
-    data: component.data
-  };
+const onAddComponent = async (component) => {
+  if (isAddingComponent.value) return; // Prevent concurrent additions
   
-  // Add the node to the process
-  processStore.addNode(newNode);
-  
-  // Select the newly added node
-  onNodeSelected(newNode);
+  try {
+    isAddingComponent.value = true;
+    
+    // Create a new node from the component definition
+    const newNode = {
+      id: `${component.type}_${Date.now()}`,
+      type: component.type,
+      position: { x: 100, y: 100 }, // Default position
+      label: component.label,
+      data: component.data
+    };
+    
+    // Add the node to the process store
+    processStore.addNode(newNode);
+    
+    // Wait for the next tick to ensure the store update is complete
+    await nextTick();
+    
+    // Explicitly sync the canvas with current store state
+    if (processFlowCanvas.value && processFlowCanvas.value.syncCanvas) {
+      processFlowCanvas.value.syncCanvas(
+        processStore.currentProcess.nodes,
+        processStore.currentProcess.edges
+      );
+    }
+    
+    // Select the newly added node
+    onNodeSelected(newNode);
+    
+    console.log('Component added successfully:', component.type);
+  } catch (error) {
+    console.error('Error adding component:', error);
+  } finally {
+    // Reset the flag after a short delay to allow canvas to stabilize
+    setTimeout(() => {
+      isAddingComponent.value = false;
+    }, 100);
+  }
 };
 
 // Handle template application
@@ -785,15 +825,15 @@ const applyProcessTemplate = async (template) => {
       processStore.currentProcess.edges = [];
     }
 
-    // Add nodes and edges together - let the canvas watchers handle the sequencing
+    // Prepare template data
     const templateNodes = template.nodes || [];
     const templateEdges = template.edges || [];
     
     console.log('Adding template nodes:', templateNodes.length);
     console.log('Adding template edges:', templateEdges.length);
     
-    // Process nodes first
-    templateNodes.forEach((node) => {
+    // Process nodes first and wait for them to be fully added
+    for (const node of templateNodes) {
       const newNode = {
         ...node,
         id: node.id, // Keep original ID for edge references
@@ -806,10 +846,14 @@ const applyProcessTemplate = async (template) => {
       };
       
       processStore.addNode(newNode);
-    });
+    }
     
-    // Process edges after nodes
-    templateEdges.forEach((edge) => {
+    // Wait for nodes to be processed by the canvas
+    await nextTick();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Process edges after nodes are fully loaded
+    for (const edge of templateEdges) {
       const newEdge = {
         ...edge,
         id: edge.id, // Keep original ID
@@ -818,7 +862,19 @@ const applyProcessTemplate = async (template) => {
       };
       
       processStore.addEdge(newEdge);
-    });
+    }
+    
+    // Wait for edges to be added to store
+    await nextTick();
+    
+    // Explicitly sync the canvas to ensure everything is displayed
+    if (processFlowCanvas.value && processFlowCanvas.value.syncCanvas) {
+      console.log('Forcing canvas sync after template application...');
+      processFlowCanvas.value.syncCanvas(
+        processStore.currentProcess.nodes,
+        processStore.currentProcess.edges
+      );
+    }
     
     // Add template variables to the variable store
     if (template.variables && template.variables.length > 0) {
@@ -841,19 +897,20 @@ const applyProcessTemplate = async (template) => {
     // Mark the process as having unsaved changes
     processStore.unsavedChanges = true;
     
-    // Fit the view to show all nodes
-    if (processFlowCanvas.value && processFlowCanvas.value.fitView) {
-      nextTick(() => {
+    // Fit the view to show all nodes after a short delay
+    await nextTick();
+    setTimeout(() => {
+      if (processFlowCanvas.value && processFlowCanvas.value.fitView) {
         processFlowCanvas.value.fitView();
-      });
-    }
+      }
+    }, 200);
     
     // Show success message
-    console.log(`Template "${template.name}" applied successfully`);
+    toast.success(`Template "${template.name}" applied successfully`);
     
   } catch (error) {
     console.error('Error applying process template:', error);
-    alert('Failed to apply template: ' + error.message);
+    toast.error('Failed to apply template: ' + error.message);
   }
 };
 
@@ -1072,8 +1129,8 @@ watch(() => processStore.hasUnsavedChanges, (hasChanges) => {
       <div class="flex-1 relative">
         <ProcessFlowCanvas 
           ref="processFlowCanvas"
-          :initial-nodes="processStore.currentProcess.nodes"
-          :initial-edges="processStore.currentProcess.edges"
+          :initial-nodes="canvasNodes"
+          :initial-edges="canvasEdges"
           @node-selected="onNodeSelected"
           @edge-selected="onEdgeSelected"
           @pane-click="onPaneClick" 
