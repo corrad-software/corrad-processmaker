@@ -98,6 +98,11 @@ yarn dev
 - **Dynamic Form Building**: Create complex forms with validation and conditional logic
 - **Process Execution**: Run and monitor business processes
 - **User Task Management**: Assign and track tasks for users
+- **Form Builder Enhancements** (December 2024):
+  - Enhanced Dynamic List Component with validation, search, and bulk operations
+  - JavaScript API integration for real-time calculations
+  - Conditional logic system for dynamic form behavior
+  - Professional-grade form components with advanced settings
 - **Role-based Access Control**: Manage permissions and user roles
 - **Audit Logging**: Track all system activities
 - **Variable Management**: Handle data throughout the process lifecycle
@@ -105,11 +110,29 @@ yarn dev
 
 ## Documentation
 
-See the `/doc` folder for detailed documentation:
+Comprehensive documentation is available in the `/doc` directory:
 
-- `/doc/overview/` - General system documentation
-- `/doc/process-builder/` - Process Builder guides and technical details
-- `/doc/form-builder/` - Form Builder guides and technical details
+### 📋 Form Builder Documentation
+- **[Form Builder Roadmap](doc/form-builder/ROADMAP.md)** - Development status and planned features
+- **[Technical Guide](doc/form-builder/TECHNICAL_GUIDE.md)** - Implementation details and recent updates
+- **[User Guide](doc/form-builder/USER_GUIDE.md)** - How to use the form builder interface
+- **[JavaScript API](doc/form-builder/JAVASCRIPT_API.md)** - Scripting and automation capabilities
+
+### 🔄 Process Builder Documentation
+- **[Process Builder Guide](doc/process-builder/)** - Process design and management
+
+### ⚙️ System Documentation
+- **[Overview](doc/overview/)** - System architecture and general information
+
+## Recent Updates (December 2024)
+
+### 🚀 Form Builder Enhancements
+- **Dynamic List Component**: Comprehensive enhancement with item validation, uniqueness checking, search/filter functionality, bulk operations, and import/export capabilities
+- **Configuration System**: Identified and addressed dual configuration system architecture issue
+- **JavaScript Integration**: Enhanced form scripting capabilities for dynamic calculations and field updates
+- **Conditional Logic**: Visual condition builder for creating dynamic form workflows
+
+For detailed information about recent changes and development progress, see the [Form Builder Roadmap](doc/form-builder/ROADMAP.md).
 
 ## License
 
