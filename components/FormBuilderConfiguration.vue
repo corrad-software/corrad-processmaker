@@ -210,6 +210,131 @@
                   min="1"
                 />
               </div>
+
+              <!-- New Enhanced Settings -->
+              <div class="space-y-4 border-t pt-4 mt-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">Item Settings</h4>
+                
+                <!-- Item Type -->
+                <FormKit
+                  v-if="showField('itemType')"
+                  type="select"
+                  label="Item Type"
+                  name="itemType"
+                  v-model="configModel.itemType"
+                  :options="[
+                    { label: 'Text', value: 'text' },
+                    { label: 'Number', value: 'number' },
+                    { label: 'Email', value: 'email' },
+                    { label: 'URL', value: 'url' }
+                  ]"
+                  help="Type of data for list items"
+                />
+
+                <!-- Item Validation -->
+                <FormKit
+                  v-if="showField('itemValidation')"
+                  type="text"
+                  label="Item Validation Rules"
+                  name="itemValidation"
+                  v-model="configModel.itemValidation"
+                  help="Validation rules for individual items (e.g., 'required|min:3|max:50')"
+                  placeholder="required|min:3"
+                />
+
+                <!-- Behavior Settings -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div v-if="showField('allowDuplicates')" class="space-y-2">
+                    <FormKit
+                      type="checkbox"
+                      label="Allow Duplicates"
+                      name="allowDuplicates"
+                      v-model="configModel.allowDuplicates"
+                      help="Allow duplicate items in the list"
+                    />
+                  </div>
+
+                  <div v-if="showField('enableSorting')" class="space-y-2">
+                    <FormKit
+                      type="checkbox"
+                      label="Enable Sorting"
+                      name="enableSorting"
+                      v-model="configModel.enableSorting"
+                      help="Allow drag & drop reordering of items"
+                    />
+                  </div>
+
+                  <div v-if="showField('enableSearch')" class="space-y-2">
+                    <FormKit
+                      type="checkbox"
+                      label="Enable Search"
+                      name="enableSearch"
+                      v-model="configModel.enableSearch"
+                      help="Add search/filter functionality"
+                    />
+                  </div>
+
+                  <div v-if="showField('showItemCounter')" class="space-y-2">
+                    <FormKit
+                      type="checkbox"
+                      label="Show Item Counter"
+                      name="showItemCounter"
+                      v-model="configModel.showItemCounter"
+                      help="Display current item count"
+                    />
+                  </div>
+
+                  <div v-if="showField('confirmDelete')" class="space-y-2">
+                    <FormKit
+                      type="checkbox"
+                      label="Confirm Delete"
+                      name="confirmDelete"
+                      v-model="configModel.confirmDelete"
+                      help="Require confirmation before deleting items"
+                    />
+                  </div>
+
+                  <div v-if="showField('bulkOperations')" class="space-y-2">
+                    <FormKit
+                      type="checkbox"
+                      label="Bulk Operations"
+                      name="bulkOperations"
+                      v-model="configModel.bulkOperations"
+                      help="Enable bulk select/delete operations"
+                    />
+                  </div>
+                </div>
+
+                <!-- Import/Export Settings -->
+                <div class="space-y-3 border-t pt-3">
+                  <h5 class="text-xs font-medium text-gray-600 uppercase tracking-wider">Import/Export</h5>
+                  
+                  <div class="grid grid-cols-2 gap-3">
+                    <FormKit
+                      v-if="showField('importEnabled')"
+                      type="checkbox"
+                      label="Enable Import"
+                      name="importEnabled"
+                      v-model="configModel.importEnabled"
+                      help="Allow importing items from file"
+                    />
+
+                    <FormKit
+                      v-if="showField('exportFormat')"
+                      type="select"
+                      label="Export Format"
+                      name="exportFormat"
+                      v-model="configModel.exportFormat"
+                      :options="[
+                        { label: 'JSON', value: 'json' },
+                        { label: 'CSV', value: 'csv' },
+                        { label: 'Plain Text', value: 'txt' }
+                      ]"
+                      help="Default export format for items"
+                    />
+                  </div>
+                </div>
+              </div>
               
               <div v-if="showField('defaultItems')">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Default Items</label>
@@ -919,6 +1044,17 @@ const showField = (fieldName) => {
       return componentType === 'repeating-group' || componentType === 'dynamic-list';
     case 'defaultItems':
       return componentType === 'dynamic-list';
+    case 'itemValidation':
+    case 'allowDuplicates':
+    case 'enableSorting':
+    case 'enableSearch':
+    case 'itemType':
+    case 'showItemCounter':
+    case 'confirmDelete':
+    case 'bulkOperations':
+    case 'exportFormat':
+    case 'importEnabled':
+      return componentType === 'dynamic-list';
     case 'fields':
       return componentType === 'info-display' || componentType === 'repeating-group';
     case 'layout':
@@ -1024,7 +1160,7 @@ const fieldsToShow = {
   button: ['label', 'name', 'help', 'buttonType', 'variant', 'size', 'disabled', 'onClick', 'width'],
   'image-preview': ['label', 'name', 'help', 'imageUrl', 'altText', 'caption', 'showZoom', 'showCaption', 'maxWidth', 'height', 'width'],
   'repeating-group': ['label', 'name', 'help', 'minItems', 'maxItems', 'buttonText', 'removeText', 'fields', 'width'],
-  'dynamic-list': ['label', 'name', 'help', 'placeholder', 'buttonText', 'minItems', 'maxItems', 'defaultItems', 'width'],
+  'dynamic-list': ['label', 'name', 'help', 'placeholder', 'buttonText', 'minItems', 'maxItems', 'defaultItems', 'itemValidation', 'allowDuplicates', 'enableSorting', 'enableSearch', 'itemType', 'showItemCounter', 'confirmDelete', 'bulkOperations', 'exportFormat', 'importEnabled', 'width'],
   
   // Layout elements
   heading: ['value', 'level', 'width'],

@@ -206,6 +206,13 @@
                 @field-validate="handleScriptFieldValidate"
               />
               
+              <ConditionalLogicEngine
+                ref="conditionalLogicEngine"
+                :form-components="formStore.formComponents"
+                :form-data="previewFormData"
+                @script-generated="handleConditionalLogicGenerated"
+              />
+              
               <FormKit 
                 ref="previewForm"
                 type="form" 
@@ -863,6 +870,8 @@ import { nextTick } from 'vue';
 import FormBuilderHistory from "~/components/FormBuilderHistory.vue";
 import FormTemplatesModal from '~/components/FormTemplatesModal.vue';
 import FormBuilderFieldSettingsModal from '~/components/FormBuilderFieldSettingsModal.vue';
+import FormScriptEngine from '~/components/FormScriptEngine.vue';
+import ConditionalLogicEngine from '~/components/ConditionalLogicEngine.vue';
 
 definePageMeta({
   title: "Form Builder",
@@ -904,6 +913,7 @@ const showFieldSettings = ref(false);
 const showFieldSettingsPanel = ref(false);
 const previewForm = ref(null);
 const formScriptEngine = ref(null);
+const conditionalLogicEngine = ref(null);
 
 // Settings tabs configuration
 const settingsTabs = [
@@ -2426,6 +2436,12 @@ const deleteComponent = () => {
     formStore.deleteComponent(formStore.selectedComponent.id);
     toast.success('Component deleted successfully');
   }
+};
+
+const handleConditionalLogicGenerated = (script) => {
+  // Add the generated script to the form's custom script
+  formStore.formCustomScript += `\n// Conditional Logic Script\n${script}`;
+  toast.success('Conditional logic script added successfully');
 };
 </script>
 

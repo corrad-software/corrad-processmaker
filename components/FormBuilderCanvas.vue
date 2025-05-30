@@ -81,7 +81,7 @@
             <div class="p-3">
               <component-preview 
                 :component="element" 
-                :is-preview="true"
+                :is-preview="false"
               />
             </div>
 

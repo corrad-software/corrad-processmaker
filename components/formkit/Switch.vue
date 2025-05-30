@@ -9,33 +9,86 @@ function handleChange(event) {
 </script>
 
 <template>
-  <div class="flex items-center justify-start">
-    <div class="relative inline-block w-11 h-6">
+  <div class="switch-container">
+    <div class="switch-wrapper">
       <input
         :id="context.id"
+        :name="context.name"
         type="checkbox"
-        :checked="context._value"
+        :checked="context.value"
         :disabled="context.disabled"
         @change="handleChange"
-        class="sr-only peer"
+        class="switch-input"
       />
-      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+      <label :for="context.id" class="switch-label">
+        <span class="switch-track">
+          <span class="switch-thumb"></span>
+        </span>
+      </label>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Additional styles for better visual feedback */
-.peer:checked + div {
-  background-color: #3b82f6;
+.switch-container {
+  @apply flex items-center justify-start;
 }
 
-.peer:disabled + div {
-  opacity: 0.5;
-  cursor: not-allowed;
+.switch-wrapper {
+  @apply relative;
 }
 
-.peer:focus + div {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.switch-input {
+  @apply sr-only;
+}
+
+.switch-label {
+  @apply cursor-pointer;
+}
+
+.switch-track {
+  @apply relative inline-block w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ease-in-out;
+}
+
+.switch-input:checked + .switch-label .switch-track {
+  @apply bg-blue-600;
+}
+
+.switch-input:disabled + .switch-label .switch-track {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.switch-input:disabled + .switch-label {
+  @apply cursor-not-allowed;
+}
+
+.switch-thumb {
+  @apply absolute top-[2px] left-[2px] w-5 h-5 bg-white border border-gray-300 rounded-full transition-transform duration-200 ease-in-out;
+}
+
+.switch-input:checked + .switch-label .switch-thumb {
+  @apply transform translate-x-5 border-white;
+}
+
+.switch-input:focus + .switch-label .switch-track {
+  @apply ring-4 ring-blue-300 ring-opacity-50;
+}
+
+/* Mac-specific fixes */
+@media (prefers-reduced-motion: reduce) {
+  .switch-track,
+  .switch-thumb {
+    transition: none;
+  }
+}
+
+/* Force hardware acceleration on Mac for smoother animations */
+.switch-thumb {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.switch-input:checked + .switch-label .switch-thumb {
+  transform: translateX(1.25rem) translateZ(0);
 }
 </style> 

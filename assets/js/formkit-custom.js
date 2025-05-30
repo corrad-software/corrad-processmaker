@@ -15,6 +15,6 @@ export default {
     props: ["accept", "multiple", "maxSize", "minSize", "maxFiles", "disabled"],
   }),
   switch: createInput(Switch, {
-    props: ["value"],
+    props: ["value", "disabled", "name", "id"],
   }),
 };

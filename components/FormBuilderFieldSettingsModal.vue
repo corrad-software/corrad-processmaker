@@ -305,14 +305,14 @@
                       placeholder="5"
                     />
                     
-                    <div class="field-wrapper">
-                      <label class="block text-sm font-medium text-gray-700 mb-2">Allow Multiple Files</label>
-                      <label class="toggle-switch">
-                        <input type="checkbox" v-model="configModel.multiple" />
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">{{ configModel.multiple ? 'Yes' : 'No' }}</span>
-                      </label>
-                    </div>
+                    <FormKit
+                      type="switch"
+                      label="Allow Multiple Files"
+                      name="multiple"
+                      v-model="configModel.multiple"
+                      help="Enable uploading multiple files at once"
+                      :classes="{ outer: 'field-wrapper' }"
+                    />
                   </div>
                 </template>
 
@@ -417,6 +417,197 @@
                   />
                 </template>
 
+                <!-- Dynamic List Configuration -->
+                <template v-if="component.type === 'dynamic-list'">
+                  <div class="space-y-6">
+                    <!-- Basic List Settings -->
+                    <div class="grid grid-cols-2 gap-4">
+                      <FormKit
+                        type="text"
+                        label="Add Button Text"
+                        name="buttonText"
+                        v-model="configModel.buttonText"
+                        help="Text for the add item button"
+                        :classes="{ outer: 'field-wrapper' }"
+                        placeholder="Add Item"
+                      />
+                      
+                      <FormKit
+                        type="select"
+                        label="Item Type"
+                        name="itemType"
+                        v-model="configModel.itemType"
+                        :options="[
+                          { label: 'Text', value: 'text' },
+                          { label: 'Number', value: 'number' },
+                          { label: 'Email', value: 'email' },
+                          { label: 'URL', value: 'url' }
+                        ]"
+                        help="Type of data for list items"
+                        :classes="{ outer: 'field-wrapper' }"
+                      />
+                    </div>
+
+                    <!-- Item Limits -->
+                    <div class="grid grid-cols-2 gap-4">
+                      <FormKit
+                        type="number"
+                        label="Minimum Items"
+                        name="minItems"
+                        v-model="configModel.minItems"
+                        help="Minimum number of items required"
+                        :classes="{ outer: 'field-wrapper' }"
+                        :min="0"
+                        placeholder="0"
+                      />
+                      
+                      <FormKit
+                        type="number"
+                        label="Maximum Items"
+                        name="maxItems"
+                        v-model="configModel.maxItems"
+                        help="Maximum number of items allowed"
+                        :classes="{ outer: 'field-wrapper' }"
+                        :min="1"
+                        placeholder="10"
+                      />
+                    </div>
+
+                    <!-- Item Validation -->
+                    <FormKit
+                      type="text"
+                      label="Item Validation Rules"
+                      name="itemValidation"
+                      v-model="configModel.itemValidation"
+                      help="Validation rules for individual items (e.g., 'required|min:3|max:50')"
+                      :classes="{ outer: 'field-wrapper' }"
+                      placeholder="required|min:3"
+                    />
+
+                    <!-- Behavior Settings -->
+                    <div class="space-y-4">
+                      <h5 class="text-sm font-medium text-gray-700 border-b pb-2">Behavior Settings</h5>
+                      
+                      <div class="grid grid-cols-2 gap-4">
+                        <FormKit
+                          type="switch"
+                          label="Allow Duplicates"
+                          name="allowDuplicates"
+                          v-model="configModel.allowDuplicates"
+                          help="Allow duplicate items in the list"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Enable Sorting"
+                          name="enableSorting"
+                          v-model="configModel.enableSorting"
+                          help="Allow drag & drop reordering"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Enable Search"
+                          name="enableSearch"
+                          v-model="configModel.enableSearch"
+                          help="Add search/filter functionality"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Show Item Counter"
+                          name="showItemCounter"
+                          v-model="configModel.showItemCounter"
+                          help="Display current item count"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Confirm Delete"
+                          name="confirmDelete"
+                          v-model="configModel.confirmDelete"
+                          help="Require confirmation before deleting"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Bulk Operations"
+                          name="bulkOperations"
+                          v-model="configModel.bulkOperations"
+                          help="Enable bulk select/delete operations"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Import/Export Settings -->
+                    <div class="space-y-4">
+                      <h5 class="text-sm font-medium text-gray-700 border-b pb-2">Import/Export Settings</h5>
+                      
+                      <div class="grid grid-cols-2 gap-4">
+                        <FormKit
+                          type="switch"
+                          label="Enable Import"
+                          name="importEnabled"
+                          v-model="configModel.importEnabled"
+                          help="Allow importing items from files"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="select"
+                          label="Export Format"
+                          name="exportFormat"
+                          v-model="configModel.exportFormat"
+                          :options="[
+                            { label: 'JSON', value: 'json' },
+                            { label: 'CSV', value: 'csv' },
+                            { label: 'Text', value: 'txt' }
+                          ]"
+                          help="Default format for exporting items"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Default Items -->
+                    <div class="space-y-4">
+                      <h5 class="text-sm font-medium text-gray-700 border-b pb-2">Default Items</h5>
+                      
+                      <div class="border rounded-md p-3 bg-gray-50 space-y-2">
+                        <div v-for="(item, index) in (configModel.defaultItems || [])" :key="index" class="flex items-center">
+                          <input
+                            type="text"
+                            v-model="configModel.defaultItems[index]"
+                            class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
+                            placeholder="Enter default item"
+                          />
+                          <button 
+                            @click="removeDefaultItem(index)"
+                            class="ml-2 text-red-500 hover:text-red-700"
+                            type="button"
+                          >
+                            <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                          </button>
+                        </div>
+                        <button 
+                          @click="addDefaultItem"
+                          class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                          type="button"
+                        >
+                          <Icon name="material-symbols:add-circle-outline" class="w-4 h-4 mr-1" />
+                          Add Default Item
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
                 <!-- Content for Text Components -->
                 <template v-if="showField('value')">
                   <FormKit
@@ -516,7 +707,7 @@
                 <div class="validation-options">
                   <!-- Required Field -->
                   <div class="validation-item">
-                    <label class="validation-toggle">
+                    <label class="validation-toggle" @click.stop>
                       <input type="checkbox" v-model="isRequired" />
                       <span class="toggle-slider"></span>
                       <div class="validation-info">
@@ -528,7 +719,7 @@
 
                   <!-- Email Validation -->
                   <div v-if="component.type === 'email' || component.type === 'text'" class="validation-item">
-                    <label class="validation-toggle">
+                    <label class="validation-toggle" @click.stop>
                       <input type="checkbox" v-model="isEmailValidation" />
                       <span class="toggle-slider"></span>
                       <div class="validation-info">
@@ -540,7 +731,7 @@
 
                   <!-- URL Validation -->
                   <div v-if="component.type === 'url' || component.type === 'text'" class="validation-item">
-                    <label class="validation-toggle">
+                    <label class="validation-toggle" @click.stop>
                       <input type="checkbox" v-model="isUrlValidation" />
                       <span class="toggle-slider"></span>
                       <div class="validation-info">
@@ -552,7 +743,7 @@
 
                   <!-- Length Validation -->
                   <div v-if="isTextBasedField" class="validation-item">
-                    <label class="validation-toggle">
+                    <label class="validation-toggle" @click.stop>
                       <input type="checkbox" v-model="hasLengthValidation" />
                       <span class="toggle-slider"></span>
                       <div class="validation-info">
@@ -583,7 +774,7 @@
 
                   <!-- Number Range Validation -->
                   <div v-if="component.type === 'number'" class="validation-item">
-                    <label class="validation-toggle">
+                    <label class="validation-toggle" @click.stop>
                       <input type="checkbox" v-model="hasNumberValidation" />
                       <span class="toggle-slider"></span>
                       <div class="validation-info">
@@ -618,10 +809,286 @@
                     label="Custom Validation Rules"
                     name="validation"
                     v-model="configModel.validation"
-                    help="Advanced: Enter custom validation rules (e.g., 'required|email|length:5,50')"
+                    help="Advanced: Enter custom validation rules using the format below"
                     :classes="{ outer: 'field-wrapper' }"
-                    placeholder="Leave empty for basic validation"
+                    placeholder="e.g., required|email|length:3,50"
                   />
+                  
+                  <!-- Validation Rules Guide -->
+                  <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h5 class="text-sm font-medium text-blue-800 mb-3 flex items-center">
+                      <Icon name="heroicons:information-circle" class="w-4 h-4 mr-2" />
+                      Validation Rules Guide
+                    </h5>
+                    
+                    <div class="space-y-4 text-sm">
+                      <!-- Basic Rules -->
+                      <div>
+                        <h6 class="font-medium text-blue-700 mb-2">Basic Rules</h6>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                          <div class="validation-rule">
+                            <code class="rule-code">required</code>
+                            <span class="rule-desc">Field must be filled</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">email</code>
+                            <span class="rule-desc">Must be valid email</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">url</code>
+                            <span class="rule-desc">Must be valid URL</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">number</code>
+                            <span class="rule-desc">Must be numeric</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Length Rules -->
+                      <div>
+                        <h6 class="font-medium text-blue-700 mb-2">Length Rules</h6>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                          <div class="validation-rule">
+                            <code class="rule-code">length:5</code>
+                            <span class="rule-desc">Exactly 5 characters</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">length:3,20</code>
+                            <span class="rule-desc">Between 3-20 characters</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">min:3</code>
+                            <span class="rule-desc">Minimum 3 characters</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">max:50</code>
+                            <span class="rule-desc">Maximum 50 characters</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Number Rules -->
+                      <div>
+                        <h6 class="font-medium text-blue-700 mb-2">Number Rules</h6>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                          <div class="validation-rule">
+                            <code class="rule-code">between:1,100</code>
+                            <span class="rule-desc">Between 1 and 100</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">min_value:0</code>
+                            <span class="rule-desc">Minimum value 0</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">max_value:999</code>
+                            <span class="rule-desc">Maximum value 999</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">integer</code>
+                            <span class="rule-desc">Must be whole number</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Pattern Rules -->
+                      <div>
+                        <h6 class="font-medium text-blue-700 mb-2">Pattern Rules</h6>
+                        <div class="grid grid-cols-1 gap-2 text-xs">
+                          <div class="validation-rule">
+                            <code class="rule-code">alpha</code>
+                            <span class="rule-desc">Only letters (A-Z, a-z)</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">alpha_numeric</code>
+                            <span class="rule-desc">Letters and numbers only</span>
+                          </div>
+                          <div class="validation-rule">
+                            <code class="rule-code">alpha_spaces</code>
+                            <span class="rule-desc">Letters and spaces only</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Examples Section -->
+                    <div class="mt-4 pt-4 border-t border-blue-200">
+                      <h6 class="font-medium text-blue-700 mb-2">Examples</h6>
+                      <div class="space-y-2 text-xs">
+                        <div class="example-item">
+                          <code class="example-code">required|email</code>
+                          <span class="example-desc">Required email field</span>
+                        </div>
+                        <div class="example-item">
+                          <code class="example-code">required|length:3,50</code>
+                          <span class="example-desc">Required text, 3-50 characters</span>
+                        </div>
+                        <div class="example-item">
+                          <code class="example-code">number|between:1,100</code>
+                          <span class="example-desc">Number between 1-100</span>
+                        </div>
+                        <div class="example-item">
+                          <code class="example-code">required|alpha_numeric|min:5</code>
+                          <span class="example-desc">Required alphanumeric, min 5 chars</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Quick Tips -->
+                    <div class="mt-3 pt-3 border-t border-blue-200">
+                      <p class="text-xs text-blue-600">
+                        <strong>💡 Tips:</strong> Separate rules with | (pipe) • Order doesn't matter • Leave empty for no validation
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conditional Logic Section -->
+        <div v-if="showField('conditionalLogic')" class="section-container mt-6">
+          <div class="section">
+            <div class="section-wrapper">
+              <div class="section-header">
+                <h4 class="section-title">
+                  <Icon name="heroicons:adjustments-horizontal" class="w-5 h-5 mr-2" />
+                  Conditional Logic
+                </h4>
+                <p class="section-description">Show, hide, or disable this field based on other field values</p>
+              </div>
+              
+              <div class="section-content">
+                <!-- Enable Conditional Logic -->
+                <FormKit
+                  type="switch"
+                  label="Enable Conditional Logic"
+                  name="conditionalLogicEnabled"
+                  v-model="configModel.conditionalLogic.enabled"
+                  help="Show or hide this field based on other fields"
+                  :classes="{ outer: 'field-wrapper' }"
+                />
+
+                <!-- Conditional Logic Configuration -->
+                <div v-if="configModel.conditionalLogic.enabled" class="mt-4 space-y-4">
+                  <!-- Action Selection -->
+                  <FormKit
+                    type="select"
+                    label="Action"
+                    name="conditionalAction"
+                    v-model="configModel.conditionalLogic.action"
+                    :options="[
+                      { label: 'Show this field', value: 'show' },
+                      { label: 'Hide this field', value: 'hide' },
+                      { label: 'Enable this field', value: 'enable' },
+                      { label: 'Disable this field', value: 'disable' }
+                    ]"
+                    help="What should happen when conditions are met"
+                    :classes="{ outer: 'field-wrapper' }"
+                  />
+
+                  <!-- Operator Selection (when multiple conditions) -->
+                  <FormKit
+                    v-if="configModel.conditionalLogic.conditions.length > 1"
+                    type="select"
+                    label="Logic Operator"
+                    name="conditionalOperator"
+                    v-model="configModel.conditionalLogic.operator"
+                    :options="[
+                      { label: 'All conditions must be true (AND)', value: 'and' },
+                      { label: 'Any condition can be true (OR)', value: 'or' }
+                    ]"
+                    help="How multiple conditions should be evaluated"
+                    :classes="{ outer: 'field-wrapper' }"
+                  />
+
+                  <!-- Conditions -->
+                  <div class="conditions-section">
+                    <h5 class="text-sm font-medium text-gray-700 mb-3">Conditions</h5>
+                    
+                    <div v-if="configModel.conditionalLogic.conditions.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                      <Icon name="heroicons:plus-circle" class="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p class="text-sm">No conditions set. Add a condition to get started.</p>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                      <div 
+                        v-for="(condition, index) in configModel.conditionalLogic.conditions" 
+                        :key="index"
+                        class="condition-item bg-gray-50 p-4 rounded-lg border"
+                      >
+                        <div class="grid grid-cols-3 gap-3">
+                          <FormKit
+                            type="text"
+                            label="Field Name"
+                            :name="`condition_field_${index}`"
+                            v-model="condition.field"
+                            placeholder="field_name"
+                            help="Name of the field to check"
+                            :classes="{ outer: 'field-wrapper' }"
+                          />
+                          
+                          <FormKit
+                            type="select"
+                            label="Operator"
+                            :name="`condition_operator_${index}`"
+                            v-model="condition.operator"
+                            :options="[
+                              { label: 'Equals', value: 'equals' },
+                              { label: 'Not equals', value: 'not_equals' },
+                              { label: 'Contains', value: 'contains' },
+                              { label: 'Does not contain', value: 'not_contains' },
+                              { label: 'Is empty', value: 'is_empty' },
+                              { label: 'Is not empty', value: 'is_not_empty' },
+                              { label: 'Greater than', value: 'greater_than' },
+                              { label: 'Less than', value: 'less_than' }
+                            ]"
+                            :classes="{ outer: 'field-wrapper' }"
+                          />
+                          
+                          <FormKit
+                            type="text"
+                            label="Value"
+                            :name="`condition_value_${index}`"
+                            v-model="condition.value"
+                            placeholder="Value to compare"
+                            help="Leave empty for 'is empty' conditions"
+                            :classes="{ outer: 'field-wrapper' }"
+                          />
+                        </div>
+                        
+                        <div class="flex justify-end mt-3">
+                          <button
+                            @click="removeCondition(index)"
+                            type="button"
+                            class="text-red-600 hover:text-red-800 text-sm flex items-center"
+                          >
+                            <Icon name="heroicons:trash" class="w-4 h-4 mr-1" />
+                            Remove Condition
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      @click="addCondition"
+                      type="button"
+                      class="mt-3 inline-flex items-center px-3 py-2 border border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded text-sm"
+                    >
+                      <Icon name="heroicons:plus" class="w-4 h-4 mr-1" />
+                      Add Condition
+                    </button>
+                  </div>
+
+                  <!-- Preview JavaScript Code -->
+                  <div v-if="configModel.conditionalLogic.conditions.length > 0" class="mt-4">
+                    <h5 class="text-sm font-medium text-gray-700 mb-2">Generated Code Preview</h5>
+                    <div class="bg-gray-900 text-green-400 p-3 rounded text-xs font-mono">
+                      {{ generateConditionalLogicCode() }}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">This JavaScript will be automatically executed to handle the conditional logic</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -713,7 +1180,8 @@ const getComponentIcon = (type) => {
     heading: 'heroicons:h1',
     paragraph: 'heroicons:document-text',
     divider: 'heroicons:minus',
-    'info-display': 'heroicons:information-circle'
+    'info-display': 'heroicons:information-circle',
+    'dynamic-list': 'heroicons:list-bullet'
   }
   return icons[type] || 'heroicons:square-3-stack-3d'
 }
@@ -745,7 +1213,8 @@ const getComponentTypeName = (type) => {
     heading: 'Heading Text',
     paragraph: 'Paragraph Text',
     divider: 'Divider Line',
-    'info-display': 'Information Display'
+    'info-display': 'Information Display',
+    'dynamic-list': 'Dynamic List'
   }
   return names[type] || 'Form Field'
 }
@@ -777,7 +1246,8 @@ const getComponentDescription = (type) => {
     heading: 'Section heading to organize form content',
     paragraph: 'Text content for instructions and descriptions',
     divider: 'Visual separator to organize form sections',
-    'info-display': 'Read-only information display in organized format'
+    'info-display': 'Read-only information display in organized format',
+    'dynamic-list': 'Dynamic list for displaying and managing items'
   }
   return descriptions[type] || 'Configure this form field'
 }
@@ -802,13 +1272,14 @@ const showField = (fieldName) => {
   if (!props.component) return false
   
   const fieldConfig = {
-    label: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button'],
-    name: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button'],
-    placeholder: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select'],
-    help: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button'],
+    label: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list'],
+    name: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list'],
+    placeholder: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'dynamic-list'],
+    help: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list'],
     value: ['heading', 'paragraph', 'hidden'],
-    width: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'heading', 'paragraph', 'info-display'],
-    options: ['select', 'checkbox', 'radio']
+    width: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'heading', 'paragraph', 'info-display', 'dynamic-list'],
+    options: ['select', 'checkbox', 'radio'],
+    conditionalLogic: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'dynamic-list']
   }
   
   return fieldConfig[fieldName]?.includes(props.component.type) || false
@@ -817,7 +1288,7 @@ const showField = (fieldName) => {
 const hasOptions = computed(() => showField('options'))
 const hasSpecificSettings = computed(() => {
   if (!props.component) return false
-  const specificTypes = ['mask', 'otp', 'dropzone', 'range', 'heading', 'text', 'textarea', 'paragraph', 'button']
+  const specificTypes = ['mask', 'otp', 'dropzone', 'range', 'heading', 'paragraph', 'button', 'dynamic-list']
   return specificTypes.includes(props.component.type)
 })
 
@@ -936,7 +1407,8 @@ const getRecommendedWidth = (fieldType) => {
     'range': 'full',
     'switch': 'full',
     'button': 'full',
-    'info-display': 'full'
+    'info-display': 'full',
+    'dynamic-list': 'full'
   }
   
   return recommendations[fieldType] || 'full'
@@ -1009,6 +1481,108 @@ const addOption = () => {
 
 const removeOption = (index) => {
   configModel.value.options.splice(index, 1)
+}
+
+// Default items management for dynamic-list
+const addDefaultItem = () => {
+  if (!configModel.value.defaultItems) {
+    configModel.value.defaultItems = []
+  }
+  configModel.value.defaultItems.push('')
+}
+
+const removeDefaultItem = (index) => {
+  if (configModel.value.defaultItems) {
+    configModel.value.defaultItems.splice(index, 1)
+  }
+}
+
+// Conditional logic management
+const addCondition = () => {
+  if (!configModel.value.conditionalLogic) {
+    configModel.value.conditionalLogic = {
+      enabled: true,
+      conditions: [],
+      action: 'show',
+      operator: 'and'
+    }
+  }
+  
+  if (!configModel.value.conditionalLogic.conditions) {
+    configModel.value.conditionalLogic.conditions = []
+  }
+  
+  configModel.value.conditionalLogic.conditions.push({
+    field: '',
+    operator: 'equals',
+    value: ''
+  })
+}
+
+const removeCondition = (index) => {
+  if (configModel.value.conditionalLogic?.conditions) {
+    configModel.value.conditionalLogic.conditions.splice(index, 1)
+  }
+}
+
+const generateConditionalLogicCode = () => {
+  if (!configModel.value.conditionalLogic || !configModel.value.conditionalLogic.conditions.length) {
+    return '// No conditions defined'
+  }
+  
+  const { conditions, action, operator } = configModel.value.conditionalLogic
+  const fieldName = configModel.value.name || 'this_field'
+  
+  // Generate condition checks
+  const conditionChecks = conditions.map(condition => {
+    const { field, operator: condOp, value } = condition
+    
+    switch (condOp) {
+      case 'equals':
+        return `getField('${field}') === '${value}'`
+      case 'not_equals':
+        return `getField('${field}') !== '${value}'`
+      case 'contains':
+        return `String(getField('${field}')).includes('${value}')`
+      case 'not_contains':
+        return `!String(getField('${field}')).includes('${value}')`
+      case 'is_empty':
+        return `!getField('${field}') || getField('${field}') === ''`
+      case 'is_not_empty':
+        return `getField('${field}') && getField('${field}') !== ''`
+      case 'greater_than':
+        return `Number(getField('${field}')) > ${Number(value) || 0}`
+      case 'less_than':
+        return `Number(getField('${field}')) < ${Number(value) || 0}`
+      default:
+        return `getField('${field}') === '${value}'`
+    }
+  }).join(` ${operator} `)
+  
+  // Generate action
+  const actionCode = action === 'show' ? `showField('${fieldName}')` :
+                    action === 'hide' ? `hideField('${fieldName}')` :
+                    action === 'enable' ? `enableField('${fieldName}')` :
+                    action === 'disable' ? `disableField('${fieldName}')` :
+                    `showField('${fieldName}')`
+  
+  // Generate field change listeners
+  const watchedFields = [...new Set(conditions.map(c => c.field).filter(Boolean))]
+  const listenerCode = watchedFields.map(field => 
+    `onFieldChange('${field}', function() {
+  if (${conditionChecks}) {
+    ${actionCode};
+  } else {
+    ${action === 'show' ? `hideField('${fieldName}')` : 
+      action === 'hide' ? `showField('${fieldName}')` :
+      action === 'enable' ? `disableField('${fieldName}')` :
+      action === 'disable' ? `enableField('${fieldName}')` :
+      `hideField('${fieldName}')`};
+  }
+});`
+  ).join('\n\n')
+  
+  return listenerCode || '// Invalid configuration'
 }
 
 const handleSave = () => {
@@ -1315,5 +1889,30 @@ const handleClose = () => {
 
 .example-button {
   @apply text-left p-2 text-xs bg-white border border-gray-200 rounded hover:border-blue-300 hover:bg-blue-50 transition-colors;
+}
+
+/* Validation Guide Styles */
+.validation-rule {
+  @apply flex flex-col space-y-1 p-2 bg-white rounded border border-blue-100;
+}
+
+.rule-code {
+  @apply font-mono text-xs font-semibold text-blue-800 bg-blue-100 px-2 py-1 rounded;
+}
+
+.rule-desc {
+  @apply text-gray-600;
+}
+
+.example-item {
+  @apply flex flex-col space-y-1 p-2 bg-white rounded border border-blue-100;
+}
+
+.example-code {
+  @apply font-mono text-xs font-semibold text-green-800 bg-green-100 px-2 py-1 rounded;
+}
+
+.example-desc {
+  @apply text-gray-600;
 }
 </style> 

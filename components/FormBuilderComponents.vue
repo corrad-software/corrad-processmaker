@@ -129,13 +129,20 @@ const availableComponents = [
     type: 'text',
     name: 'Text Field',
     category: 'Basic Inputs',
-    icon: 'material-symbols:text-fields',
+    icon: 'heroicons:document-text',
     description: 'Single line text input',
     defaultProps: {
       type: 'text',
       placeholder: 'Enter text...',
       help: '',
-      validation: ''
+      validation: '',
+      // Conditional Logic Properties
+      conditionalLogic: {
+        enabled: false,
+        conditions: [], // Array of condition objects
+        action: 'show', // 'show', 'hide', 'enable', 'disable'
+        operator: 'and' // 'and', 'or'
+      }
     }
   },
   {
@@ -148,7 +155,14 @@ const availableComponents = [
       type: 'textarea',
       placeholder: 'Enter text...',
       help: '',
-      validation: ''
+      validation: '',
+      // Conditional Logic Properties
+      conditionalLogic: {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
     }
   },
   {
@@ -161,7 +175,14 @@ const availableComponents = [
       type: 'number',
       placeholder: '0',
       help: '',
-      validation: ''
+      validation: '',
+      // Conditional Logic Properties
+      conditionalLogic: {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
     }
   },
   {
@@ -174,7 +195,14 @@ const availableComponents = [
       type: 'email',
       placeholder: 'email@example.com',
       help: '',
-      validation: 'email'
+      validation: 'email',
+      // Conditional Logic Properties
+      conditionalLogic: {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
     }
   },
   {
@@ -187,7 +215,14 @@ const availableComponents = [
       type: 'password',
       placeholder: 'Enter password...',
       help: '',
-      validation: ''
+      validation: '',
+      // Conditional Logic Properties
+      conditionalLogic: {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
     }
   },
   {
@@ -259,7 +294,14 @@ const availableComponents = [
         { label: 'Option 2', value: 'option_2' },
         { label: 'Option 3', value: 'option_3' }
       ],
-      validation: ''
+      validation: '',
+      // Conditional Logic Properties
+      conditionalLogic: {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
     }
   },
   {
@@ -449,7 +491,17 @@ const availableComponents = [
       buttonText: 'Add Item',
       minItems: 0,
       maxItems: 20,
-      defaultItems: ['Item 1', 'Item 2']
+      defaultItems: ['Item 1', 'Item 2'],
+      itemValidation: '',
+      allowDuplicates: true,
+      enableSorting: false,
+      enableSearch: false,
+      itemType: 'text',
+      showItemCounter: true,
+      confirmDelete: false,
+      bulkOperations: false,
+      exportFormat: 'json',
+      importEnabled: false
     }
   },
   {

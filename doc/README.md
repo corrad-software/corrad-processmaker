@@ -21,6 +21,7 @@ The documentation is organized into the following sections:
 - [Technical Guide](./form-builder/TECHNICAL_GUIDE.md) - Technical details of the Form Builder implementation
 - [JavaScript API Reference](./form-builder/JAVASCRIPT_API.md) - Complete JavaScript API for dynamic forms and calculations
 - [Grid System Guide](./form-builder/grid-system.md) - Visual grid system and layout documentation
+- [Roadmap](./form-builder/ROADMAP.md) - Development roadmap and missing essential features checklist
 
 ### Process Execution
 - [User Guide](./process-execution/USER_GUIDE.md) - How to use the Process Execution interface
