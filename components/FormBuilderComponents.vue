@@ -505,6 +505,55 @@ const availableComponents = [
     }
   },
   {
+    type: 'repeating-table',
+    name: 'Data Table',
+    category: 'Advanced',
+    icon: 'material-symbols:table',
+    description: 'Structured table for collecting multiple records',
+    defaultProps: {
+      label: 'Data Records',
+      name: 'data_table',
+      help: 'Add records using the form and view them in a table',
+      buttonText: 'Add Record',
+      editText: 'Edit',
+      deleteText: 'Delete',
+      minRecords: 0,
+      maxRecords: 50,
+      showRowNumbers: true,
+      allowEdit: true,
+      allowDelete: true,
+      confirmDelete: true,
+      enableSearch: false,
+      columns: [
+        {
+          name: 'name',
+          label: 'Name',
+          type: 'text',
+          required: true,
+          placeholder: 'Enter name',
+          validation: 'required'
+        },
+        {
+          name: 'email',
+          label: 'Email',
+          type: 'email',
+          required: true,
+          placeholder: 'Enter email',
+          validation: 'required|email'
+        },
+        {
+          name: 'phone',
+          label: 'Phone',
+          type: 'tel',
+          required: false,
+          placeholder: 'Enter phone',
+          validation: ''
+        }
+      ],
+      defaultData: []
+    }
+  },
+  {
     type: 'otp',
     name: 'OTP Input',
     category: 'Advanced',

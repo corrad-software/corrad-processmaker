@@ -382,7 +382,8 @@ const editVariable = (variable) => {
 
 const deleteVariable = (variable) => {
   if (confirm(`Are you sure you want to delete the variable "${variable.name}"? This might affect parts of your process that use this variable.`)) {
-    variableStore.deleteVariable(variable.name, 'global');
+    const scope = variable.scope || 'global';
+    variableStore.deleteVariable(variable.name, scope);
   }
 };
 

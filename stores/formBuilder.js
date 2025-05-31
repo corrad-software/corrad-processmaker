@@ -242,6 +242,26 @@ export const useFormBuilderStore = defineStore('formBuilder', {
             defaultProps.defaultItems = Array.isArray(defaultProps.defaultItems) ? defaultProps.defaultItems : ['Item 1', 'Item 2'];
             break;
 
+          case 'repeating-table':
+            // Ensure all required repeating table properties
+            defaultProps.buttonText = defaultProps.buttonText || 'Add Record';
+            defaultProps.editText = defaultProps.editText || 'Edit';
+            defaultProps.deleteText = defaultProps.deleteText || 'Delete';
+            defaultProps.minRecords = defaultProps.minRecords !== undefined ? defaultProps.minRecords : 0;
+            defaultProps.maxRecords = defaultProps.maxRecords !== undefined ? defaultProps.maxRecords : 50;
+            defaultProps.showRowNumbers = defaultProps.showRowNumbers !== undefined ? defaultProps.showRowNumbers : true;
+            defaultProps.allowEdit = defaultProps.allowEdit !== undefined ? defaultProps.allowEdit : true;
+            defaultProps.allowDelete = defaultProps.allowDelete !== undefined ? defaultProps.allowDelete : true;
+            defaultProps.confirmDelete = defaultProps.confirmDelete !== undefined ? defaultProps.confirmDelete : true;
+            defaultProps.enableSearch = defaultProps.enableSearch !== undefined ? defaultProps.enableSearch : false;
+            defaultProps.enableExport = defaultProps.enableExport !== undefined ? defaultProps.enableExport : false;
+            defaultProps.columns = Array.isArray(defaultProps.columns) ? defaultProps.columns : [
+              { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'Enter name', validation: 'required', width: '200px' },
+              { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Enter email', validation: 'required|email', width: '250px' }
+            ];
+            defaultProps.defaultData = Array.isArray(defaultProps.defaultData) ? defaultProps.defaultData : [];
+            break;
+
           case 'info-display':
             // Ensure all required info display properties
             defaultProps.title = defaultProps.title || 'Information';

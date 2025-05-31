@@ -233,18 +233,18 @@
                   <div class="mask-examples">
                     <p class="text-sm font-medium text-gray-700 mb-2">Common patterns:</p>
                     <div class="grid grid-cols-2 gap-2 text-xs">
-                      <button @click="configModel.mask = '###-###-####'" class="example-button">
+                      <RsButton @click="configModel.mask = '###-###-####'" variant="secondary-outline" size="sm">
                         Phone: ###-###-####
-                      </button>
-                      <button @click="configModel.mask = '##/##/####'" class="example-button">
+                      </RsButton>
+                      <RsButton @click="configModel.mask = '##/##/####'" variant="secondary-outline" size="sm">
                         Date: ##/##/####
-                      </button>
-                      <button @click="configModel.mask = 'AA-####'" class="example-button">
+                      </RsButton>
+                      <RsButton @click="configModel.mask = 'AA-####'" variant="secondary-outline" size="sm">
                         Code: AA-####
-                      </button>
-                      <button @click="configModel.mask = '#### #### #### ####'" class="example-button">
+                      </RsButton>
+                      <RsButton @click="configModel.mask = '#### #### #### ####'" variant="secondary-outline" size="sm">
                         Credit Card: #### #### #### ####
-                      </button>
+                      </RsButton>
                     </div>
                   </div>
                 </template>
@@ -604,6 +604,252 @@
                           Add Default Item
                         </button>
                       </div>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Repeating Table Configuration -->
+                <template v-if="component.type === 'repeating-table'">
+                  <div class="space-y-6">
+                    <!-- Basic Table Settings -->
+                    <div class="grid grid-cols-2 gap-4">
+                      <FormKit
+                        type="text"
+                        label="Add Button Text"
+                        name="buttonText"
+                        v-model="configModel.buttonText"
+                        help="Text for the add record button"
+                        :classes="{ outer: 'field-wrapper' }"
+                        placeholder="Add Record"
+                      />
+                      
+                      <FormKit
+                        type="text"
+                        label="Edit Button Text"
+                        name="editText"
+                        v-model="configModel.editText"
+                        help="Text for the edit record button"
+                        :classes="{ outer: 'field-wrapper' }"
+                        placeholder="Edit"
+                      />
+                    </div>
+
+                    <!-- Record Limits -->
+                    <div class="grid grid-cols-2 gap-4">
+                      <FormKit
+                        type="number"
+                        label="Minimum Records"
+                        name="minRecords"
+                        v-model="configModel.minRecords"
+                        help="Minimum number of records required"
+                        :classes="{ outer: 'field-wrapper' }"
+                        :min="0"
+                        placeholder="0"
+                      />
+                      
+                      <FormKit
+                        type="number"
+                        label="Maximum Records"
+                        name="maxRecords"
+                        v-model="configModel.maxRecords"
+                        help="Maximum number of records allowed"
+                        :classes="{ outer: 'field-wrapper' }"
+                        :min="1"
+                        placeholder="50"
+                      />
+                    </div>
+
+                    <!-- Display Settings -->
+                    <div class="space-y-4">
+                      <h5 class="text-sm font-medium text-gray-700 border-b pb-2">Display Settings</h5>
+                      
+                      <div class="grid grid-cols-2 gap-4">
+                        <FormKit
+                          type="switch"
+                          label="Show Row Numbers"
+                          name="showRowNumbers"
+                          v-model="configModel.showRowNumbers"
+                          help="Display row numbers in the table"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Enable Search"
+                          name="enableSearch"
+                          v-model="configModel.enableSearch"
+                          help="Add search functionality to the table"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Allow Edit"
+                          name="allowEdit"
+                          v-model="configModel.allowEdit"
+                          help="Allow users to edit existing records"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Allow Delete"
+                          name="allowDelete"
+                          v-model="configModel.allowDelete"
+                          help="Allow users to delete records"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+
+                        <FormKit
+                          type="switch"
+                          label="Confirm Delete"
+                          name="confirmDelete"
+                          v-model="configModel.confirmDelete"
+                          help="Require confirmation before deleting"
+                          :classes="{ outer: 'field-wrapper' }"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Table Columns Configuration -->
+                    <div class="space-y-4">
+                      <h5 class="text-sm font-medium text-gray-700 border-b pb-2">Table Columns</h5>
+                      
+                      <div v-if="configModel.columns && configModel.columns.length > 0" class="space-y-4">
+                        <div 
+                          v-for="(column, index) in configModel.columns" 
+                          :key="index"
+                          class="border rounded-lg p-4 bg-gray-50"
+                        >
+                          <div class="flex justify-between items-center mb-3">
+                            <h6 class="text-sm font-medium text-gray-800">Column {{ index + 1 }}</h6>
+                            <button 
+                              @click="removeTableColumn(index)"
+                              class="text-red-500 hover:text-red-700 text-sm"
+                              type="button"
+                            >
+                              <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          <div class="grid grid-cols-2 gap-3">
+                            <FormKit
+                              type="text"
+                              label="Column Name"
+                              v-model="column.name"
+                              placeholder="field_name"
+                              help="Internal field name (no spaces)"
+                              :classes="{ outer: 'field-wrapper mb-0' }"
+                            />
+                            
+                            <FormKit
+                              type="text"
+                              label="Display Label"
+                              v-model="column.label"
+                              placeholder="Display Name"
+                              help="What users will see"
+                              :classes="{ outer: 'field-wrapper mb-0' }"
+                            />
+                            
+                            <FormKit
+                              type="select"
+                              label="Field Type"
+                              v-model="column.type"
+                              :options="[
+                                { label: 'Text', value: 'text' },
+                                { label: 'Number', value: 'number' },
+                                { label: 'Email', value: 'email' },
+                                { label: 'Phone', value: 'tel' },
+                                { label: 'Date', value: 'date' },
+                                { label: 'Dropdown', value: 'select' },
+                                { label: 'Text Area', value: 'textarea' }
+                              ]"
+                              :classes="{ outer: 'field-wrapper mb-0' }"
+                            />
+                            
+                            <FormKit
+                              type="text"
+                              label="Placeholder"
+                              v-model="column.placeholder"
+                              placeholder="Enter value..."
+                              help="Hint text for the input"
+                              :classes="{ outer: 'field-wrapper mb-0' }"
+                            />
+                          </div>
+                          
+                          <div class="mt-3 grid grid-cols-2 gap-3">
+                            <FormKit
+                              type="switch"
+                              label="Required Field"
+                              v-model="column.required"
+                              help="Make this field mandatory"
+                              :classes="{ outer: 'field-wrapper mb-0' }"
+                            />
+                            
+                            <FormKit
+                              type="text"
+                              label="Validation Rules"
+                              v-model="column.validation"
+                              placeholder="required|email"
+                              help="Validation rules (e.g., required, email)"
+                              :classes="{ outer: 'field-wrapper mb-0' }"
+                            />
+                          </div>
+                          
+                          <div v-if="column.type === 'select'" class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
+                            <div v-if="column.options && column.options.length > 0" class="space-y-2">
+                              <div 
+                                v-for="(option, optionIndex) in column.options" 
+                                :key="optionIndex"
+                                class="flex items-center space-x-2"
+                              >
+                                <input
+                                  type="text"
+                                  v-model="option.label"
+                                  placeholder="Option label"
+                                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  v-model="option.value"
+                                  placeholder="Option value"
+                                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
+                                />
+                                <button 
+                                  @click="removeColumnOption(index, optionIndex)"
+                                  class="text-red-500 hover:text-red-700"
+                                  type="button"
+                                >
+                                  <Icon name="material-symbols:delete-outline" class="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <button 
+                              @click="addColumnOption(index)"
+                              class="text-sm text-blue-600 hover:text-blue-800 flex items-center mt-2"
+                              type="button"
+                            >
+                              <Icon name="material-symbols:add-circle-outline" class="w-4 h-4 mr-1" />
+                              Add Option
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div v-else class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                        <Icon name="heroicons:table-cells" class="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                        <p class="text-sm mb-3">No columns defined yet</p>
+                      </div>
+                      
+                      <button 
+                        @click="addTableColumn"
+                        class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                        type="button"
+                      >
+                        <Icon name="material-symbols:add-circle-outline" class="w-4 h-4 mr-1" />
+                        Add Column
+                      </button>
                     </div>
                   </div>
                 </template>
@@ -1099,29 +1345,29 @@
 
     <template #footer>
       <div class="flex justify-between items-center">
-        <button
+        <RsButton
           @click="handleClose"
-          class="cancel-btn"
+          variant="secondary-outline"
         >
           Cancel
-        </button>
+        </RsButton>
         
         <div class="flex space-x-3">
-          <button
+          <RsButton
             @click="handleReset"
-            class="reset-btn"
+            variant="warning-outline"
           >
             <Icon name="heroicons:arrow-path" class="w-4 h-4 mr-1" />
             Reset to Default
-          </button>
+          </RsButton>
           
-          <button
+          <RsButton
             @click="handleSave"
-            class="save-btn"
+            variant="primary"
           >
             <Icon name="heroicons:check" class="w-4 h-4 mr-1" />
             Apply Changes
-          </button>
+          </RsButton>
         </div>
       </div>
     </template>
@@ -1145,7 +1391,14 @@ const isOpen = computed({
 })
 
 const activeTab = ref('basic')
-const configModel = ref({})
+const configModel = ref({
+  conditionalLogic: {
+    enabled: false,
+    conditions: [],
+    action: 'show',
+    operator: 'and'
+  }
+})
 
 // Component info helpers
 const modalTitle = computed(() => {
@@ -1181,7 +1434,8 @@ const getComponentIcon = (type) => {
     paragraph: 'heroicons:document-text',
     divider: 'heroicons:minus',
     'info-display': 'heroicons:information-circle',
-    'dynamic-list': 'heroicons:list-bullet'
+    'dynamic-list': 'heroicons:list-bullet',
+    'repeating-table': 'heroicons:table-cells'
   }
   return icons[type] || 'heroicons:square-3-stack-3d'
 }
@@ -1214,7 +1468,8 @@ const getComponentTypeName = (type) => {
     paragraph: 'Paragraph Text',
     divider: 'Divider Line',
     'info-display': 'Information Display',
-    'dynamic-list': 'Dynamic List'
+    'dynamic-list': 'Dynamic List',
+    'repeating-table': 'Data Table'
   }
   return names[type] || 'Form Field'
 }
@@ -1247,7 +1502,8 @@ const getComponentDescription = (type) => {
     paragraph: 'Text content for instructions and descriptions',
     divider: 'Visual separator to organize form sections',
     'info-display': 'Read-only information display in organized format',
-    'dynamic-list': 'Dynamic list for displaying and managing items'
+    'dynamic-list': 'Dynamic list for displaying and managing items',
+    'repeating-table': 'Structured table for collecting multiple records with forms'
   }
   return descriptions[type] || 'Configure this form field'
 }
@@ -1272,14 +1528,14 @@ const showField = (fieldName) => {
   if (!props.component) return false
   
   const fieldConfig = {
-    label: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list'],
-    name: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list'],
+    label: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list', 'repeating-table'],
+    name: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list', 'repeating-table'],
     placeholder: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'dynamic-list'],
-    help: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list'],
+    help: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'hidden', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'dynamic-list', 'repeating-table'],
     value: ['heading', 'paragraph', 'hidden'],
-    width: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'heading', 'paragraph', 'info-display', 'dynamic-list'],
+    width: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'mask', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'otp', 'dropzone', 'button', 'heading', 'paragraph', 'info-display', 'dynamic-list', 'repeating-table'],
     options: ['select', 'checkbox', 'radio'],
-    conditionalLogic: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'dynamic-list']
+    conditionalLogic: ['text', 'textarea', 'number', 'email', 'password', 'url', 'tel', 'select', 'checkbox', 'radio', 'switch', 'date', 'time', 'datetime-local', 'range', 'color', 'file', 'dynamic-list', 'repeating-table']
   }
   
   return fieldConfig[fieldName]?.includes(props.component.type) || false
@@ -1288,7 +1544,7 @@ const showField = (fieldName) => {
 const hasOptions = computed(() => showField('options'))
 const hasSpecificSettings = computed(() => {
   if (!props.component) return false
-  const specificTypes = ['mask', 'otp', 'dropzone', 'range', 'heading', 'paragraph', 'button', 'dynamic-list']
+  const specificTypes = ['mask', 'otp', 'dropzone', 'range', 'heading', 'paragraph', 'button', 'dynamic-list', 'repeating-table']
   return specificTypes.includes(props.component.type)
 })
 
@@ -1408,7 +1664,8 @@ const getRecommendedWidth = (fieldType) => {
     'switch': 'full',
     'button': 'full',
     'info-display': 'full',
-    'dynamic-list': 'full'
+    'dynamic-list': 'full',
+    'repeating-table': 'full'
   }
   
   return recommendations[fieldType] || 'full'
@@ -1432,7 +1689,16 @@ const getCurrentGridColumns = () => {
 // Watch for component changes
 watch(() => props.component, (newComponent) => {
   if (newComponent) {
-    configModel.value = { ...newComponent.props }
+    configModel.value = { 
+      ...newComponent.props,
+      // Ensure conditionalLogic is properly initialized
+      conditionalLogic: newComponent.props.conditionalLogic || {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
+    }
     activeTab.value = 'basic'
     resetValidationState()
   }
@@ -1480,7 +1746,9 @@ const addOption = () => {
 }
 
 const removeOption = (index) => {
-  configModel.value.options.splice(index, 1)
+  if (configModel.value.options && configModel.value.options.length > index) {
+    configModel.value.options.splice(index, 1)
+  }
 }
 
 // Default items management for dynamic-list
@@ -1597,13 +1865,61 @@ const handleReset = () => {
       ...props.component,
       props: props.component.defaultProps || {}
     }
-    configModel.value = { ...defaultComponent.props }
+    configModel.value = { 
+      ...defaultComponent.props,
+      // Ensure conditionalLogic is properly initialized
+      conditionalLogic: defaultComponent.props.conditionalLogic || {
+        enabled: false,
+        conditions: [],
+        action: 'show',
+        operator: 'and'
+      }
+    }
   }
 }
 
 const handleClose = () => {
   isOpen.value = false
   emit('close')
+}
+
+// Table column management for repeating-table
+const addTableColumn = () => {
+  if (!configModel.value.columns) {
+    configModel.value.columns = []
+  }
+  configModel.value.columns.push({
+    name: `column_${configModel.value.columns.length + 1}`,
+    label: `Column ${configModel.value.columns.length + 1}`,
+    type: 'text',
+    required: false,
+    placeholder: 'Enter value...',
+    validation: '',
+    width: '200px',
+    options: []
+  })
+}
+
+const removeTableColumn = (index) => {
+  if (configModel.value.columns) {
+    configModel.value.columns.splice(index, 1)
+  }
+}
+
+const addColumnOption = (columnIndex) => {
+  if (!configModel.value.columns[columnIndex].options) {
+    configModel.value.columns[columnIndex].options = []
+  }
+  configModel.value.columns[columnIndex].options.push({
+    label: `Option ${configModel.value.columns[columnIndex].options.length + 1}`,
+    value: `option_${configModel.value.columns[columnIndex].options.length + 1}`
+  })
+}
+
+const removeColumnOption = (columnIndex, optionIndex) => {
+  if (configModel.value.columns[columnIndex].options) {
+    configModel.value.columns[columnIndex].options.splice(optionIndex, 1)
+  }
 }
 </script>
 

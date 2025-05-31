@@ -35,8 +35,6 @@
         options: 'space-y-0.5'
       } : {}" :class="{ 'canvas-component': isPreview }" />
 
-
-
     <!-- Heading -->
     <div v-else-if="component.type === 'heading'" class="py-2">
       <component :is="`h${component.props.level || 2}`" class="font-semibold" :class="{
@@ -314,6 +312,16 @@
       </div>
     </div>
 
+    <!-- Repeating Table Component -->
+    <div v-else-if="component.type === 'repeating-table'" class="repeating-table-wrapper">
+      <RepeatingTable
+        :config="component.props"
+        :model-value="previewFormData[component.props.name] || []"
+        :is-preview="isPreview"
+        @update:model-value="updateTableData"
+      />
+    </div>
+
     <!-- Button Component -->
     <div v-else-if="component.type === 'button'" class="py-2">
       <label v-if="component.props.label" class="block text-sm font-medium text-gray-700 mb-2">
@@ -330,8 +338,6 @@
         {{ component.props.help }}
       </div>
     </div>
-
-
 
     <!-- Unknown Component Type Fallback -->
     <div v-else class="p-4 border border-dashed border-gray-300 rounded">
@@ -838,6 +844,21 @@ const componentStyle = computed(() => {
     boxSizing: 'border-box'
   };
 });
+
+// Update dynamic list items
+const updateListItems = (listName, newItems) => {
+  const updatedData = { ...formStore.previewFormData, [listName]: newItems };
+  formStore.updatePreviewFormData(updatedData);
+};
+
+// Update table data for repeating-table component
+const updateTableData = (newData) => {
+  const tableName = props.component.props.name;
+  if (!tableName) return;
+  
+  const updatedFormData = { ...formStore.previewFormData, [tableName]: newData };
+  formStore.updatePreviewFormData(updatedFormData);
+};
 </script>
 
 <style scoped>
@@ -906,5 +927,9 @@ const componentStyle = computed(() => {
 
 .list-items {
   width: 100%;
+}
+
+.repeating-table-wrapper{
+  margin-bottom: 0.5rem !important;
 }
 </style>

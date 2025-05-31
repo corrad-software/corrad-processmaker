@@ -430,6 +430,145 @@
         </div>
       </div>
     </div>
+    
+    <!-- Step 4: Assignment Configuration (only if form is selected) -->
+    <div v-if="localNodeData.formId" class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+      <div class="flex items-center mb-3">
+        <div class="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center mr-2">
+          <span class="text-xs font-semibold text-emerald-600">4</span>
+        </div>
+        <h4 class="font-medium">Task Assignment</h4>
+      </div>
+      
+      <p class="text-sm text-gray-600 mb-4">
+        Configure who can complete this form task. Choose from specific users, roles, or dynamic assignment using variables.
+      </p>
+      
+      <div class="mb-5">
+        <!-- Assignment Type Selection -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Assignment Type</label>
+          <FormKit
+            type="select"
+            v-model="localNodeData.assignmentType"
+            :options="[
+              { label: 'Anyone (Public)', value: 'public' },
+              { label: 'Specific Users', value: 'users' },
+              { label: 'Role-based', value: 'roles' },
+              { label: 'Dynamic (from Variable)', value: 'variable' }
+            ]"
+            placeholder="Select assignment type"
+            @input="handleAssignmentTypeChange"
+            :classes="{ outer: 'mb-0' }"
+          />
+          <p class="mt-1 text-xs text-gray-500">How should this task be assigned</p>
+        </div>
+        
+        <!-- Specific Users Assignment -->
+        <div v-if="localNodeData.assignmentType === 'users'" class="bg-blue-50 p-4 rounded-md border border-blue-200">
+          <div class="flex items-center mb-3">
+            <Icon name="material-symbols:person" class="text-blue-600 mr-2" />
+            <h5 class="text-sm font-medium text-blue-900">Assign to Specific Users</h5>
+          </div>
+          
+          <div class="space-y-3">
+            <FormKit
+              type="select"
+              v-model="localNodeData.assignedUsers"
+              :options="availableUsers"
+              placeholder="Select users..."
+              multiple
+              :classes="{ outer: 'mb-0' }"
+            />
+            <p class="text-xs text-blue-700">Selected users will be able to complete this form task</p>
+          </div>
+        </div>
+        
+        <!-- Role-based Assignment -->
+        <div v-if="localNodeData.assignmentType === 'roles'" class="bg-purple-50 p-4 rounded-md border border-purple-200">
+          <div class="flex items-center mb-3">
+            <Icon name="material-symbols:group" class="text-purple-600 mr-2" />
+            <h5 class="text-sm font-medium text-purple-900">Assign to Roles</h5>
+          </div>
+          
+          <div class="space-y-3">
+            <FormKit
+              type="select"
+              v-model="localNodeData.assignedRoles"
+              :options="availableRoles"
+              placeholder="Select roles..."
+              multiple
+              :classes="{ outer: 'mb-0' }"
+            />
+            <p class="text-xs text-purple-700">Any user with the selected roles will be able to complete this form task</p>
+          </div>
+        </div>
+        
+        <!-- Variable-based Assignment -->
+        <div v-if="localNodeData.assignmentType === 'variable'" class="bg-green-50 p-4 rounded-md border border-green-200">
+          <div class="flex items-center mb-3">
+            <Icon name="material-symbols:code" class="text-green-600 mr-2" />
+            <h5 class="text-sm font-medium text-green-900">Dynamic Assignment from Variable</h5>
+          </div>
+          
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Assignment Variable</label>
+              <FormKit
+                type="select"
+                v-model="localNodeData.assignmentVariable"
+                :options="processVariableOptions"
+                placeholder="Select variable containing assignment data"
+                :classes="{ outer: 'mb-0' }"
+              />
+              <p class="mt-1 text-xs text-green-700">Variable should contain user ID, username, role name, or email address</p>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Variable Content Type</label>
+              <FormKit
+                type="select"
+                v-model="localNodeData.assignmentVariableType"
+                :options="[
+                  { label: 'User ID', value: 'user_id' },
+                  { label: 'Username', value: 'username' },
+                  { label: 'Email Address', value: 'email' },
+                  { label: 'Role Name', value: 'role_name' }
+                ]"
+                placeholder="What type of data does the variable contain"
+                :classes="{ outer: 'mb-0' }"
+              />
+              <p class="mt-1 text-xs text-green-700">How to interpret the variable value for assignment</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Public Assignment Info -->
+        <div v-if="localNodeData.assignmentType === 'public'" class="bg-gray-50 p-4 rounded-md border border-gray-200">
+          <div class="flex items-center mb-2">
+            <Icon name="material-symbols:public" class="text-gray-600 mr-2" />
+            <h5 class="text-sm font-medium text-gray-900">Public Task</h5>
+          </div>
+          <p class="text-xs text-gray-600">Anyone with access to the process will be able to complete this form task</p>
+        </div>
+        
+        <!-- Assignment Summary -->
+        <div v-if="localNodeData.assignmentType && localNodeData.assignmentType !== 'public'" class="mt-4 p-3 bg-white border border-gray-200 rounded-md">
+          <h6 class="text-sm font-medium text-gray-900 mb-2">Assignment Summary</h6>
+          <div class="text-xs text-gray-600">
+            <div v-if="localNodeData.assignmentType === 'users' && localNodeData.assignedUsers?.length">
+              Task assigned to {{ localNodeData.assignedUsers.length }} user(s)
+            </div>
+            <div v-if="localNodeData.assignmentType === 'roles' && localNodeData.assignedRoles?.length">
+              Task assigned to {{ localNodeData.assignedRoles.length }} role(s)
+            </div>
+            <div v-if="localNodeData.assignmentType === 'variable' && localNodeData.assignmentVariable">
+              Task dynamically assigned using variable: {{ localNodeData.assignmentVariable }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -445,6 +584,14 @@ const props = defineProps({
     required: true
   },
   availableVariables: {
+    type: Array,
+    default: () => []
+  },
+  availableUsers: {
+    type: Array,
+    default: () => []
+  },
+  availableRoles: {
     type: Array,
     default: () => []
   }
@@ -468,7 +615,12 @@ const localNodeData = ref({
   formUuid: null,
   inputMappings: [],
   outputMappings: [],
-  fieldConditions: []
+  fieldConditions: [],
+  assignmentType: 'public',
+  assignedUsers: [],
+  assignedRoles: [],
+  assignmentVariable: '',
+  assignmentVariableType: 'user_id'
 });
 
 // Watch for changes from parent props
@@ -489,7 +641,12 @@ watch(() => props.nodeData, async (newNodeData) => {
         : [],
       fieldConditions: Array.isArray(newNodeData.fieldConditions) 
         ? newNodeData.fieldConditions.map(condition => ({ ...condition }))
-        : []
+        : [],
+      assignmentType: newNodeData.assignmentType || 'public',
+      assignedUsers: Array.isArray(newNodeData.assignedUsers) ? newNodeData.assignedUsers.map(user => ({ ...user })) : [],
+      assignedRoles: Array.isArray(newNodeData.assignedRoles) ? newNodeData.assignedRoles.map(role => ({ ...role })) : [],
+      assignmentVariable: newNodeData.assignmentVariable || '',
+      assignmentVariableType: newNodeData.assignmentVariableType || 'user_id'
     };
     
     // Load form fields if form is already selected
@@ -510,7 +667,12 @@ async function handleFormSelection(form) {
     formUuid: form.formUUID,
     label: form.formName || 'Form Task',
     description: `Form: ${form.formName}`,
-    fieldConditions: []
+    fieldConditions: [],
+    assignmentType: 'public',
+    assignedUsers: [],
+    assignedRoles: [],
+    assignmentVariable: '',
+    assignmentVariableType: 'user_id'
   };
   
   // Load form fields for this form
@@ -530,7 +692,12 @@ function clearFormSelection() {
     description: 'Form submission task',
     inputMappings: [],
     outputMappings: [],
-    fieldConditions: []
+    fieldConditions: [],
+    assignmentType: 'public',
+    assignedUsers: [],
+    assignedRoles: [],
+    assignmentVariable: '',
+    assignmentVariableType: 'user_id'
   };
   
   // Clear form fields
@@ -688,6 +855,55 @@ const processVariableOptions = computed(() => {
   }));
 });
 
+// Reactive state for users and roles
+const users = ref([]);
+const roles = ref([]);
+
+// Computed property for available users (for FormKit select)
+const availableUsers = computed(() => {
+  return users.value.map(user => ({
+    label: user.userFullName ? `${user.userFullName} (${user.userUsername})` : user.userUsername,
+    value: user.userID,
+    username: user.userUsername,
+    email: user.userEmail
+  }));
+});
+
+// Computed property for available roles (for FormKit select)
+const availableRoles = computed(() => {
+  return roles.value.map(role => ({
+    label: role.roleName,
+    value: role.roleID,
+    description: role.roleDescription
+  }));
+});
+
+// Fetch users and roles data
+async function fetchUsersAndRoles() {
+  try {
+    // Fetch users
+    const usersResponse = await fetch('/api/users');
+    const usersResult = await usersResponse.json();
+    if (usersResult.success && usersResult.users) {
+      users.value = usersResult.users;
+    }
+
+    // Fetch roles
+    const rolesResponse = await fetch('/api/roles');
+    const rolesResult = await rolesResponse.json();
+    if (rolesResult.success && rolesResult.roles) {
+      roles.value = rolesResult.roles;
+    }
+  } catch (error) {
+    console.error('Error fetching users and roles:', error);
+  }
+}
+
+// Fetch data when component mounts
+nextTick(() => {
+  fetchUsersAndRoles();
+});
+
 // Save changes by emitting them to parent
 function saveChanges() {
   // Create a clean copy of the data to avoid reactivity issues
@@ -698,7 +914,12 @@ function saveChanges() {
     outputMappings: localNodeData.value.outputMappings ? 
       localNodeData.value.outputMappings.map(mapping => ({ ...mapping })) : [],
     fieldConditions: localNodeData.value.fieldConditions ? 
-      localNodeData.value.fieldConditions.map(condition => ({ ...condition })) : []
+      localNodeData.value.fieldConditions.map(condition => ({ ...condition })) : [],
+    assignmentType: localNodeData.value.assignmentType || 'public',
+    assignedUsers: localNodeData.value.assignedUsers ? localNodeData.value.assignedUsers.map(user => ({ ...user })) : [],
+    assignedRoles: localNodeData.value.assignedRoles ? localNodeData.value.assignedRoles.map(role => ({ ...role })) : [],
+    assignmentVariable: localNodeData.value.assignmentVariable || '',
+    assignmentVariableType: localNodeData.value.assignmentVariableType || 'user_id'
   };
   
   // Emit the updated data to parent
@@ -751,6 +972,12 @@ function getStringValue(value) {
     console.warn('Unexpected value type:', value);
     return '';
   }
+}
+
+// Handle assignment type change
+function handleAssignmentTypeChange() {
+  // Implementation of handleAssignmentTypeChange function
+  saveChanges();
 }
 </script>
 

@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     // Get all active users
     const users = await prisma.user.findMany({
       where: {
-        userStatus: 'active' // Assuming there's a status field to filter active users
+        userStatus: 'ACTIVE' // Using ACTIVE to match database convention
       },
       select: {
         userID: true,

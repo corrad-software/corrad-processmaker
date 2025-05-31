@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     // Get all active roles
     const roles = await prisma.role.findMany({
       where: {
-        roleStatus: 'active' // Assuming there's a status field to filter active roles
+        roleStatus: 'ACTIVE' // Using ACTIVE to match database convention
       },
       select: {
         roleID: true,
